@@ -1,8 +1,10 @@
 ---
-name: "🐛 Fix Report"
+name: "\U0001F41B Fix Report"
 about: 버그 수정
 title: "[fix] "
-labels: fix
+labels: "\U0001F41B fix"
+assignees: ''
+
 ---
 
 ## 문제 설명

@@ -2,8 +2,9 @@
 name: "✨ FEATURE ISSUE"
 about: 새로운 기능 추가
 title: "[FEAT]"
-labels: feature
-assignees: ""
+labels: "✨ feat"
+assignees: ''
+
 ---
 
 <!-- 이슈 이름: [FEAT] 기능 내용 상세 -->

@@ -41,13 +41,11 @@ coverage/
 # ------------------------------
 # ⚛ React specific
 # ------------------------------
-# Production build output (React)
 react-build/
 
 # ------------------------------
 # 🎨 Vue specific
 # ------------------------------
-# Vue cache
 *.vue.cache
 *.vue.ts
 *.vue.js
@@ -55,44 +53,25 @@ react-build/
 # ------------------------------
 # 🗄 State management cache
 # ------------------------------
-# Redux Toolkit persist cache
 redux-persist/
-# Zustand persist cache
 zustand-persist/
-# TanStack Query cache (development)
 .react-query-cache/
 .react-query-devtools/
 
 # ------------------------------
 # 🛠 IDE / Editor
 # ------------------------------
-# VS Code
-.vscode/*
-!.vscode/settings.json
-!.vscode/extensions.json
-!.vscode/tasks.json
-!.vscode/launch.json
-
-# JetBrains IDEs (WebStorm, IntelliJ, PhpStorm, etc.)
+.vscode/
 .idea/
 *.iml
-
-# Sublime Text
 *.sublime-project
 *.sublime-workspace
-
-# Atom
 .atom/
-
-# Vim
 *.swp
 *.swo
 .session
-
-# Emacs
 *~
 \#*\#
-.emacs.desktop
 
 # ------------------------------
 # 📦 Others
@@ -104,11 +83,8 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
-
-# Logs
 logs
 *.log
 lerna-debug.log*
 
 dist-ssr
-

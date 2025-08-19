@@ -1,0 +1,49 @@
+# ------------------------------
+# 📦 Node.js / npm / Yarn
+# ------------------------------
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ------------------------------
+# 🛠 Build output
+# ------------------------------
+dist/
+build/
+out/
+public/build/
+.temp/
+.tmp/
+.cache/
+coverage/
+dist-ssr
+
+# ------------------------------
+# 🖥 Environment variables
+# ------------------------------
+.env
+.env.*.local
+
+# ------------------------------
+# 📜 TypeScript
+# ------------------------------
+*.tsbuildinfo
+
+# ------------------------------
+# ⚛ React specific
+# ------------------------------
+react-build/
+
+# ------------------------------
+# 🛠 IDE / Editor
+# ------------------------------
+.vscode/
+.idea/
+*.iml
+
+# ------------------------------
+# 📦 Others
+# ------------------------------
+.DS_Store
+Thumbs.db

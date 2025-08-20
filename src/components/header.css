@@ -1,0 +1,39 @@
+.header {
+  background: #25443a; /* 예시 색 (이미지 톤 유사) */
+  color: #fff;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.nav a {
+  color: #fff;
+  text-decoration: none;
+}
+.nav a:hover { text-decoration: underline; }
+.divider { opacity: 0.6; }
+.greet { margin-right: 8px; opacity: 0.95; }
+.logout {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.6);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.logout:hover { background: rgba(255,255,255,0.1); }

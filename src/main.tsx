@@ -1,17 +1,14 @@
+// src/main.tsx
 import ReactDOM from "react-dom/client";
-import { RouterProvider } from "react-router-dom";
-import { router } from "./router";
-import { AuthProvider } from "./contexts/AuthContext";
-import { StoreProvider } from "./contexts/StoreContext";
-import "./routes/index.css";
+import { BrowserRouter } from "react-router-dom";
+import App from "./app/App";
+import "./routes/index.css"; 
 
+const root = document.getElementById("root");
+if (!root) throw new Error("#root not found");
 
-
-ReactDOM.createRoot(document.getElementById("root")!).render(
-    <AuthProvider>
-      <StoreProvider>
-        <RouterProvider router={router} />
-      </StoreProvider>
-    </AuthProvider>
-
-)
+ReactDOM.createRoot(root).render(
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>
+);

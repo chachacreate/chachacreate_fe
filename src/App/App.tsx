@@ -1,16 +1,29 @@
-import { Outlet } from "react-router-dom";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+// src/app/App.tsx
+import { Routes, Route, Navigate } from "react-router-dom";
+import Header from "@src/shared/areas/layout/features/header/Header";
 
-const App = () => {
+export default function App() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <>
+      {/* 공통 헤더 */}
       <Header />
-      <main style={{ flex: 1, maxWidth: 1200, margin: "0 auto", padding: "16px" }}>
-        <Outlet />
-      </main>
-      <Footer />
-    </div>
+
+      {/* 라우팅 */}
+      <Routes>
+        {/* /를 /main으로 리다이렉트 */}
+        <Route path="/" element={<Navigate to="/main" replace />} />
+
+        {/* 메인 임시 페이지 */}
+        <Route
+          path="/main"
+          element={
+            <main style={{ padding: 16 }}>
+              <h1>메인 페이지 (임시)</h1>
+              <p>여기가 보여야 정상입니다.</p>
+            </main>
+          }
+        />
+      </Routes>
+    </>
   );
-};
-export default App;
+}

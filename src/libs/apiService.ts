@@ -2,7 +2,7 @@
 import axios from 'axios';
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = process.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // localStorage에서 Access Token을 가져오는 함수
 const getAccessToken = () => localStorage.getItem('accessToken');

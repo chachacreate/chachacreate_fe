@@ -5,6 +5,6 @@ export type User = {
 };
 
 export type Store = {
-  id: number;
+  id: string;
   name: string;
 };

@@ -9,7 +9,7 @@ const Home = () => {
       <h1>메인 홈</h1>
 
       {!user ? (
-        <button onClick={() => login({ name: "김민건", email: "user@test.com" })}>
+        <button onClick={() => login({ name: "차민건", email: "user@test.com" })}>
           임시 로그인
         </button>
       ) : (
@@ -21,8 +21,6 @@ const Home = () => {
         <Link to="/store/abc">스토어(abc)로</Link>
         <Link to="/store/xyz">스토어(xyz)로</Link>
       </div>
-
-      <p>상단 헤더가 로그인 여부 / 스토어 접속 여부에 따라 바뀌는지 확인해보세요.</p>
     </section>
   );
 };

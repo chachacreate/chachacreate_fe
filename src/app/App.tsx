@@ -1,6 +1,6 @@
-// src/app/App.tsx
-import { Routes, Route, Navigate } from "react-router-dom";
-import Header from "@src/shared/areas/layout/features/header/Header";
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Header from '@src/shared/areas/layout/features/header/Header';
+import LoginPage from '@src/domains/common/auth/login/pages/LoginPage';
 
 export default function App() {
   return (
@@ -23,6 +23,9 @@ export default function App() {
             </main>
           }
         />
+        <Route path="/auth">
+          <Route path="login" element={<LoginPage />} />
+        </Route>
       </Routes>
     </>
   );

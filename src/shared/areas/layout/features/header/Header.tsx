@@ -231,8 +231,8 @@ export default function Header({
         )}
       </div>
 
-      {/* 데스크톱 로고/기본 네비 (모바일에선 숨김) */}
-      <div className="hidden md:flex">
+      {/* 데스크톱 로고/기본 네비 (모바일에선 숨김), 테스트용 상당바라 숨겨놓음 */}
+      {/* <div className="hidden md:flex">
         <div className="mx-auto w-full max-w-[1920px] px-60 h-16 flex items-center justify-between">
           <button onClick={goToMain} className="flex items-center gap-2">
             <span className="inline-block h-8 w-8 rounded-full bg-[#2d4739]" aria-hidden />
@@ -245,7 +245,7 @@ export default function Header({
             <Link to="/main/classes" className="text-sm hover:underline">클래스</Link>
           </div>
         </div>
-      </div>
+      </div>  */}
 
       {/* 실서버 모드에서만 의미 있는 로딩바 */}
       {!useMockAuth && loadingMe && (

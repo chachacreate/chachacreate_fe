@@ -46,19 +46,20 @@ export default function Mainnavbar() {
             px-4 md:px-6 xl:px-20 2xl:px-[240px]
           "
         >
-          <div className="flex h-16 items-center justify-between">
+          {/* 데스크톱: 로고 + 메뉴 */}
+          <div className="hidden md:flex h-16 items-center justify-between">
             {/* 로고 (좌측 고정) */}
-            <div className="items-center hidden md:flex">
-            <NavLink to="/" className="inline-flex items-center gap-2">
+            <div className="flex items-center">
+              <NavLink to="/" className="inline-flex items-center gap-2">
                 {/* 로고 이미지가 있다면 <img .../> 로 교체 */}
                 <span className="text-xl font-bold tracking-tight">
-                뜨락상회
+                  뜨락상회
                 </span>
-            </NavLink>
+              </NavLink>
             </div>
 
             {/* 데스크톱 메뉴 (우측 정렬) */}
-            <nav className="hidden md:flex items-center gap-6">
+            <nav className="flex items-center gap-6">
               {DESKTOP_MENU.map((m) => (
                 <NavLink
                   key={m.to}
@@ -125,9 +126,6 @@ export default function Mainnavbar() {
           </ul>
         </div>
       </nav>
-
-      {/* 하단 바로 가려지는 컨텐츠 방지용 spacer (모바일 전용) */}
-      <div className="md:hidden h-14" style={{ marginBottom: safeBottom }} />
     </>
   );
 }

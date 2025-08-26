@@ -111,7 +111,15 @@ export default function ClassesDetailPage() {
       alert("날짜와 시간을 선택해주세요.");
       return;
     }
-    alert(`${selectedDate} ${selectedTime} 예약 신청이 완료되었습니다!`);
+    // ✅ 주문 페이지로 이동 (라우터에 등록한 경로와 일치해야 함)
+  nav("/main/classes/order", {
+    state: {
+      classId,              // 현재 상세의 id
+      date: selectedDate,   // 선택 날짜
+      time: selectedTime,   // 선택 시간
+      item,                 // (선택) 상세 아이템 전체 전달
+    },
+  });
   };
 
   return (

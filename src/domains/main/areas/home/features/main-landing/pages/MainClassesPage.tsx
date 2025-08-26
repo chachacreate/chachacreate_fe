@@ -5,6 +5,7 @@ import ClassSubnavbar from "@src/shared/areas/navigation/features/subnavbar/clas
 import Searchbar from "@src/shared/areas/navigation/features/searchbar/Searchbar";
 import heroUrl from "@src/domains/main/areas/home/features/main-landing/assets/classbg.webp";
 import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
+import { Link } from "react-router-dom";
 
 type ClassItem = {
   id: string;
@@ -223,23 +224,25 @@ function ListView({ items }: { items: ClassItem[] }) {
   return (
     <section className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {items.map((c) => (
-        <article
+        <Link
           key={c.id}
-          className="border border-gray-200 rounded-2xl overflow-hidden hover:shadow-sm transition-shadow bg-white"
+          to={`/main/classes/${c.id}`}
+          state={{ item: c }}
+          className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 rounded-2xl"
         >
-          <div className="aspect-[4/3] bg-gray-100" />
-          <div className="p-4">
-            <h3 className="font-semibold line-clamp-1">{c.title}</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              {c.host} · {c.location}
-            </p>
-            <p className="text-sm text-gray-500">{c.date}</p>
-            <p className="mt-2 font-bold">{c.price.toLocaleString()}원</p>
-            <button className="mt-3 w-full h-10 rounded-xl border border-gray-300 hover:bg-gray-50">
-              자세히 보기
-            </button>
-          </div>
-        </article>
+          <article className="border border-gray-200 rounded-2xl overflow-hidden bg-white transition-shadow group-hover:shadow-md">
+            <div className="aspect-[4/3] bg-gray-100" />
+            <div className="p-4">
+              <h3 className="font-semibold line-clamp-1">{c.title}</h3>
+              <p className="text-sm text-gray-500 mt-1">{c.host} · {c.location}</p>
+              <p className="text-sm text-gray-500">{c.date}</p>
+              <p className="mt-2 font-bold">{c.price.toLocaleString()}원</p>
+              <span className="mt-3 inline-flex h-9 px-3 items-center justify-center rounded-xl border border-gray-300 bg-white group-hover:bg-gray-50">
+                자세히 보기
+              </span>
+            </div>
+          </article>
+        </Link>
       ))}
     </section>
   );

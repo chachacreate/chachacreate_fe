@@ -13,6 +13,7 @@ const routes: RouteObject[] = [
       { index: true, element: React.createElement(MainLandingPage) },
       { path: "classes", element: React.createElement(MainClassesPage) },
       { path: "classes/:classId", element: React.createElement(ClassesDetailPage) },
+      { path: "stores", element: React.createElement(MainLandingPage) },
     ],
   },
 ];

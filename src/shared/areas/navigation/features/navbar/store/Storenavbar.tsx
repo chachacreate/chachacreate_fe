@@ -1,16 +1,24 @@
 // shared/areas/navigation/features/navbar/store/Storenavbar.tsx
-import { NavLink, useParams } from "react-router-dom";
-import { useEffect, useState, useRef } from "react";
+import { NavLink, useParams, useLocation } from "react-router-dom";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Home, ShoppingCart, User, Store } from "lucide-react";
 
 type MenuItem = { label: string; to: string };
 
 export default function Storenavbar() {
-  // ✅ URL의 가변 스토어 세그먼트(:storeSlug) 사용
-  const { storeSlug } = useParams<{ storeSlug: string }>();
-  const base = (sub: string = "") => `/${storeSlug ?? "store"}${sub}`;
+  // ✅ :store 를 1순위로 사용, 옛날(:storeSlug)도 대비, 마지막으로 URL 1세그먼트 fallback
+  const params = useParams<{ store?: string; storeSlug?: string }>();
+  const location = useLocation();
+  const storeSlug = useMemo(() => {
+    return (
+      params.store ??
+      params.storeSlug ??
+      (location.pathname.split("/")[1] || "store")
+    );
+  }, [params.store, params.storeSlug, location.pathname]);
 
-  // 메뉴는 슬러그에 따라 동적으로 생성
+  const base = (sub: string = "") => `/${storeSlug}${sub}`;
+
   const DESKTOP_MENU: MenuItem[] = [
     { label: "전체상품", to: base("/products") },
     { label: "스토어정보", to: base("/info") },
@@ -29,11 +37,11 @@ export default function Storenavbar() {
     { label: "메인 홈 가기", to: "/main" },
   ];
 
-  // iOS safe-area 대응(모바일 하단 바)
   const [safeBottom, setSafeBottom] = useState(0);
   useEffect(() => {
     const div = document.createElement("div");
-    div.style.cssText = "position:fixed;bottom:0;height:0;padding-bottom:env(safe-area-inset-bottom)";
+    div.style.cssText =
+      "position:fixed;bottom:0;height:0;padding-bottom:env(safe-area-inset-bottom)";
     document.body.appendChild(div);
     const pb = parseFloat(getComputedStyle(div).paddingBottom || "0");
     setSafeBottom(pb);
@@ -50,7 +58,7 @@ export default function Storenavbar() {
             <div className="items-center hidden md:flex">
               <NavLink to={base()} className="inline-flex items-center gap-2">
                 <span className="text-xl font-bold tracking-tight">
-                  {storeSlug ? `뜨락상회 · ${storeSlug}` : "뜨락상회 스토어"}
+                  {storeSlug ? `${storeSlug}` : "뜨락상회 스토어"}
                 </span>
               </NavLink>
             </div>
@@ -64,7 +72,9 @@ export default function Storenavbar() {
                   className={({ isActive }) =>
                     [
                       "text-sm transition-colors",
-                      isActive ? "font-semibold text-gray-900" : "text-gray-600 hover:text-gray-900",
+                      isActive
+                        ? "font-semibold text-gray-900"
+                        : "text-gray-600 hover:text-gray-900",
                     ].join(" ")
                   }
                 >
@@ -83,7 +93,9 @@ export default function Storenavbar() {
                 className={({ isActive }) =>
                   [
                     "flex-1 text-center text-[13px] py-2",
-                    isActive ? "font-semibold text-gray-900" : "text-gray-600 hover:text-gray-900",
+                    isActive
+                      ? "font-semibold text-gray-900"
+                      : "text-gray-600 hover:text-gray-900",
                   ].join(" ")
                 }
               >
@@ -102,15 +114,12 @@ export default function Storenavbar() {
       >
         <div className="mx-auto w-full max-w-[1920px] px-4">
           <ul className="grid grid-cols-3 h-14 relative">
-            {/* 홈 + 확장 패널 */}
             <li className="relative flex items-center justify-center">
-              <HomeExpander storeSlug={storeSlug ?? "store"} />
+              <HomeExpander storeSlug={storeSlug} />
             </li>
-            {/* 장바구니 */}
             <li className="flex items-center justify-center">
               <BottomItem to={base("/mypage/cart")} label="장바구니" Icon={ShoppingCart} />
             </li>
-            {/* 마이페이지 */}
             <li className="flex items-center justify-center">
               <BottomItem to={base("/mypage")} label="마이페이지" Icon={User} />
             </li>
@@ -128,7 +137,6 @@ function HomeExpander({ storeSlug }: { storeSlug: string }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  // 바깥 클릭/ESC 닫기
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (!rootRef.current) return;
@@ -149,7 +157,6 @@ function HomeExpander({ storeSlug }: { storeSlug: string }) {
 
   return (
     <div ref={rootRef} className="relative">
-      {/* 홈 아이콘 (고정) */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -165,7 +172,6 @@ function HomeExpander({ storeSlug }: { storeSlug: string }) {
         <span className="text-[11px]">홈</span>
       </button>
 
-      {/* 오른쪽으로 펼쳐지는 패널 */}
       <div
         id="home-expander-panel"
         className={[
@@ -179,7 +185,6 @@ function HomeExpander({ storeSlug }: { storeSlug: string }) {
         aria-hidden={!open}
       >
         <div className="flex items-center gap-2 h-10">
-          {/* 메인 홈 */}
           <NavLink
             to="/main"
             className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/90 text-gray-900 text-sm font-medium hover:bg-white"
@@ -190,7 +195,6 @@ function HomeExpander({ storeSlug }: { storeSlug: string }) {
             <span>뜨락상회</span>
           </NavLink>
 
-          {/* 현재 스토어 홈(동적 라벨) */}
           <NavLink
             to={storeBase}
             className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/90 text-gray-900 text-sm font-medium hover:bg-white"
@@ -198,7 +202,7 @@ function HomeExpander({ storeSlug }: { storeSlug: string }) {
             role="menuitem"
           >
             <Store className="h-4 w-4" />
-            <span>{`${storeSlug}`}</span>
+            <span>{storeSlug}</span>
           </NavLink>
         </div>
       </div>

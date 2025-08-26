@@ -35,14 +35,17 @@ export default function MainClassesPage() {
   const view = params.get("view"); // 'calendar' | null
   const [page, setPage] = useState(1);
   const [activeSection, setActiveSection] = useState<"home" | "calendar" | "search">("home");
+  
+  // 스크롤 감지를 위한 refs
+  const heroSectionRef = useRef<HTMLDivElement | null>(null);
+  const calendarSectionRef = useRef<HTMLDivElement | null>(null);
+  const searchSectionRef = useRef<HTMLDivElement | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(MOCK.length / PAGE_SIZE));
   const pagedItems = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
     return MOCK.slice(start, start + PAGE_SIZE);
   }, [page]);
-
-  const gridAnchorRef = useRef<HTMLDivElement | null>(null);
 
   // URL 파라미터 및 해시 변경 감지
   useEffect(() => {
@@ -55,8 +58,54 @@ export default function MainClassesPage() {
     }
   }, [location.hash, view]);
 
-  // activeSection 상태에 따라 URL을 한 곳에서만 업데이트
+  // 스크롤 위치에 따라 activeSection 자동 업데이트
   useEffect(() => {
+    const handleScroll = () => {
+      const heroSection = heroSectionRef.current;
+      const calendarSection = calendarSectionRef.current;
+      const searchSection = searchSectionRef.current;
+      
+      if (!heroSection || !calendarSection || !searchSection) return;
+
+      const scrollY = window.scrollY;
+      const heroHeight = heroSection.offsetHeight;
+      const searchTop = searchSection.offsetTop;
+      
+      // 각 섹션의 경계를 기준으로 activeSection 결정
+      if (scrollY < heroHeight * 0.3) {
+        // 상단 30% 이내면 현재 보이는 패널 (home/calendar) 유지
+        if (view === "calendar") {
+          if (activeSection !== "calendar") {
+            setActiveSection("calendar");
+          }
+        } else {
+          if (activeSection !== "home") {
+            setActiveSection("home");
+          }
+        }
+      } else if (scrollY >= searchTop - 200) {
+        // 검색 섹션에 가까우면 search로 변경
+        if (activeSection !== "search") {
+          setActiveSection("search");
+        }
+      }
+    };
+    
+    // 스크롤 이벤트 리스너 등록
+    window.addEventListener("scroll", handleScroll);
+    
+    // 초기 실행
+    handleScroll();
+    
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [view, activeSection]);
+
+  // activeSection 변경 시 URL 업데이트 (사용자 클릭에 의한 변경만)
+  const [isUserTriggered, setIsUserTriggered] = useState(false);
+  
+  useEffect(() => {
+    if (!isUserTriggered) return;
+    
     if (activeSection === "search") {
       navigate({ search: location.search, hash: "#search" }, { replace: true });
     } else if (activeSection === "calendar") {
@@ -64,34 +113,17 @@ export default function MainClassesPage() {
     } else { // activeSection === "home"
       navigate({ search: "", hash: "" }, { replace: true });
     }
-  }, [activeSection, navigate]);
-
-  // 스크롤 위치에 따라 URL의 해시만 업데이트 (내비게이션에 영향을 주지 않음)
-  useEffect(() => {
-    const handleScroll = () => {
-      // home, calendar 상태에서는 스크롤에 따른 해시 변경을 막음
-      if (activeSection === "home" || activeSection === "calendar") {
-        return;
-      }
-
-      const searchElem = gridAnchorRef.current;
-      if (searchElem) {
-        const searchTop = searchElem.getBoundingClientRect().top;
-        const viewportHeight = window.innerHeight;
-
-        if (searchTop <= viewportHeight / 2 && location.hash !== "#search") {
-          navigate({ ...location, hash: "#search" }, { replace: true });
-        } else if (searchTop > viewportHeight / 2 && location.hash === "#search") {
-          navigate({ ...location, hash: "" }, { replace: true });
-        }
-      }
-    };
     
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [location, navigate, activeSection]);
+    setIsUserTriggered(false);
+  }, [activeSection, navigate, isUserTriggered]);
 
   const isCalendar = view === "calendar";
+
+  // navbar에서 사용할 섹션 변경 핸들러
+  const handleSetActiveSection = (section: "home" | "calendar" | "search") => {
+    setIsUserTriggered(true);
+    setActiveSection(section);
+  };
 
   return (
     <>
@@ -99,11 +131,12 @@ export default function MainClassesPage() {
       <Mainnavbar />
       <ClassSubnavbar 
         activeSection={activeSection} 
-        setActiveSection={setActiveSection}
+        setActiveSection={handleSetActiveSection}
       />
 
       {/* ===== 상단 히어로/캘린더 슬라이드 영역 ===== */}
       <section
+        ref={heroSectionRef}
         className="
           relative w-full overflow-hidden bg-white
           min-h-[calc(100vh-64px-34px)]
@@ -138,7 +171,7 @@ export default function MainClassesPage() {
           </div>
 
           {/* Panel 2: 캘린더 상단 섹션 (폭 고정: 1/2) */}
-          <div id="calendar" className="w-1/2 h-full flex justify-center bg-white relative z-10">
+          <div id="calendar" ref={calendarSectionRef} className="w-1/2 h-full flex justify-center bg-white relative z-10">
             <div className="container-1920 h-full flex items-center justify-center mx-auto px-6">
               <div className="w-full max-w-5xl">
                 <h2 className="text-xl font-semibold mb-4">이번 달 일정</h2>
@@ -154,7 +187,7 @@ export default function MainClassesPage() {
 
       {/* ===== 아래 메인 콘텐츠: Searchbar + 그리드 + 페이지네이션 ===== */}
       <main className="container-1920">
-        <div id="search-section" className="py-10 lg:py-14" ref={gridAnchorRef} />
+        <div id="search-section" className="py-10 lg:py-14" ref={searchSectionRef} />
 
         <section className="mb-6">
           <Searchbar placeholder="클래스 검색 (예: 뜨개, 가죽, 도자기)" />

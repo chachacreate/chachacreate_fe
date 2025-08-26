@@ -7,6 +7,8 @@ import App from "@src/app/App";
 import MainLandingPage from "@src/domains/main/areas/home/features/main-landing/pages/MainLandingPage";
 import MainClassesPage from "@src/domains/main/areas/home/features/main-landing/pages/MainClassesPage";
 import ClassesDetailPage from "@src/domains/main/areas/home/features/class-detail/pages/ClassesDetailPage";
+import MainStorePage from "@src/domains/main/areas/home/features/main-landing/pages/MainStorePage";
+import StoreClassesPage from "@src/domains/buyer/areas/store/features/main-landing/pages/StoreClassesPage";
 
 import "./index.css";
 
@@ -19,6 +21,8 @@ const router = createBrowserRouter([
       { path: "main", element: <MainLandingPage /> },
       { path: "main/classes", element: <MainClassesPage /> },
       { path: "main/classes/:classId", element: <ClassesDetailPage /> },
+      { path: "main/stores", element: <MainStorePage /> },
+      { path: "stores/:store/classes", element: <StoreClassesPage /> },
     ],
   },
 ]);

@@ -1,4 +1,3 @@
-// shared/areas/navigation/features/sidenavbar/MypageSidenavbar.tsx
 import React from "react";
 import { NavLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
@@ -42,7 +41,7 @@ export default function MypageSidenavbar({
     { label: "주문내역", to: `${basePath}/orders`, icon: Receipt },
     { label: "문의 메시지", to: `${basePath}/message`, icon: MessageSquareText },
     { label: "작성 리뷰 확인", to: `${basePath}/myreview`, icon: Star },
-    { label: "클래스 예약 조회", to: `${basePath}/class-reservations`, icon: CalendarCheck },
+    { label: "클래스 예약 조회", to: `${basePath}/classes`, icon: CalendarCheck },
   ] as const;
 
   // 현재 경로가 루트인지 판단 (트레일링 슬래시 허용)
@@ -125,6 +124,20 @@ export default function MypageSidenavbar({
             ))}
           </ul>
         </nav>
+      )}
+
+      {/* ===== 모바일: 콘텐츠 영역 (루트가 아닌 경우 또는 children이 있는 경우) ===== */}
+      {!isRoot && children && (
+        <div className="md:hidden mt-4">
+          {children}
+        </div>
+      )}
+
+      {/* ===== 모바일: 루트에서 children 표시 ===== */}
+      {isRoot && children && (
+        <div className="md:hidden mt-6">
+          {children}
+        </div>
       )}
 
       {/* ===== 데스크톱: 좌측 사이드바 + 우측 콘텐츠 ===== */}

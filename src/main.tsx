@@ -12,6 +12,8 @@ import MainStorePage from "@src/domains/main/areas/home/features/main-landing/pa
 import StoreClassesPage from "@src/domains/buyer/areas/store/features/main-landing/pages/StoreClassesPage";
 import MainClassOrderPage from "@src/domains/main/areas/home/features/class-order/pages/MainClassOrderPage";
 import MainClassOrderResultPage from "@src/domains/main/areas/home/features/class-order/pages/MainClassOrderResultPage";
+import MainMypagePage from "@src/domains/main/areas/mypage/pages/MainMypagePage";
+import MainMypageClassesPage from "@src/domains/main/areas/mypage/pages/MainMypageclasses";
 
 import "./routes/index.css";
 
@@ -28,6 +30,8 @@ const router = createBrowserRouter([
       { path: ":store/classes", element: <StoreClassesPage /> },
       { path: "main/classes/order", element: <MainClassOrderPage /> },
       { path: "main/classes/order/result", element: <MainClassOrderResultPage /> },
+      { path: "main/mypage", element: <MainMypagePage /> },
+      { path: "main/mypage/classes", element: < MainMypageClassesPage /> },
     ],
   },
 ]);

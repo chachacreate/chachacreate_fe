@@ -8,7 +8,7 @@ export async function get<T>(url: string, params?: object): Promise<ApiResponse<
   return {
     data: response.data,
     status: response.status,
-    statusText: response.statusText,
+    message: response.statusText,
   };
 }
 
@@ -18,7 +18,7 @@ export async function post<T>(url: string, data?: object): Promise<ApiResponse<T
   return {
     data: response.data,
     status: response.status,
-    statusText: response.statusText,
+    message: response.statusText,
   };
 }
 
@@ -28,7 +28,7 @@ export async function put<T>(url: string, data?: object): Promise<ApiResponse<T>
   return {
     data: response.data,
     status: response.status,
-    statusText: response.statusText,
+    message: response.statusText,
   };
 }
 
@@ -38,7 +38,7 @@ export async function patch<T>(url: string, data?: object): Promise<ApiResponse<
   return {
     data: response.data,
     status: response.status,
-    statusText: response.statusText,
+    message: response.statusText,
   };
 }
 
@@ -48,6 +48,6 @@ export async function del<T>(url: string): Promise<ApiResponse<T>> {
   return {
     data: response.data,
     status: response.status,
-    statusText: response.statusText,
+    message: response.statusText,
   };
 }

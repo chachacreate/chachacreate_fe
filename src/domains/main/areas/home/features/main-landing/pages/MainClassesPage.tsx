@@ -1,31 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import Header from "@src/shared/areas/layout/features/header/Header";
-import ClassSubnavbar from "@src/shared/areas/navigation/features/subnavbar/class/ClassSubnavbar";
-import Searchbar from "@src/shared/areas/navigation/features/searchbar/Searchbar";
-import heroUrl from "@src/domains/main/areas/home/features/main-landing/assets/classbg.webp";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import Header from '@src/shared/areas/layout/features/header/Header';
+import ClassSubnavbar from '@src/shared/areas/navigation/features/subnavbar/class/ClassSubnavbar';
+import Searchbar from '@src/shared/areas/navigation/features/searchbar/Searchbar';
+import heroUrl from '@src/domains/main/areas/home/features/main-landing/assets/classbg.webp';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import { Link } from 'react-router-dom';
+import { get } from '@src/libs/request';
 
 type ClassItem = {
-  id: string;
+  id: number;
   title: string;
-  host: string;
+  storeName: string;
   price: number;
-  date: string;
-  location?: string;
-  thumbnail?: string;
+  thumbnail: string;
+  addressRoad: string;
+  remainSeat: number;
+  startDate: string;
+  endDate: string;
 };
-
-// 더미 데이터 40개 (페이지네이션 데모용)
-const MOCK: ClassItem[] = Array.from({ length: 40 }).map((_, i) => ({
-  id: `c${i + 1}`,
-  title: `수공예 원데이 클래스 #${i + 1}`,
-  host: i % 3 === 0 ? "라임스튜디오" : i % 3 === 1 ? "소소공방" : "토분이네",
-  price: 30000 + (i % 7) * 5000,
-  date: `2025-09-${String((i % 27) + 1).padStart(2, "0")}`,
-  location: ["서울 종로", "서울 성수", "경기 분당", "인천 부평"][i % 4],
-}));
 
 const PAGE_SIZE = 16; // 4x4
 
@@ -33,29 +26,64 @@ export default function MainClassesPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
-  const view = params.get("view"); // 'calendar' | null
+  const view = params.get('view'); // 'calendar' | null
   const [page, setPage] = useState(1);
-  const [activeSection, setActiveSection] = useState<"home" | "calendar" | "search">("home");
-  
+  const [activeSection, setActiveSection] = useState<'home' | 'calendar' | 'search'>('home');
+
   // 스크롤 감지를 위한 refs
   const heroSectionRef = useRef<HTMLDivElement | null>(null);
   const calendarSectionRef = useRef<HTMLDivElement | null>(null);
   const searchSectionRef = useRef<HTMLDivElement | null>(null);
 
-  const totalPages = Math.max(1, Math.ceil(MOCK.length / PAGE_SIZE));
-  const pagedItems = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return MOCK.slice(start, start + PAGE_SIZE);
+  // API 데이터 상태 관리
+  const [items, setItems] = useState<ClassItem[]>([]);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // axios 호출 대신 src/libs/request에 담긴 함수 사용으로 통일성 제공
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const response = await get<{ content: any[]; totalPages: number }>('/main/classes', {
+          page: page - 1,
+          size: PAGE_SIZE,
+        });
+
+        if (response.status === 200) {
+          console.log('클래스 데이터:', response.data);
+
+          const classItems = response.data.content.map((cls) => ({
+            id: cls.id,
+            title: cls.title,
+            storeName: cls.storeName,
+            price: cls.price,
+            thumbnail: cls.thumbnailUrl,
+            addressRoad: cls.addressRoad?.split(' ').slice(0, 2).join(' '), // 앞 두 단어만
+            remainSeat: cls.remainSeat,
+            startDate: cls.startDate?.slice(0, 10), // YYYY-MM-DD
+            endDate: cls.endDate?.slice(0, 10), // YYYY-MM-DD
+          }));
+
+          setItems(classItems);
+          setTotalPages(response.data.totalPages);
+        } else {
+          console.error('클래스 조회 실패:', response.message);
+        }
+      } catch (error) {
+        console.error('API 요청 실패:', error);
+      }
+    };
+
+    fetchClasses();
   }, [page]);
 
   // URL 파라미터 및 해시 변경 감지
   useEffect(() => {
-    if (location.hash === "#search") {
-      setActiveSection("search");
-    } else if (view === "calendar") {
-      setActiveSection("calendar");
+    if (location.hash === '#search') {
+      setActiveSection('search');
+    } else if (view === 'calendar') {
+      setActiveSection('calendar');
     } else {
-      setActiveSection("home");
+      setActiveSection('home');
     }
   }, [location.hash, view]);
 
@@ -65,63 +93,64 @@ export default function MainClassesPage() {
       const heroSection = heroSectionRef.current;
       const calendarSection = calendarSectionRef.current;
       const searchSection = searchSectionRef.current;
-      
+
       if (!heroSection || !calendarSection || !searchSection) return;
 
       const scrollY = window.scrollY;
       const heroHeight = heroSection.offsetHeight;
       const searchTop = searchSection.offsetTop;
-      
+
       // 각 섹션의 경계를 기준으로 activeSection 결정
       if (scrollY < heroHeight * 0.3) {
         // 상단 30% 이내면 현재 보이는 패널 (home/calendar) 유지
-        if (view === "calendar") {
-          if (activeSection !== "calendar") {
-            setActiveSection("calendar");
+        if (view === 'calendar') {
+          if (activeSection !== 'calendar') {
+            setActiveSection('calendar');
           }
         } else {
-          if (activeSection !== "home") {
-            setActiveSection("home");
+          if (activeSection !== 'home') {
+            setActiveSection('home');
           }
         }
       } else if (scrollY >= searchTop - 200) {
         // 검색 섹션에 가까우면 search로 변경
-        if (activeSection !== "search") {
-          setActiveSection("search");
+        if (activeSection !== 'search') {
+          setActiveSection('search');
         }
       }
     };
-    
+
     // 스크롤 이벤트 리스너 등록
-    window.addEventListener("scroll", handleScroll);
-    
+    window.addEventListener('scroll', handleScroll);
+
     // 초기 실행
     handleScroll();
-    
-    return () => window.removeEventListener("scroll", handleScroll);
+
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [view, activeSection]);
 
   // activeSection 변경 시 URL 업데이트 (사용자 클릭에 의한 변경만)
   const [isUserTriggered, setIsUserTriggered] = useState(false);
-  
+
   useEffect(() => {
     if (!isUserTriggered) return;
-    
-    if (activeSection === "search") {
-      navigate({ search: location.search, hash: "#search" }, { replace: true });
-    } else if (activeSection === "calendar") {
-      navigate({ search: "?view=calendar", hash: "" }, { replace: true });
-    } else { // activeSection === "home"
-      navigate({ search: "", hash: "" }, { replace: true });
+
+    if (activeSection === 'search') {
+      navigate({ search: location.search, hash: '#search' }, { replace: true });
+    } else if (activeSection === 'calendar') {
+      navigate({ search: '?view=calendar', hash: '' }, { replace: true });
+    } else {
+      // activeSection === "home"
+      navigate({ search: '', hash: '' }, { replace: true });
     }
-    
+
     setIsUserTriggered(false);
   }, [activeSection, navigate, isUserTriggered]);
 
-  const isCalendar = view === "calendar";
+  const isCalendar = view === 'calendar';
 
   // navbar에서 사용할 섹션 변경 핸들러
-  const handleSetActiveSection = (section: "home" | "calendar" | "search") => {
+  const handleSetActiveSection = (section: 'home' | 'calendar' | 'search') => {
     setIsUserTriggered(true);
     setActiveSection(section);
   };
@@ -130,10 +159,7 @@ export default function MainClassesPage() {
     <>
       <Header />
       <Mainnavbar />
-      <ClassSubnavbar 
-        activeSection={activeSection} 
-        setActiveSection={handleSetActiveSection}
-      />
+      <ClassSubnavbar activeSection={activeSection} setActiveSection={handleSetActiveSection} />
 
       {/* ===== 상단 히어로/캘린더 슬라이드 영역 ===== */}
       <section
@@ -148,9 +174,9 @@ export default function MainClassesPage() {
         {/* 트랙: 두 패널(히어로/캘린더) 가로 배치 */}
         <div
           className={[
-            "flex w-[200%] h-full transition-transform duration-500 will-change-transform",
-            isCalendar ? "-translate-x-1/2" : "translate-x-0",
-          ].join(" ")}
+            'flex w-[200%] h-full transition-transform duration-500 will-change-transform',
+            isCalendar ? '-translate-x-1/2' : 'translate-x-0',
+          ].join(' ')}
         >
           {/* Panel 1: 히어로 (폭 고정: 1/2) */}
           <div id="home" className="w-1/2 h-full">
@@ -163,20 +189,25 @@ export default function MainClassesPage() {
             >
               {/* 히어로 오버레이/카피가 필요하면 이 안에 배치 */}
               <div className="h-full w-full flex items-center justify-center">
-                <div className=" relative w-full flex items-center
+                <div
+                  className=" relative w-full flex items-center
                   min-h-[calc(100vh-64px-64px)]   
-                  lg:min-h-[calc(100vh-64px-34px)]">
-                </div>
-            </div>
+                  lg:min-h-[calc(100vh-64px-34px)]"
+                ></div>
+              </div>
             </div>
           </div>
 
           {/* Panel 2: 캘린더 상단 섹션 (폭 고정: 1/2) */}
-          <div id="calendar" ref={calendarSectionRef} className="w-1/2 h-full flex justify-center bg-white relative z-10">
+          <div
+            id="calendar"
+            ref={calendarSectionRef}
+            className="w-1/2 h-full flex justify-center bg-white relative z-10"
+          >
             <div className="container-1920 h-full flex items-center justify-center mx-auto px-6">
               <div className="w-full max-w-5xl">
                 <h2 className="text-xl font-semibold mb-4">이번 달 일정</h2>
-                <CalendarPreview items={MOCK.slice(0, 12)} />
+                <CalendarPreview items={items.slice(0, 12)} />
                 <p className="mt-4 text-sm text-gray-500">
                   아래로 스크롤하면 클래스 목록(4×4 그리드)도 계속 볼 수 있어요.
                 </p>
@@ -194,7 +225,7 @@ export default function MainClassesPage() {
           <Searchbar placeholder="클래스 검색 (예: 뜨개, 가죽, 도자기)" />
         </section>
 
-        <ListView items={pagedItems} />
+        <ListView items={items} />
 
         <Pagination page={page} totalPages={totalPages} onChange={setPage} />
       </main>
@@ -206,10 +237,12 @@ function CalendarPreview({ items }: { items: ClassItem[] }) {
   return (
     <div className="rounded-2xl border border-gray-200 p-4">
       <ul className="space-y-2 max-h-[360px] overflow-auto pr-1">
-        {items.map((c) => (
-          <li key={c.id} className="grid grid-cols-[100px_1fr_auto] items-center gap-3">
-            <span className="text-sm text-gray-600">{c.date}</span>
-            <span className="font-medium truncate">{c.title}</span>
+        {items.map((cls) => (
+          <li key={cls.id} className="grid grid-cols-[100px_1fr_auto] items-center gap-3">
+            <span className="text-sm text-gray-600">
+              {cls.startDate}~{cls.endDate}
+            </span>
+            <span className="font-medium truncate">{cls.title}</span>
             <button className="h-9 px-3 rounded-lg border border-gray-300 hover:bg-gray-50">
               예약
             </button>
@@ -223,20 +256,24 @@ function CalendarPreview({ items }: { items: ClassItem[] }) {
 function ListView({ items }: { items: ClassItem[] }) {
   return (
     <section className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      {items.map((c) => (
+      {items.map((cls) => (
         <Link
-          key={c.id}
-          to={`/main/classes/${c.id}`}
-          state={{ item: c }}
+          key={cls.id}
+          to={`/main/classes/${cls.id}`}
+          state={{ item: cls }}
           className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 rounded-2xl"
         >
           <article className="border border-gray-200 rounded-2xl overflow-hidden bg-white transition-shadow group-hover:shadow-md">
             <div className="aspect-[4/3] bg-gray-100" />
             <div className="p-4">
-              <h3 className="font-semibold line-clamp-1">{c.title}</h3>
-              <p className="text-sm text-gray-500 mt-1">{c.host} · {c.location}</p>
-              <p className="text-sm text-gray-500">{c.date}</p>
-              <p className="mt-2 font-bold">{c.price.toLocaleString()}원</p>
+              <h3 className="font-semibold line-clamp-1">{cls.title}</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                {cls.storeName} · {cls.addressRoad}
+              </p>
+              <p className="text-sm text-gray-500">
+                {cls.startDate} ~ {cls.endDate}
+              </p>
+              <p className="mt-2 font-bold">{cls.price.toLocaleString()}원</p>
               <span className="mt-3 inline-flex h-9 px-3 items-center justify-center rounded-xl border border-gray-300 bg-white group-hover:bg-gray-50">
                 자세히 보기
               </span>
@@ -263,20 +300,25 @@ function Pagination({
   const go = (p: number) => {
     if (p < 1 || p > totalPages) return;
     onChange(p);
-    window.scrollTo({ top: document.body.scrollHeight * 0.35, behavior: "smooth" });
+    window.scrollTo({ top: document.body.scrollHeight * 0.35, behavior: 'smooth' });
   };
 
   const pages = Array.from({ length: totalPages }).map((_, i) => i + 1);
 
   return (
-    <nav className="mt-8 mb-16 flex items-center justify-center gap-2" aria-label="클래스 페이지네이션">
+    <nav
+      className="mt-8 mb-16 flex items-center justify-center gap-2"
+      aria-label="클래스 페이지네이션"
+    >
       <button
         onClick={() => go(page - 1)}
         disabled={!canPrev}
         className={[
-          "h-10 px-3 rounded-lg border",
-          canPrev ? "border-gray-300 hover:bg-gray-50" : "border-gray-200 text-gray-400 cursor-not-allowed",
-        ].join(" ")}
+          'h-10 px-3 rounded-lg border',
+          canPrev
+            ? 'border-gray-300 hover:bg-gray-50'
+            : 'border-gray-200 text-gray-400 cursor-not-allowed',
+        ].join(' ')}
       >
         이전
       </button>
@@ -289,10 +331,12 @@ function Pagination({
               <button
                 onClick={() => go(p)}
                 className={[
-                  "h-10 w-10 rounded-lg border text-sm font-medium",
-                  active ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300 hover:bg-gray-50",
-                ].join(" ")}
-                aria-current={active ? "page" : undefined}
+                  'h-10 w-10 rounded-lg border text-sm font-medium',
+                  active
+                    ? 'border-gray-900 bg-gray-900 text-white'
+                    : 'border-gray-300 hover:bg-gray-50',
+                ].join(' ')}
+                aria-current={active ? 'page' : undefined}
               >
                 {p}
               </button>
@@ -305,9 +349,11 @@ function Pagination({
         onClick={() => go(page + 1)}
         disabled={!canNext}
         className={[
-          "h-10 px-3 rounded-lg border",
-          canNext ? "border-gray-300 hover:bg-gray-50" : "border-gray-200 text-gray-400 cursor-not-allowed",
-        ].join(" ")}
+          'h-10 px-3 rounded-lg border',
+          canNext
+            ? 'border-gray-300 hover:bg-gray-50'
+            : 'border-gray-200 text-gray-400 cursor-not-allowed',
+        ].join(' ')}
       >
         다음
       </button>

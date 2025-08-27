@@ -15,9 +15,11 @@ import MainClassOrderResultPage from "@src/domains/main/areas/home/features/clas
 import MainMypagePage from "@src/domains/main/areas/mypage/pages/MainMypagePage";
 import MainMypageClassesPage from "@src/domains/main/areas/mypage/pages/MainMypageclasses";
 
+import { sellerRoutes } from "@src/domains/seller/routes";
+
 import "./routes/index.css";
 
-const router = createBrowserRouter([
+export const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
@@ -30,8 +32,10 @@ const router = createBrowserRouter([
       { path: ":store/classes", element: <StoreClassesPage /> },
       { path: "main/classes/order", element: <MainClassOrderPage /> },
       { path: "main/classes/order/result", element: <MainClassOrderResultPage /> },
+
       { path: "main/mypage", element: <MainMypagePage /> },
       { path: "main/mypage/classes", element: < MainMypageClassesPage /> },
+        ...sellerRoutes,
     ],
   },
 ]);

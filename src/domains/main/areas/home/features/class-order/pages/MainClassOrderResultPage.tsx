@@ -93,7 +93,7 @@ export default function MainClassOrderResultPage() {
               목록으로
             </button>
             <button
-              onClick={() => nav("/main/mypage/classreserve")}
+              onClick={() => nav("/main/mypage/classes")}
               className="h-11 sm:h-12 px-6 sm:px-7 rounded-full bg-[#2D4739] text-white font-semibold hover:opacity-90 w-full sm:w-auto"
             >
               예약확인

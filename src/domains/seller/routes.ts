@@ -1,5 +1,6 @@
 import { classRoutes } from "./areas/class/routes";
 import { settlementRoutes } from "./areas/settlement/routes";
+import { storeRoutes } from "./areas/store/routes";
 
 export const sellerRoutes = [
   {
@@ -8,6 +9,7 @@ export const sellerRoutes = [
       // 다른 seller areas도 여기서 합치기
       ...settlementRoutes,
       ...classRoutes,
+      ...storeRoutes,
     ],
   },
 ];

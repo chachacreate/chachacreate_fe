@@ -99,7 +99,7 @@ export default function SellerSettlementClass() {
 
   useEffect(() => {
     if (hasClasses && !queryId && defaultClassId) {
-      navigate(`/${storeUrl}/seller/settlement/class?classId=${encodeURIComponent(defaultClassId)}`, { replace: true });
+      navigate(`/seller/${storeUrl}/settlement/class?classId=${encodeURIComponent(defaultClassId)}`, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultClassId, hasClasses]);
@@ -112,7 +112,7 @@ export default function SellerSettlementClass() {
   const onSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value;
     setSelectedId(id);
-    navigate(`/${storeUrl}/seller/settlement/class?classId=${encodeURIComponent(id)}`, { replace: false });
+    navigate(`/seller/${storeUrl}/settlement/class?classId=${encodeURIComponent(id)}`, { replace: false });
   };
 
   // (3) 선택 클래스 데이터
@@ -189,7 +189,7 @@ export default function SellerSettlementClass() {
                 <p className="text-gray-600">등록된 클래스가 없습니다.</p>
                 <button
                   type="button"
-                  onClick={() => navigate(`/${storeUrl}/seller/classes/new`)} // 필요 시 경로 수정
+                  onClick={() => navigate(`/seller/${storeUrl}/classes/new`)} // 필요 시 경로 수정
                   className="h-10 rounded-xl bg-[#2d4739] px-4 text-white text-sm hover:opacity-95"
                 >
                   클래스 등록하러 가기

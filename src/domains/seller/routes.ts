@@ -2,7 +2,7 @@ import { settlementRoutes } from "./areas/settlement/routes";
 
 export const sellerRoutes = [
   {
-    path: "/:storeUrl/seller",
+    path: "/seller/:storeUrl",
     children: [
       // 다른 seller areas도 여기서 합치기
       ...settlementRoutes,

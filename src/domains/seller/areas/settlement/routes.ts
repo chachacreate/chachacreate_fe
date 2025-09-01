@@ -15,7 +15,7 @@ const withSuspense = (Comp: React.ComponentType<any>) =>
 
 export const settlementRoutes: RouteObject[] = [
   {
-    path: "/:storeUrl/seller/settlement",
+    path: "/seller/:storeUrl/settlement",
     children: [
       { index: true, element: withSuspense(SellerSettlementMain) },
       { path: "product", element: withSuspense(SellerSettlementProductPage) },

@@ -50,6 +50,7 @@ export default function MainClassesPage() {
 
         if (response.status === 200) {
           console.log('클래스 데이터:', response.data);
+          console.log(response);
 
           const classItems = response.data.content.map((cls) => ({
             id: cls.id,
@@ -264,7 +265,7 @@ function ListView({ items }: { items: ClassItem[] }) {
           className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 rounded-2xl"
         >
           <article className="border border-gray-200 rounded-2xl overflow-hidden bg-white transition-shadow group-hover:shadow-md">
-            <div className="aspect-[4/3] bg-gray-100" />
+            <img src={cls.thumbnail} alt={cls.title} className="w-full h-full object-cover" />
             <div className="p-4">
               <h3 className="font-semibold line-clamp-1">{cls.title}</h3>
               <p className="text-sm text-gray-500 mt-1">

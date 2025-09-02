@@ -1,7 +1,8 @@
-import { classRoutes } from "./areas/class/routes";
-import { mainRoutes } from "./areas/main/pages/routes";
-import { settlementRoutes } from "./areas/settlement/routes";
-import { storeRoutes } from "./areas/store/routes";
+import { classRoutes } from "@src/domains/seller/areas/class/routes";
+import { mainRoutes } from "@src/domains/seller/areas/main/pages/routes";
+import { productRoutes } from "@src/domains/seller/areas/product/routes";
+import { settlementRoutes } from "@src/domains/seller/areas/settlement/routes";
+import { storeRoutes } from "@src/domains/seller/areas/store/routes";
 
 export const sellerRoutes = [
   {
@@ -11,7 +12,8 @@ export const sellerRoutes = [
       ...settlementRoutes,
       ...classRoutes,
       ...storeRoutes,
-      ...mainRoutes
+      ...mainRoutes,
+      ...productRoutes,
     ],
   },
 ];

@@ -1,4 +1,5 @@
 import { classRoutes } from "./areas/class/routes";
+import { mainRoutes } from "./areas/main/pages/routes";
 import { settlementRoutes } from "./areas/settlement/routes";
 import { storeRoutes } from "./areas/store/routes";
 
@@ -10,6 +11,7 @@ export const sellerRoutes = [
       ...settlementRoutes,
       ...classRoutes,
       ...storeRoutes,
+      ...mainRoutes
     ],
   },
 ];

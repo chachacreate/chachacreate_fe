@@ -78,9 +78,9 @@ export default function SellerSidenavbar({
         label: "상품 관리",
         icon: PackagePlus,
         items: [
-          { label: "상품 등록", to: `${base}/products/new`, icon: Plus },
-          { label: "상품 리스트", to: `${base}/products/list` },
-          { label: "상품 리뷰", to: `${base}/products/reviews`, icon: Star },
+          { label: "상품 등록", to: `${base}/product/insert`, icon: Plus },
+          { label: "상품 리스트", to: `${base}/product/list` },
+          { label: "상품 리뷰", to: `${base}/product/review`, icon: Star },
         ],
       },
       {
@@ -88,7 +88,7 @@ export default function SellerSidenavbar({
         label: "주문 · 정산 관리",
         icon: ShoppingCart,
         items: [
-          { label: "주문/발송 상태 확인", to: `${base}/orders`, icon: Truck },
+          { label: "주문/발송 상태 확인", to: `${base}/product/order`, icon: Truck },
           { label: "상품 & 클래스 정산", to: `${base}/settlement`, icon: Wallet },
         ],
       },

@@ -29,7 +29,7 @@ type ReservationRow = {
   customerPhone: string;
   paymentMethod: string;
   amount: number;
-  status: "예약완료" | "수강완료" | "취소요청";
+  status: "예약완료" | "수강완료" | "취소요청" | "취소완료"; // 🔹 "취소완료" 추가
   updatedAt: string;     // YYYY-MM-DD
 };
 
@@ -51,7 +51,7 @@ const generate24HourData = (baseMultiplier = 1) => {
 };
 
 // 주별 데이터 생성 함수
-const generateWeekData = (weekStart: string, baseMultiplier = 1) => {
+const generateWeekData = (_weekStart: string, baseMultiplier = 1) => {
   const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
   return weekdays.map(day => {
     const count = Math.floor(Math.random() * 20 * baseMultiplier) + 5;
@@ -69,7 +69,7 @@ const getCurrentWeekStart = () => {
   return monday.toISOString().split('T')[0];
 };
 
-// 더미 예약 데이터 (더 많은 데이터와 다양한 클래스)
+// 더미 예약 데이터
 const mockReservations: ReservationRow[] = [
   {
     id: "R-1001",
@@ -162,6 +162,13 @@ const classOptions = [
 
 const ClassReservation: FC = () => {
   const { storeUrl = "" } = useParams<Params>();
+
+  // 🔹 예약 데이터 상태로 관리 (모달에서 상태 업데이트)
+  const [reservations, setReservations] = useState<ReservationRow[]>(mockReservations);
+
+  // 🔹 모달을 위한 타깃 예약
+  const [cancelTarget, setCancelTarget] = useState<ReservationRow | null>(null);
+
   const [globalMode, setGlobalMode] = useState<"hour" | "weekday">("hour");
   const [classMode, setClassMode] = useState<"hour" | "weekday">("hour");
   const [selectedMonth, setSelectedMonth] = useState<string>("2025-09");
@@ -190,15 +197,58 @@ const ClassReservation: FC = () => {
 
   // 테이블 필터링된 예약 데이터
   const filteredReservations = useMemo(() => {
-    return mockReservations.filter(reservation => {
+    return reservations.filter(reservation => {
       const monthMatch = reservation.date.startsWith(selectedMonth);
       const classMatch = tableClassFilter === "ALL" || reservation.classId === tableClassFilter;
       return monthMatch && classMatch;
     });
-  }, [selectedMonth, tableClassFilter]);
+  }, [reservations, selectedMonth, tableClassFilter]);
+
+  // 🔹 행 클릭 핸들러: "취소요청"인 경우만 모달 오픈
+  const onRowClick = (r: ReservationRow) => {
+    if (r.status === "취소요청") {
+      setCancelTarget(r);
+    }
+  };
+
+  // 🔹 취소 확정
+  const confirmCancel = () => {
+    if (!cancelTarget) return;
+    const today = new Date().toISOString().slice(0, 10);
+
+    setReservations(prev =>
+      prev.map(item =>
+        item.id === cancelTarget.id
+          ? { ...item, status: "취소완료", updatedAt: today }
+          : item
+      )
+    );
+    setCancelTarget(null);
+  };
+
+  // 🔹 모달 닫기
+  const closeModal = () => setCancelTarget(null);
 
   return (
     <>
+      {/* 반짝(Shimmer) 효과 스타일 */}
+      <style>{`
+        @keyframes shimmer-rose {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        .tr-rose-shimmer {
+          background: linear-gradient(
+            90deg,
+            rgba(254, 226, 226, 0.55) 0%,
+            rgba(254, 202, 202, 0.95) 50%,
+            rgba(254, 226, 226, 0.55) 100%
+          );
+          background-size: 200% 100%;
+          animation: shimmer-rose 2.4s linear infinite;
+        }
+      `}</style>
+
       <Header />
       <Mainnavbar />
 
@@ -412,35 +462,52 @@ const ClassReservation: FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredReservations.map((r) => (
-                      <tr key={r.id} className="border-t border-gray-100">
-                        <td className="px-3 py-3">{r.date}</td>
-                        <td className="px-3 py-3">{r.className}</td>
-                        <td className="px-3 py-3">{r.time}</td>
-                        <td className="px-3 py-3">{r.customerName}</td>
-                        <td className="px-3 py-3">{r.customerPhone}</td>
-                        <td className="px-3 py-3">{r.paymentMethod}</td>
-                        <td className="px-3 py-3 text-right">₩ {KRW.format(r.amount)}</td>
-                        <td className="px-3 py-3">
-                          {r.status === "예약완료" && (
-                            <span className="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700">
-                              예약완료
-                            </span>
-                          )}
-                          {r.status === "수강완료" && (
-                            <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
-                              수강완료
-                            </span>
-                          )}
-                          {r.status === "취소요청" && (
-                            <span className="px-2 py-1 rounded-full text-xs bg-rose-100 text-rose-700">
-                              취소요청
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-3">{r.updatedAt}</td>
-                      </tr>
-                    ))
+                    filteredReservations.map((r) => {
+                      const isCancelReq = r.status === "취소요청";
+                      return (
+                        <tr
+                          key={r.id}
+                          onClick={() => onRowClick(r)}
+                          className={[
+                            "border-t border-gray-100",
+                            isCancelReq ? "tr-rose-shimmer cursor-pointer" : "",
+                            !isCancelReq ? "hover:bg-gray-50" : "",
+                          ].join(" ")}
+                          title={isCancelReq ? "클릭하여 취소 처리" : undefined}
+                        >
+                          <td className="px-3 py-3">{r.date}</td>
+                          <td className="px-3 py-3">{r.className}</td>
+                          <td className="px-3 py-3">{r.time}</td>
+                          <td className="px-3 py-3">{r.customerName}</td>
+                          <td className="px-3 py-3">{r.customerPhone}</td>
+                          <td className="px-3 py-3">{r.paymentMethod}</td>
+                          <td className="px-3 py-3 text-right">₩ {KRW.format(r.amount)}</td>
+                          <td className="px-3 py-3">
+                            {r.status === "예약완료" && (
+                              <span className="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700">
+                                예약완료
+                              </span>
+                            )}
+                            {r.status === "수강완료" && (
+                              <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
+                                수강완료
+                              </span>
+                            )}
+                            {r.status === "취소요청" && (
+                              <span className="px-2 py-1 rounded-full text-xs bg-rose-100 text-rose-700">
+                                취소요청
+                              </span>
+                            )}
+                            {r.status === "취소완료" && (
+                              <span className="px-2 py-1 rounded-full text-xs bg-rose-200 text-rose-800">
+                                취소완료
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3">{r.updatedAt}</td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -456,6 +523,44 @@ const ClassReservation: FC = () => {
           </section>
         </div>
       </SellerSidenavbar>
+
+      {/* 🔹 취소 확인 모달 */}
+      {cancelTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40">
+          <div className="w-full max-w-[520px] rounded-xl overflow-hidden bg-white shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h4 className="font-semibold">예약 취소 처리</h4>
+              <button className="text-gray-500" onClick={closeModal}>×</button>
+            </div>
+            <div className="p-4 space-y-3">
+              <p className="text-sm text-gray-700">
+                아래 예약을 <span className="font-semibold text-rose-700">취소 처리</span>하시겠습니까?
+              </p>
+              <div className="rounded-lg border bg-gray-50 p-3 text-sm text-gray-700">
+                <div>예약번호: <span className="font-mono">{cancelTarget.id}</span></div>
+                <div>클래스: {cancelTarget.className} ({cancelTarget.classId})</div>
+                <div>일시: {cancelTarget.date} {cancelTarget.time}</div>
+                <div>예약자: {cancelTarget.customerName} · {cancelTarget.customerPhone}</div>
+                <div>결제: {cancelTarget.paymentMethod} · {fmtKRW(cancelTarget.amount)}</div>
+              </div>
+            </div>
+            <div className="p-4 border-t flex flex-col sm:flex-row gap-2 sm:justify-end">
+              <button
+                onClick={confirmCancel}
+                className="px-4 py-2 rounded-md bg-[#2D4739] text-white font-medium hover:opacity-90"
+              >
+                취소 처리
+              </button>
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 rounded-md border font-medium hover:bg-gray-50"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

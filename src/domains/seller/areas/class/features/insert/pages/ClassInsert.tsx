@@ -18,6 +18,23 @@ type ScheduleRow = {
   intervalMin: number; // 30/60/90/120...
 };
 
+type ClassForm = {
+  id: string;
+  classNumber: number;
+  title: string;
+  desc: string;
+  aiDesc: string;
+  capacity: number | "";
+  price: number | "";
+  postcode: string;
+  address: string;
+  addressDetail: string;
+  images: { id: string; file?: File; url: string }[];
+  schedules: ScheduleRow[];
+  holidays: string[];
+  reservationNotes: string;
+};
+
 const MAX_NUM = 1_000_000_000_000; // 1조
 const AI_SAMPLES = [
   "초보자도 따라오기 쉬운 도자기 원데이 클래스입니다. 기본 컵을 만들어보고 유약 색상도 선택해요.",
@@ -33,33 +50,19 @@ const timeOptions = Array.from({ length: 48 }, (_, i) => {
 });
 const intervalOptions = [30, 60, 90, 120, 150, 180];
 
-const ClassInsert: FC = () => {
-  const navigate = useNavigate();
-  const { storeUrl = "" } = useParams<Params>();
-
-  // ✅ 판매자 이력 여부 (임시: true → 오버레이 숨김)
-  // TODO: 실제 API 연동 시 서버 값으로 대체
-  const hasResume = true;
-
-  // 기본 폼 상태
-  const [title, setTitle] = useState("");
-  const [desc, setDesc] = useState("");
-  const [aiDesc, setAiDesc] = useState("");
-  const [capacity, setCapacity] = useState<number | "">("");
-  const [price, setPrice] = useState<number | "">("");
-
-  // 장소/주소
-  const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
-  const [postcode, setPostcode] = useState("");
-  const [address, setAddress] = useState("");
-  const [addressDetail, setAddressDetail] = useState("");
-
-  // 이미지 업로드
-  const [images, setImages] = useState<{ id: string; file?: File; url: string }[]>([]);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  // 일정(동적)
-  const [schedules, setSchedules] = useState<ScheduleRow[]>([
+const createEmptyForm = (classNumber: number = 1): ClassForm => ({
+  id: crypto.randomUUID(),
+  classNumber,
+  title: "",
+  desc: "",
+  aiDesc: "",
+  capacity: "",
+  price: "",
+  postcode: "",
+  address: "",
+  addressDetail: "",
+  images: [],
+  schedules: [
     {
       id: crypto.randomUUID(),
       startDate: "",
@@ -68,13 +71,71 @@ const ClassInsert: FC = () => {
       endTime: "18:00",
       intervalMin: 60,
     },
-  ]);
+  ],
+  holidays: [],
+  reservationNotes: "",
+});
 
-  // 휴일
-  const [holidays, setHolidays] = useState<string[]>([]);
-  const [pendingHoliday, setPendingHoliday] = useState("");
+const ClassInsert: FC = () => {
+  const navigate = useNavigate();
+  const { storeUrl = "" } = useParams<Params>();
 
-  // 숫자 가드 (음수 X, 1조 미만)
+  // ✅ 판매자 이력 여부 (임시: true → 오버레이 숨김)
+  const hasResume = true;
+
+  // 여러 개의 클래스 폼
+  const [classForms, setClassForms] = useState<ClassForm[]>([createEmptyForm(1)]);
+  const [classCounter, setClassCounter] = useState(1);
+  
+  // 우편번호 모달
+  const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
+  const [currentFormIndex, setCurrentFormIndex] = useState(0);
+  
+  // 각 폼별 임시 휴일 입력
+  const [pendingHolidays, setPendingHolidays] = useState<{ [formId: string]: string }>({});
+
+// 새 폼 추가
+const addNewForm = () => {
+  setClassForms(prev => {
+    const nextNo = prev.length + 1;
+    const nextForm = { ...createEmptyForm(nextNo), classNumber: nextNo };
+    return [nextForm, ...prev];
+  });
+  setClassCounter(c => c + 1);
+};
+
+// 폼 삭제 (총 개수 -1, 번호 재정렬)
+const removeForm = (formId: string) => {
+  setClassForms(prev => {
+    if (prev.length === 1) return prev; // 최소 1개 유지
+
+    // 1) 삭제
+    const filtered = prev.filter(form => form.id !== formId);
+    // 2) 번호 재정렬 (1부터)
+    const renumbered = filtered.map((form, idx) => ({
+      ...form,
+      classNumber: idx + 1,
+    }));
+
+    // 3) 카운터 동기화 (총 개수와 일치)
+    setClassCounter(renumbered.length);
+
+    return renumbered;
+  });
+};
+
+  // 폼 업데이트
+  const updateForm = <K extends keyof ClassForm>(
+    formId: string,
+    key: K,
+    value: ClassForm[K]
+  ) => {
+    setClassForms(prev => 
+      prev.map(form => form.id === formId ? { ...form, [key]: value } : form)
+    );
+  };
+
+  // 숫자 가드
   const guardInt = (v: string) => {
     if (!v) return "";
     const n = Number(v.replace(/[^\d]/g, ""));
@@ -85,81 +146,120 @@ const ClassInsert: FC = () => {
   };
 
   // 이미지 추가/삭제
-  const onPickImages = (e: ChangeEvent<HTMLInputElement>) => {
-  const files = e.target.files;
-  if (!files || !files.length) return;
+  const onPickImages = (formId: string, e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !files.length) return;
 
-  const f = files[0]; // 첫 번째 파일만 사용
-  const next = {
-    id: crypto.randomUUID(),
-    file: f,
-    url: URL.createObjectURL(f),
+    const f = files[0];
+    const next = {
+      id: crypto.randomUUID(),
+      file: f,
+      url: URL.createObjectURL(f),
+    };
+
+    updateForm(formId, 'images', [next]);
+    e.target.value = "";
   };
 
-  // 이미 이미지가 있으면 교체, 없으면 추가
-  setImages([next]);
+  const removeImage = (formId: string, imageId: string) => {
+    const form = classForms.find(f => f.id === formId);
+    if (!form) return;
+    
+    updateForm(formId, 'images', form.images.filter(i => i.id !== imageId));
+  };
 
-  if (fileInputRef.current) fileInputRef.current.value = "";
-};
-
-  const removeImage = (id: string) => setImages((prev) => prev.filter((i) => i.id !== id));
-
-  // AI 설명 목데이터
-  const genAiDesc = () => {
+  // AI 설명 생성
+  const genAiDesc = (formId: string) => {
     const pick = AI_SAMPLES[Math.floor(Math.random() * AI_SAMPLES.length)];
-    setAiDesc(pick);
+    updateForm(formId, 'aiDesc', pick);
   };
 
-
+  // 스케줄 업데이트
   const updateSchedule = <K extends keyof ScheduleRow>(
-    id: string,
+    formId: string,
+    scheduleId: string,
     key: K,
     value: ScheduleRow[K]
   ) => {
-    setSchedules((prev) => prev.map((s) => (s.id === id ? { ...s, [key]: value } : s)));
+    const form = classForms.find(f => f.id === formId);
+    if (!form) return;
+
+    const updatedSchedules = form.schedules.map(s => 
+      s.id === scheduleId ? { ...s, [key]: value } : s
+    );
+    
+    updateForm(formId, 'schedules', updatedSchedules);
   };
 
-  // 휴일 추가/삭제
-  const addHoliday = () => {
-    if (pendingHoliday && !holidays.includes(pendingHoliday)) {
-      setHolidays((prev) => [...prev, pendingHoliday].sort());
+  // 휴일 관리
+  const addHoliday = (formId: string) => {
+    const pending = pendingHolidays[formId];
+    if (!pending) return;
+
+    const form = classForms.find(f => f.id === formId);
+    if (!form) return;
+
+    if (!form.holidays.includes(pending)) {
+      updateForm(formId, 'holidays', [...form.holidays, pending].sort());
     }
-    setPendingHoliday("");
+    
+    setPendingHolidays(prev => ({ ...prev, [formId]: "" }));
   };
-  const removeHoliday = (d: string) =>
-    setHolidays((prev) => prev.filter((x) => x !== d));
 
-  // 제출 (데모)
+  const removeHoliday = (formId: string, date: string) => {
+    const form = classForms.find(f => f.id === formId);
+    if (!form) return;
+    
+    updateForm(formId, 'holidays', form.holidays.filter(d => d !== date));
+  };
+
+  // 우편번호 검색
+  const openPostcode = (formIndex: number) => {
+    setCurrentFormIndex(formIndex);
+    setIsPostcodeOpen(true);
+  };
+
+  // 제출
   const onSubmit = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    // 간단 유효성 예시
-    if (!title.trim()) return alert("클래스명을 입력해 주세요.");
-    if (!address.trim()) return alert("클래스 장소(주소)를 입력해 주세요.");
-    if (!capacity || Number(capacity) <= 0) return alert("최대 참여 인원을 1 이상으로 입력해 주세요.");
-    if (!price || Number(price) <= 0) return alert("회당 가격을 1 이상으로 입력해 주세요.");
-    if (schedules.some((s) => !s.startDate || !s.endDate))
-      return alert("일정의 시작/종료 날짜를 입력해 주세요.");
+    
+    // 유효성 검사
+    for (let i = 0; i < classForms.length; i++) {
+      const form = classForms[i];
+      const formNum = i + 1;
+      
+      if (!form.title.trim()) {
+        alert(`${formNum}번째 클래스의 클래스명을 입력해 주세요.`);
+        return;
+      }
+      if (!form.address.trim()) {
+        alert(`${formNum}번째 클래스의 장소(주소)를 입력해 주세요.`);
+        return;
+      }
+      if (!form.capacity || Number(form.capacity) <= 0) {
+        alert(`${formNum}번째 클래스의 최대 참여 인원을 1 이상으로 입력해 주세요.`);
+        return;
+      }
+      if (!form.price || Number(form.price) <= 0) {
+        alert(`${formNum}번째 클래스의 회당 가격을 1 이상으로 입력해 주세요.`);
+        return;
+      }
+      if (form.schedules.some((s) => !s.startDate || !s.endDate)) {
+        alert(`${formNum}번째 클래스의 일정 시작/종료 날짜를 입력해 주세요.`);
+        return;
+      }
+    }
 
-    alert("등록(데모) — 콘솔 확인!");
-    // eslint-disable-next-line no-console
-    console.log({
-      title,
-      desc,
-      aiDesc,
-      address: { postcode, address, addressDetail },
-      images,
-      capacity,
-      price,
-      schedules,
-      holidays,
-    });
+    alert(`${classForms.length}개 클래스 등록(데모) — 콘솔 확인!`);
+    console.log('등록할 클래스들:', classForms);
+    
+    // 등록 후 폼 초기화
+    setClassForms([createEmptyForm(1)]);
+    setPendingHolidays({});
+    setClassCounter(1);
+    
     navigate(`/seller/${storeUrl}/class/list`);
   };
-
-  const addressSummary = useMemo(() => {
-    if (!address) return "";
-    return [address, addressDetail].filter(Boolean).join(" ");
-  }, [address, addressDetail]);
 
   return (
     <>
@@ -168,305 +268,338 @@ const ClassInsert: FC = () => {
 
       <SellerSidenavbar>
         <div className="space-y-6 sm:space-y-8 relative">
-          
+          {/* 상단 추가 버튼 */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold">클래스 등록</h1>
+              <p className="mt-1 text-sm text-gray-500">총 {classForms.length}개 클래스</p>
+            </div>
+            <button
+              type="button"
+              onClick={addNewForm}
+              className="px-4 py-2 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90"
+            >
+              + 클래스 추가
+            </button>
+          </div>
 
-          {/* 등록 폼 */}
-          <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 lg:p-8">
-            <h1 className="text-xl sm:text-2xl font-bold">클래스 등록</h1>
-            <p className="mt-1 text-sm text-gray-500">storeUrl: {storeUrl}</p>
-            <div className="mt-6 grid gap-5">
+          {/* 클래스 폼들 */}
+          {classForms.map((form, formIndex) => {
+            const addressSummary = form.address && form.addressDetail 
+              ? `${form.address} ${form.addressDetail}` 
+              : form.address || "";
 
-                {/* 상단 액션: + 사진 추가 */}
-                <div className="flex flex-wrap gap-2">
+            return (
+              <section key={form.id} className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 lg:p-8">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-lg font-bold">클래스 {form.classNumber}</h2>
+                    <p className="text-sm text-gray-500">storeUrl: {storeUrl}</p>
+                  </div>
+                  {classForms.length > 1 && (
                     <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-3 py-2 rounded-md border text-sm"
+                      type="button"
+                      onClick={() => removeForm(form.id)}
+                      className="px-3 py-1.5 rounded-md border border-red-200 text-red-600 text-sm hover:bg-red-50"
                     >
-                        {images.length > 0 ? "사진 변경" : "+ 사진 추가"}
+                      삭제
                     </button>
+                  )}
+                </div>
 
-                    <input
-                        ref={fileInputRef}
+                <div className="grid gap-5">
+                  {/* 사진 추가 */}
+                  <div className="flex flex-wrap gap-2">
+                    <label className="px-3 py-2 rounded-md border text-sm cursor-pointer hover:bg-gray-50">
+                      {form.images.length > 0 ? "사진 변경" : "+ 사진 추가"}
+                      <input
                         type="file"
                         accept="image/*"
-                        onChange={onPickImages}
+                        onChange={(e) => onPickImages(form.id, e)}
                         className="hidden"
-                    />
-                    </div>
+                      />
+                    </label>
+                  </div>
 
-                {/* 이미지 미리보기 */}
-                {images.length > 0 && (
+                  {/* 이미지 미리보기 */}
+                  {form.images.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {images.map((img) => (
+                      {form.images.map((img) => (
                         <div key={img.id} className="relative rounded-lg overflow-hidden border">
-                        {/* eslint-disable-next-line jsx-a11y/img-redundant-alt */}
-                        <img src={img.url} alt="preview image" className="w-full h-40 object-cover" />
-                        <button
+                          <img src={img.url} alt="preview" className="w-full h-40 object-cover" />
+                          <button
                             type="button"
-                            onClick={() => removeImage(img.id)}
+                            onClick={() => removeImage(form.id, img.id)}
                             className="absolute top-2 right-2 rounded-md bg-black/60 text-white text-xs px-2 py-1"
-                        >
+                          >
                             삭제
-                        </button>
+                          </button>
                         </div>
-                    ))}
+                      ))}
                     </div>
-                )}
+                  )}
 
-              {/* 클래스명 */}
-              <label className="grid gap-1">
-                <span className="text-sm font-medium">클래스명</span>
-                <input
-                  className="border rounded-md px-3 py-2"
-                  placeholder="예) 도자기 원데이 클래스"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </label>
+                  {/* 클래스명 */}
+                  <label className="grid gap-1">
+                    <span className="text-sm font-medium">클래스명</span>
+                    <input
+                      className="border rounded-md px-3 py-2"
+                      placeholder="예) 도자기 원데이 클래스"
+                      value={form.title}
+                      onChange={(e) => updateForm(form.id, 'title', e.target.value)}
+                    />
+                  </label>
 
-              {/* 장소(우편번호/주소) */}
-              <div className="grid gap-3">
-                <span className="text-sm font-medium">클래스 장소</span>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    className="border rounded-md px-3 py-2 sm:w-40"
-                    placeholder="우편번호"
-                    value={postcode}
-                    readOnly
-                  />
-                  <button
-                    type="button"
-                    className="px-3 py-2 rounded-md border"
-                    onClick={() => setIsPostcodeOpen(true)}
-                  >
-                    우편번호 찾기
-                  </button>
-                </div>
-                <input
-                  className="border rounded-md px-3 py-2"
-                  placeholder="기본 주소"
-                  value={address}
-                  readOnly
-                />
-                <input
-                  className="border rounded-md px-3 py-2"
-                  placeholder="상세 주소"
-                  value={addressDetail}
-                  onChange={(e) => setAddressDetail(e.target.value)}
-                />
-                {addressSummary && (
-                  <p className="text-xs text-gray-500">주소 미리보기: {addressSummary}</p>
-                )}
-              </div>
+                  {/* 장소(우편번호/주소) */}
+                  <div className="grid gap-3">
+                    <span className="text-sm font-medium">클래스 장소</span>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        className="border rounded-md px-3 py-2 sm:w-40"
+                        placeholder="우편번호"
+                        value={form.postcode}
+                        readOnly
+                      />
+                      <button
+                        type="button"
+                        className="px-3 py-2 rounded-md border"
+                        onClick={() => openPostcode(formIndex)}
+                      >
+                        우편번호 찾기
+                      </button>
+                    </div>
+                    <input
+                      className="border rounded-md px-3 py-2"
+                      placeholder="기본 주소"
+                      value={form.address}
+                      readOnly
+                    />
+                    <input
+                      className="border rounded-md px-3 py-2"
+                      placeholder="상세 주소"
+                      value={form.addressDetail}
+                      onChange={(e) => updateForm(form.id, 'addressDetail', e.target.value)}
+                    />
+                    {addressSummary && (
+                      <p className="text-xs text-gray-500">주소 미리보기: {addressSummary}</p>
+                    )}
+                  </div>
 
-              {/* 상세설명 */}
-              <label className="grid gap-1">
-                <span className="text-sm font-medium">클래스 상세설명</span>
-                <textarea
-                  className="border rounded-md px-3 py-2 min-h-[120px]"
-                  placeholder="클래스 소개, 커리큘럼, 난이도, 준비물 등을 적어주세요."
-                  value={desc}
-                  onChange={(e) => setDesc(e.target.value)}
-                />
-              </label>
+                  {/* 상세설명 */}
+                  <label className="grid gap-1">
+                    <span className="text-sm font-medium">클래스 상세설명</span>
+                    <textarea
+                      className="border rounded-md px-3 py-2 min-h-[120px]"
+                      placeholder="클래스 소개, 커리큘럼, 난이도, 준비물 등을 적어주세요."
+                      value={form.desc}
+                      onChange={(e) => updateForm(form.id, 'desc', e.target.value)}
+                    />
+                  </label>
 
-              {/* AI 설명 (목데이터) */}
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">AI 클래스 설명 멘트</span>
-                  <button
-                    type="button"
-                    className="px-3 py-1.5 rounded-md border text-sm"
-                    onClick={genAiDesc}
-                  >
-                    생성하기
-                  </button>
-                </div>
-                <textarea
-                  className="border rounded-md px-3 py-2 min-h-[100px]"
-                  placeholder="‘생성하기’를 누르면 임시 멘트가 채워집니다."
-                  value={aiDesc}
-                  onChange={(e) => setAiDesc(e.target.value)}
-                />
-              </div>
+                  {/* AI 설명 */}
+                  <div className="grid gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">AI 클래스 설명 멘트</span>
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 rounded-md border text-sm"
+                        onClick={() => genAiDesc(form.id)}
+                      >
+                        생성하기
+                      </button>
+                    </div>
+                    <textarea
+                      className="border rounded-md px-3 py-2 min-h-[100px]"
+                      placeholder="'생성하기'를 누르면 임시 멘트가 채워집니다."
+                      value={form.aiDesc}
+                      onChange={(e) => updateForm(form.id, 'aiDesc', e.target.value)}
+                    />
+                  </div>
 
-              {/* 최대 인원 / 가격 */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <label className="grid gap-1">
-                  <span className="text-sm font-medium">클래스 최대 참여 인원</span>
-                  <input
-                    inputMode="numeric"
-                    className="border rounded-md px-3 py-2"
-                    placeholder="예) 8"
-                    value={capacity}
-                    onChange={(e) =>
-                      setCapacity(guardInt(e.target.value) as number | "")
-                    }
-                  />
-                </label>
-                <label className="grid gap-1">
-                  <span className="text-sm font-medium">클래스 회당 가격(원)</span>
-                  <input
-                    inputMode="numeric"
-                    className="border rounded-md px-3 py-2"
-                    placeholder="예) 55000"
-                    value={price}
-                    onChange={(e) => setPrice(guardInt(e.target.value) as number | "")}
-                  />
-                </label>
-              </div>
+                  {/* 최대 인원 / 가격 */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <label className="grid gap-1">
+                      <span className="text-sm font-medium">클래스 최대 참여 인원</span>
+                      <input
+                        inputMode="numeric"
+                        className="border rounded-md px-3 py-2"
+                        placeholder="예) 8"
+                        value={form.capacity}
+                        onChange={(e) => updateForm(form.id, 'capacity', guardInt(e.target.value) as number | "")}
+                      />
+                    </label>
+                    <label className="grid gap-1">
+                      <span className="text-sm font-medium">클래스 회당 가격(원)</span>
+                      <input
+                        inputMode="numeric"
+                        className="border rounded-md px-3 py-2"
+                        placeholder="예) 55000"
+                        value={form.price}
+                        onChange={(e) => updateForm(form.id, 'price', guardInt(e.target.value) as number | "")}
+                      />
+                    </label>
+                  </div>
 
-              {/* 가능 날짜/시간 (동적 행) */}
-              <div className="grid gap-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">클래스 가능 날짜/시간</span>
-                </div>
-
-                <div className="space-y-3">
-                    {schedules.map((s) => (
+                  {/* 가능 날짜/시간 */}
+                  <div className="grid gap-3">
+                    <span className="text-sm font-medium">클래스 가능 날짜/시간</span>
+                    <div className="space-y-3">
+                      {form.schedules.map((s) => (
                         <div
-                        key={s.id}
-                        className="rounded-xl border p-3 sm:p-4 grid gap-3 
-                                    sm:grid-cols-2 lg:grid-cols-5 lg:items-end"
+                          key={s.id}
+                          className="rounded-xl border p-3 sm:p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:items-end"
                         >
-                        <label className="grid gap-1 lg:col-span-1">
+                          <label className="grid gap-1 lg:col-span-1">
                             <span className="text-xs sm:text-sm font-medium">시작 날짜</span>
                             <input
-                            type="date"
-                            className="border rounded-md px-3 py-2"
-                            value={s.startDate}
-                            onChange={(e) => updateSchedule(s.id, "startDate", e.target.value)}
+                              type="date"
+                              className="border rounded-md px-3 py-2"
+                              value={s.startDate}
+                              onChange={(e) => updateSchedule(form.id, s.id, "startDate", e.target.value)}
                             />
-                        </label>
+                          </label>
 
-                        <label className="grid gap-1 lg:col-span-1">
+                          <label className="grid gap-1 lg:col-span-1">
                             <span className="text-xs sm:text-sm font-medium">종료 날짜</span>
                             <input
-                            type="date"
-                            className="border rounded-md px-3 py-2"
-                            value={s.endDate}
-                            onChange={(e) => updateSchedule(s.id, "endDate", e.target.value)}
+                              type="date"
+                              className="border rounded-md px-3 py-2"
+                              value={s.endDate}
+                              onChange={(e) => updateSchedule(form.id, s.id, "endDate", e.target.value)}
                             />
-                        </label>
+                          </label>
 
-                        <label className="grid gap-1 lg:col-span-1">
+                          <label className="grid gap-1 lg:col-span-1">
                             <span className="text-xs sm:text-sm font-medium">시작 시간</span>
                             <select
-                            className="border rounded-md px-3 py-2"
-                            value={s.startTime}
-                            onChange={(e) => updateSchedule(s.id, "startTime", e.target.value)}
+                              className="border rounded-md px-3 py-2"
+                              value={s.startTime}
+                              onChange={(e) => updateSchedule(form.id, s.id, "startTime", e.target.value)}
                             >
-                            {timeOptions.map((t) => (
+                              {timeOptions.map((t) => (
                                 <option key={`st-${s.id}-${t}`} value={t}>
-                                {t}
+                                  {t}
                                 </option>
-                            ))}
+                              ))}
                             </select>
-                        </label>
+                          </label>
 
-                        <label className="grid gap-1 lg:col-span-1">
+                          <label className="grid gap-1 lg:col-span-1">
                             <span className="text-xs sm:text-sm font-medium">종료 시간</span>
                             <select
-                            className="border rounded-md px-3 py-2"
-                            value={s.endTime}
-                            onChange={(e) => updateSchedule(s.id, "endTime", e.target.value)}
+                              className="border rounded-md px-3 py-2"
+                              value={s.endTime}
+                              onChange={(e) => updateSchedule(form.id, s.id, "endTime", e.target.value)}
                             >
-                            {timeOptions.map((t) => (
+                              {timeOptions.map((t) => (
                                 <option key={`et-${s.id}-${t}`} value={t}>
-                                {t}
+                                  {t}
                                 </option>
-                            ))}
+                              ))}
                             </select>
-                        </label>
+                          </label>
 
-                        <label className="grid gap-1 lg:col-span-1">
+                          <label className="grid gap-1 lg:col-span-1">
                             <span className="text-xs sm:text-sm font-medium">시간 간격(분)</span>
                             <select
-                            className="border rounded-md px-3 py-2"
-                            value={s.intervalMin}
-                            onChange={(e) => updateSchedule(s.id, "intervalMin", Number(e.target.value))}
+                              className="border rounded-md px-3 py-2"
+                              value={s.intervalMin}
+                              onChange={(e) => updateSchedule(form.id, s.id, "intervalMin", Number(e.target.value))}
                             >
-                            {intervalOptions.map((m) => (
+                              {intervalOptions.map((m) => (
                                 <option key={`iv-${s.id}-${m}`} value={m}>
-                                {m}
+                                  {m}
                                 </option>
-                            ))}
+                              ))}
                             </select>
-                        </label>
+                          </label>
                         </div>
-                    ))}
+                      ))}
                     </div>
-
-              </div>
-
-              {/* 휴일 설정 */}
-              <div className="grid gap-2">
-                <span className="text-sm font-medium">클래스 휴일 설정</span>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="date"
-                    className="border rounded-md px-3 py-2"
-                    value={pendingHoliday}
-                    onChange={(e) => setPendingHoliday(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="px-3 py-2 rounded-md border"
-                    onClick={addHoliday}
-                  >
-                    + 휴일 추가
-                  </button>
-                </div>
-                {holidays.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {holidays.map((d) => (
-                      <span
-                        key={d}
-                        className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm"
-                      >
-                        {d}
-                        <button
-                          type="button"
-                          className="text-gray-500 hover:text-gray-900"
-                          onClick={() => removeHoliday(d)}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
                   </div>
-                )}
-              </div>
 
-              {/* 예약 관련 주의사항 */}
-              <label className="grid gap-1">
-                <span className="text-sm font-medium">예약 관련 주의사항</span>
-                <textarea
-                  className="border rounded-md px-3 py-2 min-h-[100px]"
-                  placeholder="환불 규정, 지각/결석 안내 등"
-                />
-              </label>
+                  {/* 휴일 설정 */}
+                  <div className="grid gap-2">
+                    <span className="text-sm font-medium">클래스 휴일 설정</span>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="date"
+                        className="border rounded-md px-3 py-2"
+                        value={pendingHolidays[form.id] || ""}
+                        onChange={(e) => setPendingHolidays(prev => ({ ...prev, [form.id]: e.target.value }))}
+                      />
+                      <button
+                        type="button"
+                        className="px-3 py-2 rounded-md border"
+                        onClick={() => addHoliday(form.id)}
+                      >
+                        + 휴일 추가
+                      </button>
+                    </div>
+                    {form.holidays.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {form.holidays.map((d) => (
+                          <span
+                            key={d}
+                            className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm"
+                          >
+                            {d}
+                            <button
+                              type="button"
+                              className="text-gray-500 hover:text-gray-900"
+                              onClick={() => removeHoliday(form.id, d)}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
-              {/* 제출 버튼 */}
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                <button
-                  type="button"
-                  className="w-full sm:w-auto px-4 py-2 rounded-md bg-[#2D4739] text-white"
-                  onClick={onSubmit}
-                >
-                  등록
-                </button>
-              </div>
-            </div>
-          </section>
+                  {/* 예약 관련 주의사항 */}
+                  <label className="grid gap-1">
+                    <span className="text-sm font-medium">예약 관련 주의사항</span>
+                    <textarea
+                      className="border rounded-md px-3 py-2 min-h-[100px]"
+                      placeholder="환불 규정, 지각/결석 안내 등"
+                      value={form.reservationNotes}
+                      onChange={(e) => updateForm(form.id, 'reservationNotes', e.target.value)}
+                    />
+                  </label>
+                </div>
+              </section>
+            );
+          })}
 
-          {/* 항상 DOM에 남아있는 '이력 안내' 오버레이 (모바일 상단 정렬) */}
+          {/* 제출 버튼 */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sticky bottom-4 bg-white p-4 rounded-xl border shadow-lg">
+            <button
+              type="button"
+              className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90"
+              onClick={onSubmit}
+            >
+              {classForms.length}개 클래스 모두 등록
+            </button>
+            <button
+              type="button"
+              className="w-full sm:w-auto px-6 py-3 rounded-lg border font-medium hover:bg-gray-50"
+              onClick={() => {
+                setClassForms([createEmptyForm()]);
+                setPendingHolidays({});
+                setClassCounter(1);
+              }}
+            >
+              취소
+            </button>
+          </div>
+
+          {/* 이력 안내 오버레이 */}
           <div
             className={[
               "absolute inset-0 flex justify-center p-4 sm:p-6 transition-opacity",
               hasResume
-                ? "opacity-0 pointer-events-none" // ✅ 숨김
+                ? "opacity-0 pointer-events-none"
                 : "opacity-100 items-start sm:items-center pt-12 sm:pt-0",
             ].join(" ")}
             aria-hidden={hasResume}
@@ -508,8 +641,11 @@ const ClassInsert: FC = () => {
             </div>
             <DaumPostcodeEmbed
               onComplete={(data) => {
-                setPostcode(data.zonecode);
-                setAddress(data.address);
+                const currentForm = classForms[currentFormIndex];
+                if (currentForm) {
+                  updateForm(currentForm.id, 'postcode', data.zonecode);
+                  updateForm(currentForm.id, 'address', data.address);
+                }
                 setIsPostcodeOpen(false);
               }}
               style={{ width: "100%", height: "420px" }}

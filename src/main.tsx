@@ -9,15 +9,15 @@ import MainLandingPage from "@src/domains/main/areas/home/features/main-landing/
 import MainClassesPage from "@src/domains/main/areas/home/features/main-landing/pages/MainClassesPage";
 import ClassesDetailPage from "@src/domains/main/areas/home/features/class-detail/pages/ClassesDetailPage";
 import MainStorePage from "@src/domains/main/areas/home/features/main-landing/pages/MainStorePage";
-import StoreClassesPage from "@src/domains/buyer/areas/store/features/main-landing/pages/StoreClassesPage";
+import StoreClassesPage from "@src/domains/buyer/areas/classes/pages/StoreClassesPage";
 import MainClassOrderPage from "@src/domains/main/areas/home/features/class-order/pages/MainClassOrderPage";
 import MainClassOrderResultPage from "@src/domains/main/areas/home/features/class-order/pages/MainClassOrderResultPage";
 import MainMypagePage from "@src/domains/main/areas/mypage/pages/MainMypagePage";
 import MainMypageClassesPage from "@src/domains/main/areas/mypage/pages/MainMypageclasses";
+import "./routes/index.css";
 
 import { sellerRoutes } from "@src/domains/seller/routes";
-
-import "./routes/index.css";
+import  { buyerRoutes } from "./domains/buyer/routes";
 
 export const router = createBrowserRouter([
   {
@@ -36,6 +36,7 @@ export const router = createBrowserRouter([
       { path: "main/mypage", element: <MainMypagePage /> },
       { path: "main/mypage/classes", element: < MainMypageClassesPage /> },
         ...sellerRoutes,
+        ...buyerRoutes,
     ],
   },
 ]);

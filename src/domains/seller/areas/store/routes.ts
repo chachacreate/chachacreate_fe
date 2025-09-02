@@ -4,10 +4,16 @@ import type { RouteObject } from "react-router-dom";
 import { createElement, Suspense } from "react";
 
 // /seller/:storeUrl/store/*
-const StoreNoticePage = lazy(() => import("./features/notice/pages/StoreNotice"));
-const StoreCustomPage = lazy(() => import("./features/custom/pages/StoreCustom"));
+const StoreNoticePage = lazy(() =>
+  import("@src/domains/seller/areas/store/features/notice/pages/StoreNotice")
+);
+const StoreCustomPage = lazy(() =>
+  import("@src/domains/seller/areas/store/features/custom/pages/StoreCustom")
+);
 // /seller/:storeUrl/storeinfo
-const StoreInfoPage   = lazy(() => import("./features/storeinfo/pages/StoreInfo"));
+const StoreInfoPage = lazy(() =>
+  import("@src/domains/seller/areas/store/features/storeinfo/pages/StoreInfo")
+);
 
 const suspense = (Comp: LazyExoticComponent<ComponentType<any>>) =>
   createElement(

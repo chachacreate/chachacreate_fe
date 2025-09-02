@@ -1,12 +1,32 @@
-import { Outlet } from "react-router-dom";
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Header from '@src/shared/areas/layout/features/header/Header';
+import LoginPage from '@src/domains/common/auth/login/pages/LoginPage';
 
 export default function App() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <main className="flex-1">
-        {/* 자식 라우트가 여기 렌더링됩니다 */}
-        <Outlet />
-      </main>
-    </div>
+    <>
+      {/* 공통 헤더 */}
+      <Header />
+
+      {/* 라우팅 */}
+      <Routes>
+        {/* /를 /main으로 리다이렉트 */}
+        <Route path="/" element={<Navigate to="/main" replace />} />
+
+        {/* 메인 임시 페이지 */}
+        <Route
+          path="/main"
+          element={
+            <main style={{ padding: 16 }}>
+              <h1>메인 페이지 (임시)</h1>
+              <p>여기가 보여야 정상입니다.</p>
+            </main>
+          }
+        />
+        <Route path="/auth">
+          <Route path="login" element={<LoginPage />} />
+        </Route>
+      </Routes>
+    </>
   );
 }

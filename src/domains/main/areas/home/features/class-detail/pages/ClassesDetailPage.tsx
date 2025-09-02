@@ -282,7 +282,15 @@ export default function ClassesDetailPage() {
       return;
     }
     nav('/main/classes/order', {
-      state: { classId, date: selectedDate, time: selectedTime, item: summary },
+      state: {
+        classId,
+        date: selectedDate,
+        time: selectedTime,
+        item: summary,
+        image: firstImageSrc, // 대표 이미지
+        storeId: summary?.storeId,
+        storeName: summary?.storeName,
+      },
     });
   };
   const handleStoreInfo = () => {

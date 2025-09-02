@@ -8,7 +8,7 @@ import MainLandingPage from "@src/domains/main/areas/home/features/main-landing/
 import MainClassesPage from "@src/domains/main/areas/home/features/main-landing/pages/MainClassesPage";
 import ClassesDetailPage from "@src/domains/main/areas/home/features/class-detail/pages/ClassesDetailPage";
 import MainStorePage from "@src/domains/main/areas/home/features/main-landing/pages/MainStorePage";
-import StoreClassesPage from "@src/domains/buyer/areas/store/features/main-landing/pages/StoreClassesPage";
+import StoreClassesPage from "@src/domains/buyer/areas/classes/pages/StoreClassesPage";
 
 import "./index.css";
 

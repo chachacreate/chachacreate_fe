@@ -99,7 +99,7 @@ export default function SellerSidenavbar({
         items: [
           { label: "스토어 정보", to: `${base}/storeinfo` },
           { label: "나의 스토어 커스텀", to: `${base}/store/custom`, icon: Palette },
-          { label: "문의 메시지", to: `${base}/messages`, icon: MessageSquareText },
+          { label: "문의 메시지", to: `${base}/message`, icon: MessageSquareText },
           { label: "공지사항", to: `${base}/store/notice`, icon: Megaphone },
         ],
       },

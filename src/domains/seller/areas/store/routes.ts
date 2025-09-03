@@ -15,6 +15,11 @@ const StoreInfoPage = lazy(() =>
   import("@src/domains/seller/areas/store/features/info/pages/StoreInfo")
 );
 
+// /seller/:storeUrl/storeinfo
+const StoreChatPage = lazy(() =>
+  import("@src/domains/seller/areas/store/features/chat/pages/StoreChat")
+);
+
 const suspense = (Comp: LazyExoticComponent<ComponentType<any>>) =>
   createElement(
     Suspense,
@@ -33,4 +38,7 @@ export const storeRoutes: RouteObject[] = [
   },
   // /seller/:storeUrl/storeinfo
   { path: "storeinfo", element: suspense(StoreInfoPage) },
+    // /seller/:storeUrl/message
+  { path: "message", element: suspense(StoreChatPage) },
+
 ];

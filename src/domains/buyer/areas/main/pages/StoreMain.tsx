@@ -1,0 +1,336 @@
+// src/domains/buyer/areas/main/pages/StoreHome.tsx
+import { useMemo } from "react";
+import { useParams, Link } from "react-router-dom";
+import { Star, ChevronRight } from "lucide-react";
+
+// 공통 헤더 & 스토어 네비게이션
+import Header from "@src/shared/areas/layout/features/header/Header";
+import Storenavbar from "@src/shared/areas/navigation/features/navbar/store/Storenavbar";
+
+/** ---------- Types ---------- */
+type Product = {
+  id: string;
+  title: string;
+  category: string;
+  price: number;
+  imageUrl?: string;
+  purchases?: number;
+};
+type StoreSettings = {
+  fontFamily?: string;
+  fontColor?: string;
+  headerFooterBg?: string;
+  descriptionColor?: string;
+  noticeColor?: string;
+  highlightColor?: string;
+  heroBgColor?: string;
+};
+type StoreInfo = {
+  storeUrl: string;
+  name: string;
+  logoUrl?: string;
+  description?: string;
+  noticeImportant?: string | null;
+  popularTop3: Product[];
+  featured3: Product[];
+  settings?: StoreSettings;
+};
+
+/** ---------- Mock Loader ---------- */
+function useMockStoreInfo(storeUrl: string): StoreInfo {
+  return {
+    storeUrl,
+    name: "라임스튜디오",
+    logoUrl:
+      "https://images.unsplash.com/photo-1522199710521-72d69614c702?q=80&w=800&auto=format&fit=crop",
+    description:
+      "핸드메이드 도자기와 자연 소재 소품을 만드는 라임스튜디오입니다. 따뜻한 일상을 전해드릴게요 🍋",
+    noticeImportant:
+      "추석 연휴(9/12~9/15) 기간 택배가 지연될 수 있습니다. 일정 여유를 두고 주문 부탁드립니다.",
+    popularTop3: [
+      {
+        id: "p1",
+        title: "핸드메이드 머그 v2",
+        category: "도자기",
+        price: 29000,
+        imageUrl:
+          "https://images.unsplash.com/photo-1526045478516-99145907023c?q=80&w=800&auto=format&fit=crop",
+        purchases: 412,
+      },
+      {
+        id: "p2",
+        title: "너도밤나무 우드 트레이",
+        category: "우드",
+        price: 38000,
+        imageUrl:
+          "https://images.unsplash.com/photo-1595855759920-23405f1a0b1b?q=80&w=800&auto=format&fit=crop",
+        purchases: 305,
+      },
+      {
+        id: "p3",
+        title: "리넨 키친 클로스",
+        category: "패브릭",
+        price: 15000,
+        imageUrl:
+          "https://images.unsplash.com/photo-1555685812-4b943f1cb0eb?q=80&w=800&auto=format&fit=crop",
+        purchases: 276,
+      },
+    ],
+    featured3: [
+      {
+        id: "f1",
+        title: "생크림 화이트 플레이트",
+        category: "도자기",
+        price: 33000,
+        imageUrl:
+          "https://images.unsplash.com/photo-1543286386-2e659306cd6c?q=80&w=800&auto=format&fit=crop",
+      },
+      {
+        id: "f2",
+        title: "월넛 조각 스푼",
+        category: "우드",
+        price: 12000,
+        imageUrl:
+          "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?q=80&w=800&auto=format&fit=crop",
+      },
+      {
+        id: "f3",
+        title: "내추럴 테이블 매트",
+        category: "패브릭",
+        price: 19000,
+        imageUrl:
+          "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?q=80&w=800&auto=format&fit=crop",
+      },
+    ],
+    settings: {
+      fontFamily: "'Noto Sans KR', system-ui, -apple-system, Segoe UI, Roboto",
+      fontColor: "#1f2937",
+      headerFooterBg: "#FDFAF2",
+      descriptionColor: "#4b5563",
+      noticeColor: "#7A241F",
+      highlightColor: "#2D4739",
+      heroBgColor: "#F3F0E8",
+    },
+  };
+}
+
+/** ---------- Utils ---------- */
+const formatPrice = (n: number) => n.toLocaleString("ko-KR") + "원";
+
+/** ---------- Page ---------- */
+export default function StoreHome() {
+  const { storeUrl = "main" } = useParams<{ storeUrl: string }>();
+  const data = useMockStoreInfo(storeUrl);
+
+  const themeVars = useMemo(
+    () => ({
+      ["--store-font-color"]: data.settings?.fontColor ?? "#111827",
+      ["--store-highlight"]: data.settings?.highlightColor ?? "#2D4739",
+      ["--store-notice"]: data.settings?.noticeColor ?? "#7A241F",
+      ["--store-desc"]: data.settings?.descriptionColor ?? "#4B5563",
+      ["--store-header-bg"]: data.settings?.headerFooterBg ?? "#ffffff",
+      ["--store-hero-bg"]: data.settings?.heroBgColor ?? "#F3F0E8",
+      fontFamily: data.settings?.fontFamily,
+      color: data.settings?.fontColor,
+    }),
+    [data.settings]
+  );
+
+  
+
+  return (
+    <div style={themeVars} className="w-full bg-white text-[color:var(--store-font-color)]">
+      {/* 공통 헤더 */}
+      <Header />
+      <Storenavbar />
+
+      {/* ---------- 히어로 ---------- */}
+      <section className="w-full">
+        <div className="w-full" style={{ backgroundColor: "var(--store-hero-bg)" }}>
+          <div className="h-[200px] sm:h-[240px] lg:h-[280px]" />
+        </div>
+        <div className="relative">
+          <div className="w-full max-w-none px-4 xl:px-[240px]">
+            <div className="-mt-[88px] sm:-mt-[100px]">
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">
+                <div className="flex items-start gap-6">
+                  <img
+                    src={data.logoUrl}
+                    alt={`${data.name} logo`}
+                    className="w-20 h-20 rounded-xl object-cover border border-gray-200"
+                  />
+                  <div className="flex-1">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{storeUrl}</h1>
+                    {data.description && (
+                      <p className="mt-2 text-sm sm:text-base leading-relaxed" style={{ color: "var(--store-desc)" }}>
+                        {data.description}
+                      </p>
+                    )}
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <Link
+                        to={`/${data.storeUrl}/products`}
+                        className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white hover:opacity-95"
+                        style={{ backgroundColor: "var(--store-highlight)" }}
+                      >
+                        전체 상품 보기
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Link>
+                      <Link
+                        to={`/store/${data.storeUrl}/notices`}
+                        className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50"
+                      >
+                        공지사항
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="h-6" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- 중요 공지 ---------- */}
+      {data.noticeImportant && (
+        <section className="w-full max-w-none px-4 xl:px-[240px]">
+          <div className="rounded-xl border p-5 sm:p-6 bg-white">
+            <div className="text-sm font-semibold mb-2" style={{ color: "var(--store-notice)" }}>
+              중요 공지사항
+            </div>
+            <p className="text-sm sm:text-base leading-relaxed">{data.noticeImportant}</p>
+          </div>
+        </section>
+      )}
+
+      {/* ---------- 인기 상품 ---------- */}
+      <StoreSection
+        title="인기 상품 TOP 3"
+        subtitle="구매수가 많은 상품을 모았어요"
+        highlight="var(--store-highlight)"
+        moreLink={`/store/${data.storeUrl}/products?sort=popular`}
+      >
+        <ProductGrid3 products={data.popularTop3} emptyLabel="인기 상품을 준비 중이에요" />
+      </StoreSection>
+
+      {/* ---------- 대표 상품 ---------- */}
+      <StoreSection
+        title="대표 상품"
+        subtitle="판매자가 추천하는 스토어 대표작"
+        highlight="var(--store-highlight)"
+        moreLink={`/store/${data.storeUrl}/products?filter=featured`}
+      >
+        <ProductGrid3 products={data.featured3} emptyLabel="대표 상품을 곧 보여드릴게요" badge="대표" />
+      </StoreSection>
+
+      {/* ---------- 푸터 ---------- */}
+      <footer className="mt-12 w-full" style={{ backgroundColor: "var(--store-header-bg)" }}>
+        <div className="w-full max-w-none px-4 xl:px-[240px] py-8 text-sm text-gray-500">
+          © {new Date().getFullYear()} {data.name}. All rights reserved.
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+/** ---------- Section / Cards ---------- */
+function StoreSection(props: {
+  title: string;
+  subtitle?: string;
+  highlight?: string;
+  moreLink?: string;
+  children: React.ReactNode;
+}) {
+  const { title, subtitle, highlight = "#2D4739", moreLink, children } = props;
+  return (
+    <section className="w-full max-w-none px-4 xl:px-[240px] mt-10">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: highlight }}>
+            {title}
+          </h2>
+          {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
+        </div>
+        {moreLink && (
+          <Link
+            to={moreLink}
+            className="inline-flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900"
+          >
+            더 보기
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        )}
+      </div>
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
+function ProductGrid3({
+  products,
+  emptyLabel,
+  badge,
+}: {
+  products: Product[];
+  emptyLabel: string;
+  badge?: string;
+}) {
+  if (!products || products.length === 0) return <EmptyProducts label={emptyLabel} />;
+
+  const items: (Product | null)[] = [...products];
+  while (items.length < 3) items.push(null);
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+      {items.map((p, idx) =>
+        p ? <ProductCard key={p.id} product={p} badge={badge} /> : <PlaceholderCard key={`placeholder-${idx}`} />
+      )}
+    </div>
+  );
+}
+
+function ProductCard({ product, badge }: { product: Product; badge?: string }) {
+  return (
+    <Link to={`./product/${product.id}`} className="group block rounded-2xl overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow bg-white">
+      <div className="relative aspect-[4/3] bg-gray-50">
+        {product.imageUrl ? (
+          <img src={product.imageUrl} alt={product.title} className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center text-gray-400">이미지 준비 중</div>
+        )}
+        {badge && (
+          <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/90 border border-gray-200 px-2.5 py-1 text-xs font-medium">
+            <Star className="w-3.5 h-3.5 text-yellow-500" />
+            {badge}
+          </span>
+        )}
+      </div>
+      <div className="p-4">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold truncate">{product.title}</h3>
+          <span className="text-sm font-bold">{formatPrice(product.price)}</span>
+        </div>
+        <p className="mt-1 text-xs text-gray-500">{product.category}</p>
+        {typeof product.purchases === "number" && (
+          <p className="mt-2 text-xs text-gray-400">누적 {product.purchases.toLocaleString()}개</p>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+function PlaceholderCard() {
+  return (
+    <div className="rounded-2xl overflow-hidden border border-dashed border-gray-200 bg-white">
+      <div className="aspect-[4/3] bg-gray-50 flex items-center justify-center text-gray-400">곧 공개될 상품</div>
+      <div className="p-4">
+        <div className="h-4 w-1/2 bg-gray-100 rounded" />
+        <div className="mt-2 h-3 w-1/3 bg-gray-100 rounded" />
+      </div>
+    </div>
+  );
+}
+
+function EmptyProducts({ label }: { label: string }) {
+  return <div className="rounded-xl border border-gray-200 p-6 text-center text-gray-500">{label}</div>;
+}

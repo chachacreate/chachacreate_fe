@@ -1,14 +1,29 @@
+// src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import {
-  Home,ChevronDown,PackagePlus, ListChecks,Star,ShoppingCart,Truck,Wallet,Settings,Palette,MessageSquareText,Megaphone,GraduationCap,
-  NotebookPen,CalendarCheck,Plus,
+  Home,
+  ChevronDown,
+  PackagePlus,
+  ListChecks,
+  Star,
+  ShoppingCart,
+  Truck,
+  Wallet,
+  Settings,
+  Palette,
+  MessageSquareText,
+  Megaphone,
+  GraduationCap,
+  NotebookPen,
+  CalendarCheck,
+  Plus,
 } from "lucide-react";
 
 type SellerSidenavbarProps = {
   /** 헤더 높이 보정(top sticky) */
   stickyOffsetPx?: number;
-  /** 강제 스토어 세그먼트 (없으면 URL :store 사용) */
+  /** 강제 스토어 세그먼트 (없으면 URL :storeUrl 사용) */
   storeSegmentOverride?: string;
   /** 우측 콘텐츠 (선택) */
   children?: React.ReactNode;
@@ -22,9 +37,10 @@ export default function SellerSidenavbar({
   children,
   storeLogoUrl,
 }: SellerSidenavbarProps) {
-  const params = useParams();
-  const store = storeSegmentOverride ?? (params as any)?.store ?? "main";
-  const base = `/${store}/seller`;
+  // ✅ :storeUrl(신규) 또는 :store(레거시) 모두 대응
+  const { storeUrl, store } = useParams<{ storeUrl?: string; store?: string }>();
+  const storeSegment = storeSegmentOverride ?? storeUrl ?? store ?? "main";
+  const base = `/seller/${storeSegment}`;
 
   /** 모바일 전용 확장 토글 (>> / <<) */
   const [expanded, setExpanded] = useState(false);
@@ -44,7 +60,7 @@ export default function SellerSidenavbar({
 
   /** 모바일에서 메뉴 클릭 시 자동 접힘 */
   const handleNavClick = () => {
-    if (window.innerWidth < 1024) {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
       setExpanded(false);
     }
   };
@@ -53,18 +69,18 @@ export default function SellerSidenavbar({
     () => [
       {
         key: "home",
-        label: `${store} 관리자 홈`,
+        label: `${storeSegment} 관리자 홈`,
         type: "link" as const,
-        to: `${base}/main`,
+        to: `${base}/main`, // 필요에 따라 `/settlement` 등으로 변경 가능
       },
       {
         key: "product",
         label: "상품 관리",
         icon: PackagePlus,
         items: [
-          { label: "상품 등록", to: `${base}/products/new`, icon: Plus },
-          { label: "상품 리스트", to: `${base}/products/list` },
-          { label: "상품 리뷰", to: `${base}/products/reviews`, icon: Star },
+          { label: "상품 등록", to: `${base}/product/insert`, icon: Plus },
+          { label: "상품 리스트", to: `${base}/product/list` },
+          { label: "상품 리뷰", to: `${base}/product/review`, icon: Star },
         ],
       },
       {
@@ -72,7 +88,7 @@ export default function SellerSidenavbar({
         label: "주문 · 정산 관리",
         icon: ShoppingCart,
         items: [
-          { label: "주문/발송 상태 확인", to: `${base}/orders`, icon: Truck },
+          { label: "주문/발송 상태 확인", to: `${base}/product/order`, icon: Truck },
           { label: "상품 & 클래스 정산", to: `${base}/settlement`, icon: Wallet },
         ],
       },
@@ -81,10 +97,10 @@ export default function SellerSidenavbar({
         label: "스토어 관리",
         icon: Settings,
         items: [
-          { label: "스토어 정보", to: `${base}/settings/info` },
-          { label: "나의 스토어 커스텀", to: `${base}/settings/customize`, icon: Palette },
+          { label: "스토어 정보", to: `${base}/storeinfo` },
+          { label: "나의 스토어 커스텀", to: `${base}/store/custom`, icon: Palette },
           { label: "문의 메시지", to: `${base}/messages`, icon: MessageSquareText },
-          { label: "공지사항", to: `${base}/notices`, icon: Megaphone },
+          { label: "공지사항", to: `${base}/store/notice`, icon: Megaphone },
         ],
       },
       {
@@ -92,13 +108,13 @@ export default function SellerSidenavbar({
         label: "클래스 관리",
         icon: GraduationCap,
         items: [
-          { label: "클래스 등록", to: `${base}/classes/new`, icon: NotebookPen },
-          { label: "클래스 리스트", to: `${base}/classes/list` },
-          { label: "클래스 예약 확인", to: `${base}/classes/reservations`, icon: CalendarCheck },
+          { label: "클래스 등록", to: `${base}/class/insert`, icon: NotebookPen },
+          { label: "클래스 리스트", to: `${base}/class/list` },
+          { label: "클래스 예약 확인", to: `${base}/class/reservation`, icon: CalendarCheck },
         ],
       },
     ],
-    [store, base]
+    [storeSegment, base]
   );
 
   const toggleSection = (key: string) =>
@@ -150,12 +166,12 @@ export default function SellerSidenavbar({
                     {/* 스토어명: 모바일에선 expanded일 때만, 웹에선 항상 보임 */}
                     <div className={[(expanded ? "block" : "hidden"), "lg:block", "min-w-0"].join(" ")}>
                       <NavLink
-                        to={`${base}/main`}
+                        to={`${base}/main`} // ✅ 절대경로 사용
                         className="block text-sm font-semibold text-gray-900 hover:underline truncate"
-                        title={`${store} 관리자 홈`}
+                        title={`${storeSegment} 관리자 홈`}
                         onClick={handleNavClick}
                       >
-                        {store}
+                        {storeSegment}
                       </NavLink>
                     </div>
                   </div>
@@ -183,19 +199,16 @@ export default function SellerSidenavbar({
                       return (
                         <li key={sec.key} className="mb-1">
                           <NavLink
-                            to={(sec as any).to}
+                            to={(sec as any).to} // ✅ 절대경로
                             onClick={handleNavClick}
                             className={({ isActive }) =>
                               [linkBase, isActive ? linkActive : linkInactive].join(" ")
                             }
                           >
-                            {/* 단일 링크는 아이콘 없이 라벨만 (요청 UI 기준) */}
-                            {/* Home 아이콘 추가 */}
                             <Home className="h-5 w-5 shrink-0" />
                             <span
                               className={[
                                 labelClass,
-                                // 모바일: expanded일 때만, 웹: 항상
                                 expanded ? "block" : "hidden",
                                 "lg:block",
                               ].join(" ")}
@@ -229,7 +242,6 @@ export default function SellerSidenavbar({
                               {sec.label}
                             </span>
                           </div>
-                          {/* 드롭다운 아이콘: 모바일에서는 expanded일 때만, 웹에서는 항상 */}
                           <ChevronDown
                             className={[
                               "h-4 w-4 transition-transform",
@@ -264,7 +276,7 @@ export default function SellerSidenavbar({
                               return (
                                 <li key={idx}>
                                   <NavLink
-                                    to={item.to}
+                                    to={item.to} // ✅ 절대경로
                                     onClick={handleNavClick}
                                     className={({ isActive }) =>
                                       ["ml-2", linkBase, isActive ? linkActive : linkInactive].join(" ")

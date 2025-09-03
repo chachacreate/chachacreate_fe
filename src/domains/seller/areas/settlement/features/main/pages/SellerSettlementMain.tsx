@@ -111,7 +111,7 @@ type TabKey = "all" | "product_new" | "product_delivered" | "class";
 
 export default function SellerSettlementMain() {
   const { storeUrl = "store" } = useParams();
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   // 탭(버튼)
   const [active, setActive] = useState<TabKey>("all");
@@ -123,7 +123,7 @@ export default function SellerSettlementMain() {
     [weekAnchor]
   );
 
-  const basePath = `/${storeUrl}/seller/settlement`;
+  const basePath = `/seller/${storeUrl}/settlement`;
 
   // 필터링된 TX
   const filteredTx = useMemo(() => {

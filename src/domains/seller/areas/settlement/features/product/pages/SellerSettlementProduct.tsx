@@ -123,7 +123,7 @@ export default function SellerSettlementProduct() {
 
   useEffect(() => {
     if (hasProducts && !queryId && defaultProductId) {
-      navigate(`/${storeUrl}/seller/settlement/product?productId=${encodeURIComponent(defaultProductId)}`, { replace: true });
+      navigate(`/seller/${storeUrl}/settlement/product?productId=${encodeURIComponent(defaultProductId)}`, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultProductId, hasProducts]);
@@ -136,7 +136,7 @@ export default function SellerSettlementProduct() {
   const onSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value;
     setSelectedId(id);
-    navigate(`/${storeUrl}/seller/settlement/product?productId=${encodeURIComponent(id)}`, { replace: false });
+    navigate(`/seller/${storeUrl}/settlement/product?productId=${encodeURIComponent(id)}`, { replace: false });
   };
 
   // (3) 선택 상품 데이터 (환불 제외)
@@ -213,7 +213,7 @@ export default function SellerSettlementProduct() {
                 <p className="text-gray-600">등록된 상품이 없습니다.</p>
                 <button
                   type="button"
-                  onClick={() => navigate(`/${storeUrl}/seller/products/new`)} // 필요 시 경로 수정
+                  onClick={() => navigate(`/seller/${storeUrl}/products/new`)} // 필요 시 경로 수정
                   className="h-10 rounded-xl bg-[#2d4739] px-4 text-white text-sm hover:opacity-95"
                 >
                   상품 등록하러 가기

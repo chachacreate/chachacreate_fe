@@ -10,10 +10,10 @@ const StoreNoticePage = lazy(
 // const StoreCustomPage = lazy(() =>
 //   import("@src/domains/seller/areas/store/features/custom/pages/StoreCustom")
 // );
-// // /seller/:storeUrl/storeinfo
-// const StoreInfoPage = lazy(() =>
-//   import("@src/domains/seller/areas/store/features/storeinfo/pages/StoreInfo")
-// );
+// /seller/:storeUrl/storeinfo
+const StoreInfoPage = lazy(() =>
+  import("@src/domains/seller/areas/store/features/info/pages/StoreInfo")
+);
 
 const suspense = (Comp: LazyExoticComponent<ComponentType<any>>) =>
   createElement(
@@ -32,5 +32,5 @@ export const storeRoutes: RouteObject[] = [
     ],
   },
   // /seller/:storeUrl/storeinfo
-  // { path: "storeinfo", element: suspense(StoreInfoPage) },
+  { path: "storeinfo", element: suspense(StoreInfoPage) },
 ];

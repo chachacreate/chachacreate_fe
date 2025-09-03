@@ -47,43 +47,6 @@ export default function SellerMain() {
       return { key, amount, orders, date: d.toISOString().slice(0, 10) };
     });
 
-  // const makeWeeklySales = (weeks = 10) =>
-  //   Array.from({ length: weeks }).map((_, i) => {
-  //     const key = `W${i + 1}`;
-  //     const amount = 1500000 + Math.floor(Math.random() * 4000000);
-  //     const orders = 40 + Math.floor(Math.random() * 120);
-  //     return { key, amount, orders };
-  //   });
-
-  // const makeMonthlySales = (months = 6) =>
-  //   Array.from({ length: months }).map((_, i) => {
-  //     const month = new Date();
-  //     month.setMonth(month.getMonth() - (months - 1 - i));
-  //     const key = `${month.getFullYear().toString().slice(-2)}-${String(
-  //       month.getMonth() + 1
-  //     ).padStart(2, "0")}`;
-  //     const amount = 6000000 + Math.floor(Math.random() * 12000000);
-  //     const orders = 200 + Math.floor(Math.random() * 600);
-  //     return { key, amount, orders };
-  //   });
-
-  const make24HourStats = (): ClassStatsDatum[] =>
-    Array.from({ length: 24 }).map((_, i) => {
-      const key = `${String(i).padStart(2, '0')}:00`;
-      const count = 1 + Math.floor(Math.random() * 18);
-      const revenue = count * (40000 + Math.floor(Math.random() * 30000));
-      return { key, count, revenue };
-    });
-
-  const makeWeekdayStats = (): ClassStatsDatum[] => {
-    const days = ['월', '화', '수', '목', '금', '토', '일'];
-    return days.map((key) => {
-      const count = 5 + Math.floor(Math.random() * 20);
-      const revenue = count * (50000 + Math.floor(Math.random() * 50000));
-      return { key, count, revenue };
-    });
-  };
-
   const [responseData, setResponseData] = useState<any>(null);
   const storeUrl = useParams<Params>().storeUrl;
   useEffect(() => {
@@ -318,18 +281,96 @@ export default function SellerMain() {
   }, [salesMode, dailyFiltered, weeklyFiltered, monthlyFiltered]);
 
   // 3) 전체 클래스 예약 통계 (공용 컴포넌트 사용)
+
+  // 클래스 예약 통계 상태 관리
   const [classMode, setClassMode] = useState<ClassStatsMode>('hour');
-  const [selectedWeek, setSelectedWeek] = useState<string>(() => {
-    const today = new Date();
-    const day = today.getDay();
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(today.setDate(diff));
-    return monday.toISOString().slice(0, 10);
+  const [classStatsData, setClassStatsData] = useState<ClassStatsDatum[]>([]);
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
-  const classStats: ClassStatsDatum[] = useMemo(
-    () => (classMode === 'hour' ? make24HourStats() : makeWeekdayStats()),
-    [classMode]
-  );
+
+  useEffect(() => {
+    if (!storeUrl) return;
+
+    const fetchClassStats = async () => {
+      try {
+        const groupBy = classMode === 'hour' ? 'time' : 'weekday';
+        const month = Number(selectedMonth.split('-')[1]); // month를 1~12 숫자로
+
+        const params = new URLSearchParams({
+          scope: 'store',
+          groupBy,
+          month: month.toString(),
+        });
+
+        // weekday 모드일 때 월 선택 기준으로 range 계산
+        if (classMode !== 'hour') {
+          // weekday든 month든
+          const [yearStr, monthStr] = selectedMonth.split('-');
+          const year = Number(yearStr);
+          const month = Number(monthStr) - 1;
+          const start = new Date(year, month, 1);
+          const end = new Date(year, month + 1, 0);
+          params.append('rangeStart', start.toISOString());
+          params.append('rangeEnd', end.toISOString());
+        }
+
+        interface ClassStatsItem {
+          bucket: number;
+          label: string;
+          count: number;
+        }
+
+        interface ClassStatsResponse {
+          items: ClassStatsItem[];
+        }
+
+        const response = await get(`/seller/${storeUrl}/classes/reservation/stats?${params}`);
+
+        if (response.status === 200) {
+          const responseData = response.data as ClassStatsResponse;
+          const transformedData: ClassStatsDatum[] = responseData.items.map((item: any) => ({
+            key: item.label,
+            count: item.count,
+            revenue: item.count * 50000, // 가격 임시값
+          }));
+          console.log('API 응답', responseData);
+          setClassStatsData(transformedData);
+        } else {
+          console.error('전체 클래스 예약 통계 조회 실패:', response.message);
+        }
+      } catch (error: any) {
+        console.error('API 요청 실패:', error);
+      }
+    };
+
+    fetchClassStats();
+  }, [storeUrl, classMode, selectedMonth]);
+
+  const classStats: ClassStatsDatum[] = useMemo(() => {
+    // API 데이터가 있으면 그대로 반환
+    if (classStatsData.length > 0) {
+      return classStatsData;
+    }
+
+    // 데이터가 없는 경우 기본 구조(0) 반환
+    if (classMode === 'hour') {
+      return Array.from({ length: 24 }).map((_, i) => ({
+        key: `${String(i).padStart(2, '0')}:00`,
+        count: 0,
+        revenue: 0,
+      }));
+    } else {
+      const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+      return days.map((key) => ({
+        key,
+        count: 0,
+        revenue: 0,
+      }));
+    }
+  }, [classStatsData, classMode]);
 
   // 4) 리뷰 & 평점 통계
   const [selectedProductId, setSelectedProductId] = useState<string>('ALL');
@@ -578,12 +619,13 @@ export default function SellerMain() {
           </section>
 
           {/* 3) 전체 클래스 예약 통계 (공용 컴포넌트 사용) */}
+
           <ClassStatsCard
             title="전체 클래스 예약 통계"
             mode={classMode}
             onModeChange={setClassMode}
-            weekValue={selectedWeek}
-            onWeekChange={setSelectedWeek}
+            monthValue={selectedMonth} // 기존 selectedWeek → selectedMonth
+            onMonthChange={setSelectedMonth} // 기존 setSelectedWeek → setSelectedMonth
             data={classStats}
             onClick={goClassReservation}
             brandColor={BRAND}

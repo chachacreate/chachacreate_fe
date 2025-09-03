@@ -12,7 +12,7 @@ import CryptoJS from 'crypto-js';
 const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY;
 
 type OrderState = {
-  classId?: string;
+  classId?: number;
   date?: string; // "YYYY-MM-DD"
   time?: string; // "HH:mm"
   item?: {
@@ -22,10 +22,15 @@ type OrderState = {
     location?: string;
     thumbnail?: string;
   };
+  image?: string;
+  storeId?: number;
+  storeName?: string;
 };
 
 type DecodedToken = {
-  sub: string;
+  email: string;
+  name: string;
+  phone: string;
 };
 
 function generateCustomerKey(email: string): string {
@@ -38,10 +43,9 @@ function generateCustomerKey(email: string): string {
 export default function MainClassOrderPage() {
   const nav = useNavigate();
   const { state } = useLocation();
-  const { classId, date, time, item } = (state || {}) as OrderState;
+  const { classId, date, time, item, image, storeName } = (state || {}) as OrderState;
 
   const title = item?.title;
-  const storeName = item?.host;
   const addressRoad = item?.location;
   const price = item?.price;
 
@@ -61,11 +65,6 @@ export default function MainClassOrderPage() {
     }
   }, [agreeAll]);
 
-  const [customerName, setCustomerName] = useState('');
-  const [phone1, setPhone1] = useState('010');
-  const [phone2, setPhone2] = useState('');
-  const [phone3, setPhone3] = useState('');
-
   // Toss 위젯 결제 관련 state
   const [payment, setPayment] = useState<any>(null);
   const clientKey = TOSS_CLIENT_KEY;
@@ -78,8 +77,10 @@ export default function MainClassOrderPage() {
   }
 
   const decoded: DecodedToken = jwtDecode(token);
-  const email = decoded.sub;
-  // console.log(email);
+  const email = decoded.email;
+  const name = decoded.name;
+  const phone = decoded.phone;
+  console.log(email, name, phone);
 
   useEffect(() => {
     async function fetchPayment() {
@@ -137,11 +138,13 @@ export default function MainClassOrderPage() {
         amount,
         orderId,
         orderName: title,
-        successUrl: window.location.origin + `/main/classes/order/result?status=success`,
+        successUrl:
+          window.location.origin +
+          `/main/classes/order/result?status=success&name=${name}&classId=${classId}&time=${time}&date=${date}&time=${time}`,
         failUrl: window.location.origin + `/main/classes/order/result?status=fail`,
         customerEmail: 'email@email',
-        customerName: customerName, // 입력값
-        customerMobilePhone: `${phone1}${phone2}${phone3}`, // 입력값
+        customerName: name,
+        customerMobilePhone: phone,
       });
     } catch (error) {
       console.error(error);
@@ -180,17 +183,11 @@ export default function MainClassOrderPage() {
                 {/* 썸네일 */}
                 <div className="w-full md:w-[350px]">
                   <div className="relative w-full aspect-[16/9] md:aspect-[2/1] rounded-xl overflow-hidden border border-gray-200">
-                    {item?.thumbnail ? (
-                      <img
-                        src={item.thumbnail}
-                        alt={title}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-gray-100 grid place-items-center">
-                        <span className="text-gray-500 text-sm">클래스 이미지</span>
-                      </div>
-                    )}
+                    <img
+                      src={image || item?.thumbnail}
+                      alt={title}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
                   </div>
                 </div>
 
@@ -264,8 +261,8 @@ export default function MainClassOrderPage() {
                   <div className="relative">
                     <input
                       type="text"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
+                      value={name}
+                      readOnly
                       className="h-10 sm:h-11 w-full rounded-lg border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
                       placeholder="이름 입력"
                     />
@@ -273,27 +270,16 @@ export default function MainClassOrderPage() {
                 </div>
 
                 <label className="text-gray-700 font-medium mt-1 sm:mt-2">연락처</label>
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <input
-                    type="tel"
-                    className="h-10 sm:h-11 w-16 sm:w-20 rounded-lg border border-gray-300 px-2 sm:px-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
-                    value={phone1}
-                    onChange={(e) => setPhone1(e.target.value)}
-                  />
-                  <span>-</span>
-                  <input
-                    type="tel"
-                    className="h-10 sm:h-11 w-20 sm:w-24 rounded-lg border border-gray-300 px-2 sm:px-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
-                    value={phone2}
-                    onChange={(e) => setPhone2(e.target.value)}
-                  />
-                  <span>-</span>
-                  <input
-                    type="tel"
-                    className="h-10 sm:h-11 w-20 sm:w-24 rounded-lg border border-gray-300 px-2 sm:px-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
-                    value={phone3}
-                    onChange={(e) => setPhone3(e.target.value)}
-                  />
+                <div className="grid">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={phone}
+                      readOnly
+                      className="h-10 sm:h-11 w-full rounded-lg border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                      placeholder="이름 입력"
+                    />
+                  </div>
                 </div>
 
                 <label className="text-gray-700 font-medium mt-1 sm:mt-2">결제금액</label>

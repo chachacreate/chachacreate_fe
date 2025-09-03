@@ -1,26 +1,14 @@
 // src/domains/main/areas/home/features/class-order/pages/MainClassOrderResultPage.tsx
 import { useEffect, useState, useRef } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import { Check } from 'lucide-react';
 import { post } from '@src/libs/request';
 
-type OrderState = {
-  classId?: string;
-  date?: string;
-  time?: string;
-  item?: {
-    title?: string;
-    price?: number;
-  };
-};
-
 export default function MainClassOrderResultPage() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
-  const { state } = useLocation();
-  const { classId, date, time, item } = (state || {}) as OrderState;
 
   const storeUrl = 'main'; // 페이지 URL 경로 수정 후 반영 필요;
 
@@ -30,6 +18,10 @@ export default function MainClassOrderResultPage() {
   const calledRef = useRef(false);
 
   useEffect(() => {
+    const classId = searchParams.get('classId');
+    const date = searchParams.get('date');
+    const time = searchParams.get('time');
+
     const orderId = searchParams.get('orderId');
     const amount = searchParams.get('amount');
     const paymentKey = searchParams.get('paymentKey');
@@ -65,7 +57,7 @@ export default function MainClassOrderResultPage() {
     }
 
     confirm();
-  }, [searchParams, nav, date, time, storeUrl, classId]);
+  }, [searchParams, nav, storeUrl]);
 
   if (!responseData) {
     return (
@@ -76,20 +68,8 @@ export default function MainClassOrderResultPage() {
   }
   // responseData: 결제 승인 응답 데이터
   console.log(responseData);
-  const title = responseData.classTitle ?? item?.title;
-  const price = responseData.amount ?? item?.price;
-
-  // const formatted = useMemo(() => {
-  //   if (!date || !time) return '';
-  //   const d = new Date(`${date}T${time}`);
-  //   const yoil = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
-  //   const yyyy = d.getFullYear();
-  //   const mm = String(d.getMonth() + 1).padStart(2, '0');
-  //   const dd = String(d.getDate()).padStart(2, '0');
-  //   const hh = String(d.getHours()).padStart(2, '0');
-  //   const mi = String(d.getMinutes()).padStart(2, '0');
-  //   return `${yyyy}.${mm}.${dd}(${yoil})  ${hh}:${mi}`;
-  // }, [date, time]);
+  const title = responseData.classTitle;
+  const price = responseData.amount;
 
   return (
     <>
@@ -111,7 +91,7 @@ export default function MainClassOrderResultPage() {
           </div>
 
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight">
-            예약이 완료되었습니다!
+            {responseData.memberName} 님 예약이 완료되었습니다!
           </h1>
 
           <hr className="my-5 sm:my-6 border-gray-200" />
@@ -119,14 +99,16 @@ export default function MainClassOrderResultPage() {
           {/* 정보 표 */}
           <div className="mx-auto max-w-[760px]">
             <dl className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-y-2.5 sm:gap-y-3 gap-x-6 text-left">
+              <dt className="text-gray-600 font-medium">예약번호</dt>
+              <dd className="font-semibold break-words">{responseData.reservationNumber}</dd>
+
               <dt className="text-gray-600 font-medium">클래스명</dt>
               <dd className="font-semibold break-words">🍑 {title}</dd>
 
               <dt className="text-gray-600 font-medium">예약일</dt>
               <dd className="font-semibold">
-                {date ?? responseData.reservedTime?.split('T')[0] ?? '미지정'}{' '}
-                {time ??
-                  responseData.reservedTime?.split('T')[1]?.slice(0, 5) ?? // "22:00:00" -> "22:00"
+                {responseData.reservedTime?.split('T')[0] ?? '미지정'}{' '}
+                {responseData.reservedTime?.split('T')[1]?.slice(0, 5) ?? // "22:00:00" -> "22:00"
                   ''}
               </dd>
 

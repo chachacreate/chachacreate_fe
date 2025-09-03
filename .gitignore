@@ -111,5 +111,3 @@ logs
 lerna-debug.log*
 
 dist-ssr
-
-src/App/App.tsx

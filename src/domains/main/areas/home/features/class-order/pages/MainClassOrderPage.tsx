@@ -1,9 +1,15 @@
 // src/domains/main/areas/home/features/class-order/pages/MainClassOrderPage.tsx
-import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import { ArrowLeft } from "lucide-react";
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import { ArrowLeft } from 'lucide-react';
+import { loadTossPayments } from '@tosspayments/tosspayments-sdk';
+import { v4 as uuidv4 } from 'uuid';
+import { jwtDecode } from 'jwt-decode';
+import CryptoJS from 'crypto-js';
+
+const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY;
 
 type OrderState = {
   classId?: string;
@@ -18,19 +24,29 @@ type OrderState = {
   };
 };
 
+type DecodedToken = {
+  sub: string;
+};
+
+function generateCustomerKey(email: string): string {
+  // salt를 추가하면 안전성 증가
+  const salt = 'mySecretSalt_';
+  const hash = CryptoJS.SHA256(salt + email).toString(); // 64자 hex
+  return `ck_${hash.slice(0, 30)}`; // Toss 정책 50자 이하
+}
+
 export default function MainClassOrderPage() {
   const nav = useNavigate();
   const { state } = useLocation();
   const { classId, date, time, item } = (state || {}) as OrderState;
 
-  // 표시용 더미
-  const title = item?.title ?? "여름 복숭아 요거트 케이크 만들기!";
-  const host = item?.host ?? "{store}의 클래스";
-  const locationText = item?.location ?? "장소 상세";
-  const price = item?.price ?? 20000;
+  const title = item?.title;
+  const storeName = item?.host;
+  const addressRoad = item?.location;
+  const price = item?.price;
 
   // 결제/동의
-  const [payMethod, setPayMethod] = useState<"bank" | "card">("bank");
+  // const [payMethod, setPayMethod] = useState<"bank" | "card">("bank");
   const [agreeAll, setAgreeAll] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeNotice, setAgreeNotice] = useState(false);
@@ -45,17 +61,94 @@ export default function MainClassOrderPage() {
     }
   }, [agreeAll]);
 
+  const [customerName, setCustomerName] = useState('');
+  const [phone1, setPhone1] = useState('010');
+  const [phone2, setPhone2] = useState('');
+  const [phone3, setPhone3] = useState('');
+
+  // Toss 위젯 결제 관련 state
+  const [payment, setPayment] = useState<any>(null);
+  const clientKey = TOSS_CLIENT_KEY;
+
+  const token = localStorage.getItem('accessToken');
+  // const token = ''; // 테스트용
+  if (!token) {
+    console.error('Tocken이 존재하지 않습니다.');
+    return;
+  }
+
+  const decoded: DecodedToken = jwtDecode(token);
+  const email = decoded.sub;
+  // console.log(email);
+
+  useEffect(() => {
+    async function fetchPayment() {
+      try {
+        if (!email) {
+          throw new Error('JWT에 email이 없습니다.');
+        }
+
+        // ✅ 안전한 customerKey 생성
+        const customerKey = generateCustomerKey(email);
+
+        const tossPayments = await loadTossPayments(clientKey);
+        if (!tossPayments) {
+          throw new Error('Toss Payments SDK 로드 실패');
+        }
+        const payment = tossPayments.payment({
+          customerKey,
+        });
+
+        setPayment(payment);
+      } catch (error) {
+        console.error('Error fetching payment:', error);
+      }
+    }
+
+    fetchPayment();
+  }, [clientKey, email]);
+
   const formatted = useMemo(() => {
-    if (!date || !time) return "";
+    if (!date || !time) return '';
     const d = new Date(`${date}T${time}`);
-    const yoil = ["일", "월", "화", "수", "목", "금", "토"][d.getDay()];
+    const yoil = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
     const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mi = String(d.getMinutes()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
     return `${yyyy}.${mm}.${dd}(${yoil})  ${hh}:${mi}`;
   }, [date, time]);
+
+  const amount = {
+    currency: 'KRW',
+    value: price,
+  };
+
+  const [orderId] = useState(() => uuidv4());
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handlePaymentRequest = async () => {
+    if (!payment || isProcessing) return;
+    setIsProcessing(true);
+    try {
+      await payment.requestPayment({
+        method: 'CARD',
+        amount,
+        orderId,
+        orderName: title,
+        successUrl: window.location.origin + `/main/classes/order/result?status=success`,
+        failUrl: window.location.origin + `/main/classes/order/result?status=fail`,
+        customerEmail: 'email@email',
+        customerName: customerName, // 입력값
+        customerMobilePhone: `${phone1}${phone2}${phone3}`, // 입력값
+      });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <>
@@ -81,9 +174,7 @@ export default function MainClassOrderPage() {
           <div className="space-y-4 sm:space-y-6">
             {/* 예약 클래스 정보 */}
             <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm">
-              <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">
-                예약 클래스 정보
-              </h2>
+              <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">예약 클래스 정보</h2>
 
               <div className="flex flex-col md:flex-row gap-4 sm:gap-5">
                 {/* 썸네일 */}
@@ -109,13 +200,13 @@ export default function MainClassOrderPage() {
                     <p className="text-[16px] sm:text-[18px] lg:text-[20px] font-bold leading-[1.5]">
                       {title}
                     </p>
-                    <p className="text-gray-600 text-sm sm:text-base">{host}</p>
-                    <p className="text-gray-500 text-sm sm:text-base">{locationText}</p>
+                    <p className="text-gray-600 text-sm sm:text-base">{storeName}</p>
+                    <p className="text-gray-500 text-sm sm:text-base">{addressRoad}</p>
                   </div>
 
                   <div className="mt-3 sm:mt-4">
                     <p className="text-gray-800 font-medium text-sm sm:text-base">
-                      {formatted || "날짜/시간 미선택"}
+                      {formatted || '날짜/시간 미선택'}
                     </p>
                   </div>
                 </div>
@@ -160,21 +251,24 @@ export default function MainClassOrderPage() {
 
           {/* 우측 (xl 이상 sticky, 모바일/태블릿은 일반 흐름) */}
           <aside className="xl:sticky xl:top-20 self-start">
-            <section className="
+            <section
+              className="
                 rounded-2xl border border-gray-200 bg-white
                 p-4 sm:p-6 shadow-sm
                 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-6
-                ">
+                "
+            >
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-y-4 sm:gap-y-5 gap-x-4">
                 <label className="text-gray-700 font-medium mt-1 sm:mt-2">예약자명</label>
                 <div className="grid">
                   <div className="relative">
                     <input
                       type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
                       className="h-10 sm:h-11 w-full rounded-lg border border-gray-300 px-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
                       placeholder="이름 입력"
                     />
-                   
                   </div>
                 </div>
 
@@ -183,48 +277,27 @@ export default function MainClassOrderPage() {
                   <input
                     type="tel"
                     className="h-10 sm:h-11 w-16 sm:w-20 rounded-lg border border-gray-300 px-2 sm:px-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
-                    defaultValue="010"
+                    value={phone1}
+                    onChange={(e) => setPhone1(e.target.value)}
                   />
                   <span>-</span>
                   <input
                     type="tel"
                     className="h-10 sm:h-11 w-20 sm:w-24 rounded-lg border border-gray-300 px-2 sm:px-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
-                    placeholder="1234"
+                    value={phone2}
+                    onChange={(e) => setPhone2(e.target.value)}
                   />
                   <span>-</span>
                   <input
                     type="tel"
                     className="h-10 sm:h-11 w-20 sm:w-24 rounded-lg border border-gray-300 px-2 sm:px-3 focus:outline-none focus:ring-2 focus:ring-gray-900"
-                    placeholder="5678"
+                    value={phone3}
+                    onChange={(e) => setPhone3(e.target.value)}
                   />
                 </div>
 
                 <label className="text-gray-700 font-medium mt-1 sm:mt-2">결제금액</label>
-                <div className="text-[16px] sm:text-[18px] font-bold text-rose-600">
-                  {price.toLocaleString()}원
-                </div>
-
-                <label className="text-gray-700 font-medium mt-1 sm:mt-2">결제방법</label>
-                <div className="flex items-center gap-4 sm:gap-6">
-                  <label className="inline-flex items-center gap-2 text-sm">
-                    <input
-                      type="radio"
-                      name="pay"
-                      checked={payMethod === "bank"}
-                      onChange={() => setPayMethod("bank")}
-                    />
-                    <span>무통장 입금</span>
-                  </label>
-                  <label className="inline-flex items-center gap-2 text-sm">
-                    <input
-                      type="radio"
-                      name="pay"
-                      checked={payMethod === "card"}
-                      onChange={() => setPayMethod("card")}
-                    />
-                    <span>카드결제</span>
-                  </label>
-                </div>
+                <div className="text-[16px] sm:text-[18px] font-bold text-rose-600">{price}원</div>
 
                 <label className="text-gray-700 font-medium mt-1 sm:mt-2">약관동의</label>
                 <div className="space-y-2.5 sm:space-y-3">
@@ -272,27 +345,18 @@ export default function MainClassOrderPage() {
 
               {/* 결제 버튼 */}
               <div className="mt-6 sm:mt-8">
+                <div id="payment-widget" className="mt-4" />
                 <button
-                    disabled={!(agreePrivacy && agreeNotice)}
-                    onClick={() => {
-                        if (!(agreePrivacy && agreeNotice)) return;
-
-                        // TODO: 실제 결제 API 연동 후, 성공/실패에 맞춰 아래 경로로 이동
-                        nav("/main/classes/order/result?status=success", {
-                        state: { classId, date, time, item }, // 결과 페이지에서 표시용
-                        });
-                        // 실패 테스트 시:
-                        // nav("/main/classes/order/result?status=fail", { state: { classId, date, time, item } });
-                    }}
-                    className={[
-                        "w-full h-12 sm:h-14 rounded-full font-semibold shadow-[0_8px_20px_rgba(0,0,0,0.15)]",
-                        agreePrivacy && agreeNotice
-                        ? "bg-[#2D4739] text-white hover:opacity-90"
-                        : "bg-gray-200 text-gray-500 cursor-not-allowed",
-                    ].join(" ")}
-                    >
-                    결제하기
-                    </button>
+                  onClick={handlePaymentRequest}
+                  disabled={!(agreePrivacy && agreeNotice)}
+                  className={`mt-4 w-full h-12 rounded-full font-semibold ${
+                    agreePrivacy && agreeNotice
+                      ? 'bg-[#2D4739] text-white hover:opacity-90'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  결제하기
+                </button>
               </div>
             </section>
           </aside>

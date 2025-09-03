@@ -1,10 +1,10 @@
 // src/domains/seller/areas/class/features/reservation/pages/ClassReservation.tsx
-import type { FC } from "react";
-import { useState, useMemo } from "react";
-import { useParams } from "react-router-dom";
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import SellerSidenavbar from "@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar";
+import type { FC } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import {
   ResponsiveContainer,
   BarChart,
@@ -14,224 +14,248 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-} from "recharts";
+} from 'recharts';
+import { get } from '@src/libs/request';
 
-// 타입 정의
+/** ============ 타입 ============ */
 type Params = { storeUrl: string };
 
+/** /classes/reservation 응답 DTO */
+type ReservationItemDTO = {
+  reservedDate: string; // "YYYY-MM-DD"
+  className: string;
+  reservedTime: string; // "HH:mm"
+  reserverName: string;
+  reserverPhone: string;
+  paymentAmount: number;
+  status: 'ORDER_OK' | 'CANCEL_RQ' | 'CANCEL_OK' | string;
+  updatedAt: string; // ISO
+};
+type ReservationListDTO = {
+  storeUrl: string;
+  yearMonth: string | null;
+  items: ReservationItemDTO[];
+};
+
+/** 공통 Envelope */
+type Envelope<T> = { status: number; message?: string; data: T };
+function isObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null;
+}
+function unwrapData<T>(res: unknown): T {
+  if (isObject(res) && 'data' in res) {
+    const inner = (res as { data: unknown }).data;
+    if (isObject(inner) && 'data' in inner && 'status' in inner) {
+      return (inner as Envelope<T>).data;
+    }
+    return inner as T;
+  }
+  if (isObject(res) && 'data' in res && 'status' in res) {
+    return (res as Envelope<T>).data;
+  }
+  return res as T;
+}
+
+/** ============ 뷰 모델 ============ */
 type ReservationRow = {
   id: string;
-  date: string;          // YYYY-MM-DD
-  classId: string;
+  date: string; // YYYY-MM-DD
+  classId: string; // 실제 id가 없으므로 className을 id로 사용
   className: string;
-  time: string;          // HH:mm
+  time: string; // HH:mm
   customerName: string;
   customerPhone: string;
-  paymentMethod: string;
+  paymentMethod: string; // API에 없어서 "-" 고정
   amount: number;
-  status: "예약완료" | "수강완료" | "취소요청" | "취소완료"; // 🔹 "취소완료" 추가
-  updatedAt: string;     // YYYY-MM-DD
+  status: '예약완료' | '취소요청' | '취소완료';
+  updatedAt: string; // YYYY-MM-DD
 };
 
-// 금액 포맷
-const KRW = new Intl.NumberFormat("ko-KR");
-const BRAND = "#2D4739";
-const fmtKRW = (v: number) => `₩ ${KRW.format(v)}`;
+type ChartRow = { key: string; count: number };
 
-// 24시간 데이터 생성 함수
-const generate24HourData = (baseMultiplier = 1) => {
-  const hours = [];
-  for (let i = 0; i < 24; i++) {
-    const hour = i.toString().padStart(2, '0') + ':00';
-    const count = Math.floor(Math.random() * 15 * baseMultiplier) + 1;
-    const revenue = count * (Math.floor(Math.random() * 30000) + 40000);
-    hours.push({ key: hour, count, revenue });
+const KRW = new Intl.NumberFormat('ko-KR');
+const BRAND = '#2D4739';
+
+/** ============ 유틸 ============ */
+function mapStatus(api: ReservationItemDTO['status']): ReservationRow['status'] {
+  switch (api) {
+    case 'ORDER_OK':
+      return '예약완료';
+    case 'CANCEL_RQ':
+      return '취소요청';
+    case 'CANCEL_OK':
+      return '취소완료';
+    default:
+      return '예약완료';
   }
-  return hours;
-};
+}
+function pad2(n: number) {
+  return String(n).padStart(2, '0');
+}
+function weekdayKorean(d: Date) {
+  return ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+}
 
-// 주별 데이터 생성 함수
-const generateWeekData = (_weekStart: string, baseMultiplier = 1) => {
-  const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-  return weekdays.map(day => {
-    const count = Math.floor(Math.random() * 20 * baseMultiplier) + 5;
-    const revenue = count * (Math.floor(Math.random() * 40000) + 50000);
-    return { key: day, count, revenue };
-  });
-};
-
-// 현재 주의 시작일 계산
-const getCurrentWeekStart = () => {
-  const today = new Date();
-  const day = today.getDay();
-  const diff = today.getDate() - day + (day === 0 ? -6 : 1); // 월요일이 시작
-  const monday = new Date(today.setDate(diff));
-  return monday.toISOString().split('T')[0];
-};
-
-// 더미 예약 데이터
-const mockReservations: ReservationRow[] = [
-  {
-    id: "R-1001",
-    date: "2025-09-01",
-    classId: "C-3001",
-    className: "도자기 원데이",
-    time: "10:00",
-    customerName: "김철수",
-    customerPhone: "010-1111-2222",
-    paymentMethod: "카드",
-    amount: 55000,
-    status: "예약완료",
-    updatedAt: "2025-08-30",
-  },
-  {
-    id: "R-1002",
-    date: "2025-09-02",
-    classId: "C-3002",
-    className: "라탄 트레이",
-    time: "11:00",
-    customerName: "이영희",
-    customerPhone: "010-3333-4444",
-    paymentMethod: "계좌이체",
-    amount: 60000,
-    status: "수강완료",
-    updatedAt: "2025-08-31",
-  },
-  {
-    id: "R-1003",
-    date: "2025-09-03",
-    classId: "C-3003",
-    className: "플라워 클래스",
-    time: "14:00",
-    customerName: "박민수",
-    customerPhone: "010-5555-6666",
-    paymentMethod: "카드",
-    amount: 70000,
-    status: "취소요청",
-    updatedAt: "2025-09-01",
-  },
-  {
-    id: "R-1004",
-    date: "2025-08-15",
-    classId: "C-3001",
-    className: "도자기 원데이",
-    time: "15:00",
-    customerName: "정수진",
-    customerPhone: "010-7777-8888",
-    paymentMethod: "카드",
-    amount: 55000,
-    status: "수강완료",
-    updatedAt: "2025-08-15",
-  },
-  {
-    id: "R-1005",
-    date: "2025-08-20",
-    classId: "C-3004",
-    className: "캔들 만들기",
-    time: "16:30",
-    customerName: "한지민",
-    customerPhone: "010-9999-0000",
-    paymentMethod: "계좌이체",
-    amount: 45000,
-    status: "예약완료",
-    updatedAt: "2025-08-18",
-  },
-  {
-    id: "R-1006",
-    date: "2025-09-05",
-    classId: "C-3002",
-    className: "라탄 트레이",
-    time: "13:00",
-    customerName: "최민호",
-    customerPhone: "010-1234-5678",
-    paymentMethod: "카드",
-    amount: 60000,
-    status: "예약완료",
-    updatedAt: "2025-09-02",
-  },
-];
-
-// 클래스 목록
-const classOptions = [
-  { id: "ALL", name: "전체" },
-  { id: "C-3001", name: "도자기 원데이" },
-  { id: "C-3002", name: "라탄 트레이" },
-  { id: "C-3003", name: "플라워 클래스" },
-  { id: "C-3004", name: "캔들 만들기" },
-];
-
+/** ============ 컴포넌트 ============ */
 const ClassReservation: FC = () => {
-  const { storeUrl = "" } = useParams<Params>();
+  const { storeUrl = '' } = useParams<Params>();
 
-  // 🔹 예약 데이터 상태로 관리 (모달에서 상태 업데이트)
-  const [reservations, setReservations] = useState<ReservationRow[]>(mockReservations);
+  // 로딩/에러
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // 🔹 모달을 위한 타깃 예약
+  // 데이터 상태
+  const [reservations, setReservations] = useState<ReservationRow[]>([]);
+
+  // 모달(취소요청 행)
   const [cancelTarget, setCancelTarget] = useState<ReservationRow | null>(null);
 
-  const [globalMode, setGlobalMode] = useState<"hour" | "weekday">("hour");
-  const [classMode, setClassMode] = useState<"hour" | "weekday">("hour");
-  const [selectedMonth, setSelectedMonth] = useState<string>("2025-09");
-  const [selectedWeek, setSelectedWeek] = useState<string>(getCurrentWeekStart());
-  const [selectedClassWeek, setSelectedClassWeek] = useState<string>(getCurrentWeekStart());
-  const [selectedClass, setSelectedClass] = useState<string>("C-3001");
-  const [tableClassFilter, setTableClassFilter] = useState<string>("ALL");
+  // 컨트롤 상태 (UI 유지)
+  const [globalMode, setGlobalMode] = useState<'hour' | 'weekday'>('hour');
+  const [classMode, setClassMode] = useState<'hour' | 'weekday'>('hour');
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`; // e.g. "2025-09"
+  });
+  const [selectedClass, setSelectedClass] = useState<string>('ALL');
+  const [tableClassFilter, setTableClassFilter] = useState<string>('ALL');
 
-  // 전체 통계 데이터
-  const globalStats = useMemo(() => {
-    if (globalMode === "hour") {
-      return generate24HourData(1);
-    } else {
-      return generateWeekData(selectedWeek, 1);
-    }
-  }, [globalMode, selectedWeek]);
+  // 초기 데이터 패치
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setIsLoading(true);
+        setLoadError(null);
 
-  // 클래스별 통계 데이터
-  const classStats = useMemo(() => {
-    if (classMode === "hour") {
-      return generate24HourData(0.6); // 클래스별은 전체보다 조금 적게
-    } else {
-      return generateWeekData(selectedClassWeek, 0.6);
-    }
-  }, [classMode, selectedClassWeek, selectedClass]);
+        const listRes = await get<ReservationListDTO | Envelope<ReservationListDTO>>(
+          `/seller/${encodeURIComponent(storeUrl)}/classes/reservation`
+        );
 
-  // 테이블 필터링된 예약 데이터
+        // 예약 리스트
+        const list = unwrapData<ReservationListDTO>(listRes);
+        const mappedRows: ReservationRow[] = (list.items || []).map((it, i) => ({
+          id: String(i + 1),
+          date: it.reservedDate,
+          classId: it.className, // 실제 id 없음 → 이름으로 대체
+          className: it.className,
+          time: it.reservedTime,
+          customerName: it.reserverName,
+          customerPhone: it.reserverPhone,
+          paymentMethod: '-', // API 없음
+          amount: it.paymentAmount,
+          status: mapStatus(it.status),
+          updatedAt: (it.updatedAt || '').slice(0, 10),
+        }));
+
+        if (!alive) return;
+        setReservations(mappedRows);
+
+        // selectedMonth를 데이터에 맞춰 자동 보정(최초 1회)
+        if (mappedRows.length > 0) {
+          const ym = mappedRows[0].date?.slice(0, 7);
+          if (ym) setSelectedMonth(ym);
+        }
+      } catch (e) {
+        if (!alive) return;
+        setLoadError(e instanceof Error ? e.message : '데이터를 불러오지 못했어요.');
+      } finally {
+        if (alive) setIsLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [storeUrl]);
+
+  // 클래스 옵션 (API에 classId가 없으니 className 중복 제거)
+  const classOptions = useMemo(() => {
+    const set = new Set<string>();
+    reservations.forEach((r) => set.add(r.className));
+    return [{ id: 'ALL', name: '전체' }].concat(
+      Array.from(set).map((name) => ({ id: name, name }))
+    );
+  }, [reservations]);
+
+  // 표 필터링
   const filteredReservations = useMemo(() => {
-    return reservations.filter(reservation => {
-      const monthMatch = reservation.date.startsWith(selectedMonth);
-      const classMatch = tableClassFilter === "ALL" || reservation.classId === tableClassFilter;
-      return monthMatch && classMatch;
+    return reservations.filter((r) => {
+      const monthOk = r.date.startsWith(selectedMonth);
+      const classOk = tableClassFilter === 'ALL' || r.className === tableClassFilter;
+      return monthOk && classOk;
     });
   }, [reservations, selectedMonth, tableClassFilter]);
 
-  // 🔹 행 클릭 핸들러: "취소요청"인 경우만 모달 오픈
-  const onRowClick = (r: ReservationRow) => {
-    if (r.status === "취소요청") {
-      setCancelTarget(r);
-    }
+  /** --------- 차트 데이터 빌더 (월 단위 기준) --------- */
+  // 시간별 집계: 월 전체 00~23시
+  const buildHourData = (data: ReservationRow[]) => {
+    const hours = Array.from({ length: 24 }, (_, i) => `${pad2(i)}:00`);
+    const map = new Map<string, number>(hours.map((h) => [h, 0]));
+    data.forEach((r) => {
+      if (!r.date.startsWith(selectedMonth)) return;
+      const hh = `${r.time.slice(0, 2)}:00`;
+      map.set(hh, (map.get(hh) ?? 0) + 1);
+    });
+    return hours.map((h) => ({ key: h, count: map.get(h) ?? 0 }));
   };
 
-  // 🔹 취소 확정
+  // 요일별 집계: 월 전체 월~일
+  const buildWeekdayData = (data: ReservationRow[]) => {
+    const buckets = new Map<string, number>([
+      ['월', 0],
+      ['화', 0],
+      ['수', 0],
+      ['목', 0],
+      ['금', 0],
+      ['토', 0],
+      ['일', 0],
+    ]);
+    data.forEach((r) => {
+      if (!r.date.startsWith(selectedMonth)) return;
+      const d = new Date(`${r.date}T00:00:00`);
+      const w = weekdayKorean(d); // 일~토
+      buckets.set(w, (buckets.get(w) ?? 0) + 1);
+    });
+    const order = ['월', '화', '수', '목', '금', '토', '일'];
+    return order.map((k) => ({ key: k, count: buckets.get(k) ?? 0 }));
+  };
+
+  /** --------- 전체 통계 차트 데이터 --------- */
+  const globalData: ChartRow[] = useMemo(() => {
+    if (globalMode === 'hour') return buildHourData(reservations);
+    return buildWeekdayData(reservations); // 월 단위 요일 집계
+  }, [globalMode, reservations, selectedMonth]);
+
+  /** --------- 클래스별 통계 차트 데이터 --------- */
+  const classData: ChartRow[] = useMemo(() => {
+    const target =
+      selectedClass === 'ALL'
+        ? reservations
+        : reservations.filter((r) => r.className === selectedClass);
+
+    if (classMode === 'hour') return buildHourData(target);
+    return buildWeekdayData(target); // 월 단위 요일 집계
+  }, [classMode, reservations, selectedClass, selectedMonth]);
+
+  // 행 클릭(취소요청만 모달)
+  const onRowClick = (r: ReservationRow) => {
+    if (r.status === '취소요청') setCancelTarget(r);
+  };
   const confirmCancel = () => {
     if (!cancelTarget) return;
     const today = new Date().toISOString().slice(0, 10);
-
-    setReservations(prev =>
-      prev.map(item =>
-        item.id === cancelTarget.id
-          ? { ...item, status: "취소완료", updatedAt: today }
-          : item
+    setReservations((prev) =>
+      prev.map((x) =>
+        x.id === cancelTarget.id ? { ...x, status: '취소완료', updatedAt: today } : x
       )
     );
     setCancelTarget(null);
   };
-
-  // 🔹 모달 닫기
   const closeModal = () => setCancelTarget(null);
 
   return (
     <>
-      {/* 반짝(Shimmer) 효과 스타일 */}
+      {/* 반짝 효과 */}
       <style>{`
         @keyframes shimmer-rose {
           0% { background-position: -200% 0; }
@@ -254,179 +278,22 @@ const ClassReservation: FC = () => {
 
       <SellerSidenavbar>
         <div className="space-y-8">
-          {/* 전체 클래스 예약 통계 */}
-          <section className="rounded-2xl border bg-white">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b">
-              <h2 className="text-base sm:text-lg font-semibold">전체 클래스 예약 통계</h2>
-              <div className="flex items-center gap-4">
-                {globalMode === "weekday" && (
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs sm:text-sm text-gray-600">주 선택</label>
-                    <input
-                      type="week"
-                      value={selectedWeek}
-                      onChange={(e) => setSelectedWeek(e.target.value)}
-                      className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
-                    />
-                  </div>
-                )}
-                <div className="bg-gray-100 rounded-md p-1 inline-flex">
-                  <button
-                    type="button"
-                    onClick={() => setGlobalMode("hour")}
-                    className={[
-                      "px-3 py-1.5 rounded text-xs sm:text-sm",
-                      globalMode === "hour" ? "bg-white shadow" : "text-gray-600",
-                    ].join(" ")}
-                  >
-                    시간별 (24시간)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setGlobalMode("weekday")}
-                    className={[
-                      "px-3 py-1.5 rounded text-xs sm:text-sm",
-                      globalMode === "weekday" ? "bg-white shadow" : "text-gray-600",
-                    ].join(" ")}
-                  >
-                    요일별
-                  </button>
-                </div>
-              </div>
+          {/* 로딩/에러 */}
+          {isLoading && (
+            <div className="rounded-2xl border bg-white p-6 text-sm text-gray-700">
+              불러오는 중...
             </div>
-
-            <div className="p-3 sm:p-6 h-[280px] sm:h-[360px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={globalStats} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="key" 
-                    tick={{ fontSize: 12 }}
-                    interval={globalMode === "hour" ? 1 : 0}
-                  />
-                  <YAxis yAxisId="count" tick={{ fontSize: 12 }} />
-                  <YAxis
-                    yAxisId="revenue"
-                    orientation="right"
-                    tickFormatter={(v) => KRW.format(v)}
-                  />
-                  <Tooltip
-                    formatter={(v: number, name) =>
-                      name === "예약 건수" ? [`${v} 건`, name] : [fmtKRW(v), name]
-                    }
-                  />
-                  <Legend />
-                  <Bar yAxisId="count" dataKey="count" name="예약 건수" fill="#8884d8" radius={[6, 6, 0, 0]} />
-                  <Bar yAxisId="revenue" dataKey="revenue" name="결제 금액" fill={BRAND} radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          )}
+          {loadError && !isLoading && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
+              {loadError}
             </div>
-          </section>
+          )}
 
-          {/* 클래스별 예약 통계 */}
-          <section className="rounded-2xl border bg-white">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b">
-              <div className="flex items-center gap-4">
-                <h2 className="text-base sm:text-lg font-semibold">클래스별 예약 통계</h2>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs sm:text-sm text-gray-600">클래스 선택</label>
-                  <select
-                    value={selectedClass}
-                    onChange={(e) => setSelectedClass(e.target.value)}
-                    className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
-                  >
-                    {classOptions.slice(1).map(option => (
-                      <option key={option.id} value={option.id}>
-                        {option.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                {classMode === "weekday" && (
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs sm:text-sm text-gray-600">주 선택</label>
-                    <input
-                      type="week"
-                      value={selectedClassWeek}
-                      onChange={(e) => setSelectedClassWeek(e.target.value)}
-                      className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
-                    />
-                  </div>
-                )}
-                <div className="bg-gray-100 rounded-md p-1 inline-flex">
-                  <button
-                    type="button"
-                    onClick={() => setClassMode("hour")}
-                    className={[
-                      "px-3 py-1.5 rounded text-xs sm:text-sm",
-                      classMode === "hour" ? "bg-white shadow" : "text-gray-600",
-                    ].join(" ")}
-                  >
-                    시간별 (24시간)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setClassMode("weekday")}
-                    className={[
-                      "px-3 py-1.5 rounded text-xs sm:text-sm",
-                      classMode === "weekday" ? "bg-white shadow" : "text-gray-600",
-                    ].join(" ")}
-                  >
-                    요일별
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 sm:p-6 h-[280px] sm:h-[360px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={classStats} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="key" 
-                    tick={{ fontSize: 12 }}
-                    interval={classMode === "hour" ? 1 : 0}
-                  />
-                  <YAxis yAxisId="count" tick={{ fontSize: 12 }} />
-                  <YAxis
-                    yAxisId="revenue"
-                    orientation="right"
-                    tickFormatter={(v) => KRW.format(v)}
-                  />
-                  <Tooltip
-                    formatter={(v: number, name) =>
-                      name === "예약 건수" ? [`${v} 건`, name] : [fmtKRW(v), name]
-                    }
-                  />
-                  <Legend />
-                  <Bar yAxisId="count" dataKey="count" name="예약 건수" fill="#82ca9d" radius={[6, 6, 0, 0]} />
-                  <Bar yAxisId="revenue" dataKey="revenue" name="결제 금액" fill={BRAND} radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </section>
-
-          {/* 클래스 예약 확인 테이블 */}
-          <section className="rounded-2xl border bg-white">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 border-b gap-3">
-              <h2 className="text-base sm:text-lg font-semibold">클래스 예약 확인</h2>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-xs sm:text-sm text-gray-600">클래스 필터</label>
-                  <select
-                    value={tableClassFilter}
-                    onChange={(e) => setTableClassFilter(e.target.value)}
-                    className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
-                  >
-                    {classOptions.map(option => (
-                      <option key={option.id} value={option.id}>
-                        {option.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+          {!isLoading && !loadError && (
+            <>
+              {/* 🔼 월 선택: 페이지 최상단 공통 컨트롤로 이동 */}
+              <div className="rounded-2xl border bg-white px-4 sm:px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <label className="text-xs sm:text-sm text-gray-600">월 선택</label>
                   <input
@@ -437,111 +304,256 @@ const ClassReservation: FC = () => {
                   />
                 </div>
               </div>
-            </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[960px] text-xs sm:text-sm">
-                <thead className="bg-gray-50 text-gray-600">
-                  <tr>
-                    <th className="px-3 py-3 text-left">예약 일자</th>
-                    <th className="px-3 py-3 text-left">클래스명</th>
-                    <th className="px-3 py-3 text-left">예약 시간</th>
-                    <th className="px-3 py-3 text-left">예약자명</th>
-                    <th className="px-3 py-3 text-left">연락처</th>
-                    <th className="px-3 py-3 text-left">결제 방법</th>
-                    <th className="px-3 py-3 text-right">결제 금액</th>
-                    <th className="px-3 py-3 text-left">예약 상태</th>
-                    <th className="px-3 py-3 text-left">최근 수정일</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredReservations.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="px-3 py-8 text-center text-gray-500">
-                        선택한 조건에 해당하는 예약이 없습니다.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredReservations.map((r) => {
-                      const isCancelReq = r.status === "취소요청";
-                      return (
-                        <tr
-                          key={r.id}
-                          onClick={() => onRowClick(r)}
-                          className={[
-                            "border-t border-gray-100",
-                            isCancelReq ? "tr-rose-shimmer cursor-pointer" : "",
-                            !isCancelReq ? "hover:bg-gray-50" : "",
-                          ].join(" ")}
-                          title={isCancelReq ? "클릭하여 취소 처리" : undefined}
-                        >
-                          <td className="px-3 py-3">{r.date}</td>
-                          <td className="px-3 py-3">{r.className}</td>
-                          <td className="px-3 py-3">{r.time}</td>
-                          <td className="px-3 py-3">{r.customerName}</td>
-                          <td className="px-3 py-3">{r.customerPhone}</td>
-                          <td className="px-3 py-3">{r.paymentMethod}</td>
-                          <td className="px-3 py-3 text-right">₩ {KRW.format(r.amount)}</td>
-                          <td className="px-3 py-3">
-                            {r.status === "예약완료" && (
-                              <span className="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700">
-                                예약완료
-                              </span>
-                            )}
-                            {r.status === "수강완료" && (
-                              <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
-                                수강완료
-                              </span>
-                            )}
-                            {r.status === "취소요청" && (
-                              <span className="px-2 py-1 rounded-full text-xs bg-rose-100 text-rose-700">
-                                취소요청
-                              </span>
-                            )}
-                            {r.status === "취소완료" && (
-                              <span className="px-2 py-1 rounded-full text-xs bg-rose-200 text-rose-800">
-                                취소완료
-                              </span>
-                            )}
+              {/* 전체 클래스 예약 통계 */}
+              <section className="rounded-2xl border bg-white">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b">
+                  <h2 className="text-base sm:text-lg font-semibold">전체 클래스 예약 통계</h2>
+                  <div className="flex items-center gap-4">
+                    {/* 요일별은 월 단위 집계이므로 week 입력 숨김 */}
+                    <div className="bg-gray-100 rounded-md p-1 inline-flex">
+                      <button
+                        type="button"
+                        onClick={() => setGlobalMode('hour')}
+                        className={[
+                          'px-3 py-1.5 rounded text-xs sm:text-sm',
+                          globalMode === 'hour' ? 'bg-white shadow' : 'text-gray-600',
+                        ].join(' ')}
+                      >
+                        시간별 (24시간)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGlobalMode('weekday')}
+                        className={[
+                          'px-3 py-1.5 rounded text-xs sm:text-sm',
+                          globalMode === 'weekday' ? 'bg-white shadow' : 'text-gray-600',
+                        ].join(' ')}
+                      >
+                        요일별 (월 단위)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 sm:p-6 h-[280px] sm:h-[360px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={globalData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="key"
+                        tick={{ fontSize: 12 }}
+                        interval={globalMode === 'hour' ? 1 : 0}
+                      />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip formatter={(v: number) => [`${v} 건`, '예약 건수']} />
+                      <Legend />
+                      <Bar dataKey="count" name="예약 건수" fill={BRAND} radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+
+              {/* 클래스별 예약 통계 */}
+              <section className="rounded-2xl border bg-white">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b">
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-base sm:text-lg font-semibold">클래스별 예약 통계</h2>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs sm:text-sm text-gray-600">클래스 선택</label>
+                      <select
+                        value={selectedClass}
+                        onChange={(e) => setSelectedClass(e.target.value)}
+                        className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
+                      >
+                        {classOptions.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {/* 요일별은 월 단위 집계이므로 week 입력 숨김 */}
+                    <div className="bg-gray-100 rounded-md p-1 inline-flex">
+                      <button
+                        type="button"
+                        onClick={() => setClassMode('hour')}
+                        className={[
+                          'px-3 py-1.5 rounded text-xs sm:text-sm',
+                          classMode === 'hour' ? 'bg-white shadow' : 'text-gray-600',
+                        ].join(' ')}
+                      >
+                        시간별 (24시간)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setClassMode('weekday')}
+                        className={[
+                          'px-3 py-1.5 rounded text-xs sm:text-sm',
+                          classMode === 'weekday' ? 'bg-white shadow' : 'text-gray-600',
+                        ].join(' ')}
+                      >
+                        요일별 (월 단위)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 sm:p-6 h-[280px] sm:h-[360px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={classData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="key"
+                        tick={{ fontSize: 12 }}
+                        interval={classMode === 'hour' ? 1 : 0}
+                      />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip formatter={(v: number) => [`${v} 건`, '예약 건수']} />
+                      <Legend />
+                      <Bar dataKey="count" name="예약 건수" fill="#82ca9d" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+
+              {/* 클래스 예약 확인 테이블 */}
+              <section className="rounded-2xl border bg-white">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 border-b gap-3">
+                  <h2 className="text-base sm:text-lg font-semibold">클래스 예약 확인</h2>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs sm:text-sm text-gray-600">클래스 필터</label>
+                      <select
+                        value={tableClassFilter}
+                        onChange={(e) => setTableClassFilter(e.target.value)}
+                        className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
+                      >
+                        {classOptions.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {/* ⬇️ 월 선택 입력은 상단 공통 바로 이동했으므로 제거됨 */}
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w=[960px] text-xs sm:text-sm">
+                    <thead className="bg-gray-50 text-gray-600">
+                      <tr>
+                        <th className="px-3 py-3 text-left">예약 일자</th>
+                        <th className="px-3 py-3 text-left">클래스명</th>
+                        <th className="px-3 py-3 text-left">예약 시간</th>
+                        <th className="px-3 py-3 text-left">예약자명</th>
+                        <th className="px-3 py-3 text-left">연락처</th>
+                        <th className="px-3 py-3 text-left">결제 방법</th>
+                        <th className="px-3 py-3 text-right">결제 금액</th>
+                        <th className="px-3 py-3 text-left">예약 상태</th>
+                        <th className="px-3 py-3 text-left">최근 수정일</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredReservations.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="px-3 py-8 text-center text-gray-500">
+                            선택한 조건에 해당하는 예약이 없습니다.
                           </td>
-                          <td className="px-3 py-3">{r.updatedAt}</td>
                         </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                      ) : (
+                        filteredReservations.map((r) => {
+                          const isCancelReq = r.status === '취소요청';
+                          return (
+                            <tr
+                              key={`${r.id}-${r.updatedAt}`}
+                              onClick={() => onRowClick(r)}
+                              className={[
+                                'border-t border-gray-100',
+                                isCancelReq ? 'tr-rose-shimmer cursor-pointer' : '',
+                                !isCancelReq ? 'hover:bg-gray-50' : '',
+                              ].join(' ')}
+                              title={isCancelReq ? '클릭하여 취소 처리' : undefined}
+                            >
+                              <td className="px-3 py-3">{r.date}</td>
+                              <td className="px-3 py-3">{r.className}</td>
+                              <td className="px-3 py-3">{r.time}</td>
+                              <td className="px-3 py-3">{r.customerName}</td>
+                              <td className="px-3 py-3">{r.customerPhone}</td>
+                              <td className="px-3 py-3">{r.paymentMethod}</td>
+                              <td className="px-3 py-3 text-right">₩ {KRW.format(r.amount)}</td>
+                              <td className="px-3 py-3">
+                                {r.status === '예약완료' && (
+                                  <span className="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700">
+                                    예약완료
+                                  </span>
+                                )}
+                                {r.status === '취소요청' && (
+                                  <span className="px-2 py-1 rounded-full text-xs bg-rose-100 text-rose-700">
+                                    취소요청
+                                  </span>
+                                )}
+                                {r.status === '취소완료' && (
+                                  <span className="px-2 py-1 rounded-full text-xs bg-rose-200 text-rose-800">
+                                    취소완료
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-3 py-3">{r.updatedAt}</td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
 
-            {/* 테이블 요약 정보 */}
-            {filteredReservations.length > 0 && (
-              <div className="px-4 sm:px-6 py-3 border-t bg-gray-50 text-xs sm:text-sm text-gray-600">
-                총 {filteredReservations.length}건 | 
-                총 금액: {fmtKRW(filteredReservations.reduce((sum, r) => sum + r.amount, 0))}
-              </div>
-            )}
-          </section>
+                {filteredReservations.length > 0 && (
+                  <div className="px-4 sm:px-6 py-3 border-t bg-gray-50 text-xs sm:text-sm text-gray-600">
+                    총 {filteredReservations.length}건 | 총 금액: ₩{' '}
+                    {KRW.format(filteredReservations.reduce((sum, r) => sum + r.amount, 0))}
+                  </div>
+                )}
+              </section>
+            </>
+          )}
         </div>
       </SellerSidenavbar>
 
-      {/* 🔹 취소 확인 모달 */}
+      {/* 취소 확인 모달 */}
       {cancelTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40">
           <div className="w-full max-w-[520px] rounded-xl overflow-hidden bg-white shadow-2xl">
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <h4 className="font-semibold">예약 취소 처리</h4>
-              <button className="text-gray-500" onClick={closeModal}>×</button>
+              <button className="text-gray-500" onClick={closeModal}>
+                ×
+              </button>
             </div>
             <div className="p-4 space-y-3">
               <p className="text-sm text-gray-700">
-                아래 예약을 <span className="font-semibold text-rose-700">취소 처리</span>하시겠습니까?
+                아래 예약을 <span className="font-semibold text-rose-700">취소 처리</span>
+                하시겠습니까?
               </p>
               <div className="rounded-lg border bg-gray-50 p-3 text-sm text-gray-700">
-                <div>예약번호: <span className="font-mono">{cancelTarget.id}</span></div>
-                <div>클래스: {cancelTarget.className} ({cancelTarget.classId})</div>
-                <div>일시: {cancelTarget.date} {cancelTarget.time}</div>
-                <div>예약자: {cancelTarget.customerName} · {cancelTarget.customerPhone}</div>
-                <div>결제: {cancelTarget.paymentMethod} · {fmtKRW(cancelTarget.amount)}</div>
+                <div>
+                  예약번호: <span className="font-mono">{cancelTarget.id}</span>
+                </div>
+                <div>
+                  클래스: {cancelTarget.className} ({cancelTarget.classId})
+                </div>
+                <div>
+                  일시: {cancelTarget.date} {cancelTarget.time}
+                </div>
+                <div>
+                  예약자: {cancelTarget.customerName} · {cancelTarget.customerPhone}
+                </div>
+                <div>
+                  결제: {cancelTarget.paymentMethod} · ₩ {KRW.format(cancelTarget.amount)}
+                </div>
               </div>
             </div>
             <div className="p-4 border-t flex flex-col sm:flex-row gap-2 sm:justify-end">

@@ -1,9 +1,11 @@
 // src/shared/areas/layout/features/header/Header.tsx
-import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import Searchbar from "@src/shared/areas/navigation/features/searchbar/Searchbar";
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import Searchbar from '@src/shared/areas/navigation/features/searchbar/Searchbar';
+import { getUserInfoFromToken } from '@src/libs/apiService';
+import { goToLogin, goToMain, goToMessage, goToSignup } from '@src/shared/LegacyNavigate';
+import type { JWTPayload } from '@src/libs/apiResponse';
 
-type MeResponse = { name: string };
 type UserLite = { name: string } | null;
 
 type HeaderProps = {
@@ -11,104 +13,99 @@ type HeaderProps = {
   storeSlug?: string | null;
   onLogout?: () => Promise<void> | void;
   hideTopBar?: boolean;
-  useMockAuth?: boolean;
-  mockUserName?: string;
-  mockEmail?: string;
-  mockStoreSlug?: string;
 };
 
 const RESERVED_PREFIXES = new Set([
-  "main","auth","login","signup","admin","api","assets","static","",
+  'main',
+  'auth',
+  'login',
+  'signup',
+  'admin',
+  'api',
+  'assets',
+  'static',
+  '',
 ]);
 
-export default function Header({
-  user,
-  storeSlug,
-  onLogout,
-  hideTopBar = false,
-  useMockAuth = true,
-  mockUserName = "홍길동",
-  mockEmail = "mock@example.com",
-  mockStoreSlug = "mintstore",
-}: HeaderProps) {
+export default function Header({ user, storeSlug, onLogout, hideTopBar = false }: HeaderProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
   const [me, setMe] = useState<UserLite>(user ?? null);
-  const [loadingMe, setLoadingMe] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  // 모킹 로그인
-  const handleMockLogin = () => {
-    localStorage.setItem("accessToken", "mock-token");
-    localStorage.setItem("email", mockEmail);
-    localStorage.setItem("userName", mockUserName);
-    setMe({ name: mockUserName });
-  };
 
   // 공통 로그아웃
   const handleLogout = async () => {
-    try { if (onLogout) await onLogout(); }
-    finally {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("Authorization");
-      localStorage.removeItem("email");
+    try {
+      if (onLogout) await onLogout();
+    } finally {
+      localStorage.removeItem('accessToken');
       setMe(null);
       setMenuOpen(false);
-      navigate("/main");
+      navigate('/main');
     }
   };
 
   // 유저 상태 로딩
   useEffect(() => {
-    if (user) { setMe(user); return; }
-    const token = localStorage.getItem("accessToken") || localStorage.getItem("Authorization");
-    if (!token) { setMe(null); return; }
-
-    if (useMockAuth) {
-      const name = localStorage.getItem("userName") ?? mockUserName;
-      setMe({ name });
+    if (user) {
+      setMe(user);
       return;
     }
 
-    let mounted = true;
-    (async () => {
-      try {
-        setLoadingMe(true);
-        const { get } = await import("@src/libs/request");
-        const res = await get<MeResponse>("/api/auth/me");
-        if (!mounted) return;
-        const name = res.data?.name ?? localStorage.getItem("userName") ?? "사용자";
-        localStorage.setItem("userName", name);
-        setMe({ name });
-      } finally {
-        if (mounted) setLoadingMe(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, [user, useMockAuth, mockUserName]);
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      console.log('Header: 토큰이 없습니다.');
+      setMe(null);
+      return;
+    }
+
+    console.log('Header: 토큰이 존재합니다:', token.substring(0, 20) + '...');
+
+    // 토큰에서 사용자 정보 추출 (apiService의 함수 사용)
+    const userInfo: JWTPayload | null = getUserInfoFromToken(token);
+    console.log('Header: 디코드된 사용자 정보:', userInfo);
+
+    if (userInfo) {
+      const userLite = { name: userInfo.name };
+      console.log('Header: userLite 설정:', userLite);
+      setMe(userLite);
+
+      // localStorage에 사용자 정보 저장 (캐시용)
+      localStorage.setItem('userName', userInfo.name);
+      localStorage.setItem('email', userInfo.email);
+      console.log(
+        'Header: localStorage에 저장완료 - userName:',
+        userInfo.name,
+        'email:',
+        userInfo.email
+      );
+    } else {
+      console.warn('Header: 토큰이 유효하지 않습니다.');
+      // 토큰이 유효하지 않은 경우 (만료되었거나 잘못된 형식)
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('email');
+      localStorage.removeItem('userName');
+      setMe(null);
+    }
+  }, [user]);
 
   // 스토어 슬러그 추론
   const inferredStoreSlug = useMemo(() => {
-    if (typeof storeSlug === "string") return storeSlug;
-    const path = location.pathname.replace(/^\/+/, "");
-    const first = path.split("/")[0] || "";
+    if (typeof storeSlug === 'string') return storeSlug;
+    const path = location.pathname.replace(/^\/+/, '');
+    const first = path.split('/')[0] || '';
     if (!RESERVED_PREFIXES.has(first)) return first;
     return null;
   }, [location.pathname, storeSlug]);
 
   const isStore = !!inferredStoreSlug;
-  const userName = me?.name ?? localStorage.getItem("userName") ?? undefined;
+  const userName = me?.name ?? undefined;
 
-  // 메시지 링크
-  const messageHref = isStore
-    ? `/${inferredStoreSlug}/mypage/message`
-    : `/main/mypage/message`;
-
-  // 네비 "스토어" 링크 (모킹이면 임시 스토어로)
-  const storeNavHref = useMockAuth ? `/${mockStoreSlug}` : "/main/stores";
-
-  const goToMain = () => navigate("/main");
+  // 메시지 이동을 위한 핸들러
+  const handleGoToMessage = () => {
+    goToMessage(inferredStoreSlug);
+  };
 
   return (
     <header className="w-full border-b border-gray-100">
@@ -122,30 +119,22 @@ export default function Header({
                   <span className="whitespace-nowrap">
                     <strong>{userName}</strong>님 반갑습니다!
                   </span>
-                  <Link to={messageHref} className="hover:underline whitespace-nowrap">
-                    {isStore ? `${inferredStoreSlug}에 메시지 보내기` : "메시지"}
-                  </Link>
+                  <button onClick={handleGoToMessage} className="hover:underline whitespace-nowrap">
+                    {isStore ? `${inferredStoreSlug}에 메시지 보내기` : '메시지'}
+                  </button>
                   <button onClick={handleLogout} className="hover:underline whitespace-nowrap">
                     로그아웃
                   </button>
                 </>
               ) : (
                 <>
-                  {useMockAuth ? (
-                    <>
-                      <button onClick={handleMockLogin} className="hover:underline">임시 로그인</button>
-                      <span aria-hidden="true">|</span>
-                      <button onClick={() => navigate("/auth/signup")} className="hover:underline">
-                        회원가입(이동)
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <Link to="/auth/login" className="hover:underline">로그인</Link>
-                      <span aria-hidden="true">|</span>
-                      <Link to="/auth/signup" className="hover:underline">회원가입</Link>
-                    </>
-                  )}
+                  <button onClick={goToLogin} className="hover:underline">
+                    로그인
+                  </button>
+                  <span aria-hidden="true">|</span>
+                  <button onClick={goToSignup} className="hover:underline">
+                    회원가입
+                  </button>
                 </>
               )}
             </nav>
@@ -167,15 +156,15 @@ export default function Header({
           </div>
 
           {/* 메시지 아이콘 (우측) */}
-          <Link to={messageHref} aria-label="메시지" className="p-2 -mr-1">
+          <button onClick={handleGoToMessage} aria-label="메시지" className="p-2 -mr-1">
             <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden="true">
-              <path d="M20 4H4c-1.1 0-2 .9-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6c0-1.1-.9-2-2-2Zm0 4-8 5L4 8V6l8 5 8-5v2Z"/>
+              <path d="M20 4H4c-1.1 0-2 .9-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6c0-1.1-.9-2-2-2Zm0 4-8 5L4 8V6l8 5 8-5v2Z" />
             </svg>
-          </Link>
+          </button>
 
           {/* 햄버거 (우측 끝) */}
           <button
-            onClick={() => setMenuOpen(v => !v)}
+            onClick={() => setMenuOpen((v) => !v)}
             className="p-2"
             aria-label="메뉴 열기"
             aria-expanded={menuOpen}
@@ -204,7 +193,9 @@ export default function Header({
                     <strong>{userName}</strong>님 반갑습니다!
                   </div>
                   <button
-                    onClick={() => { handleLogout(); }}
+                    onClick={() => {
+                      handleLogout();
+                    }}
                     className="block w-full text-left hover:underline"
                   >
                     로그아웃
@@ -213,13 +204,19 @@ export default function Header({
               ) : (
                 <>
                   <button
-                    onClick={() => { useMockAuth ? handleMockLogin() : navigate("/auth/login"); setMenuOpen(false); }}
+                    onClick={() => {
+                      goToLogin();
+                      setMenuOpen(false);
+                    }}
                     className="block w-full text-left hover:underline"
                   >
                     로그인
                   </button>
                   <button
-                    onClick={() => { navigate("/auth/signup"); setMenuOpen(false); }}
+                    onClick={() => {
+                      goToSignup();
+                      setMenuOpen(false);
+                    }}
                     className="block w-full text-left hover:underline"
                   >
                     회원가입
@@ -230,29 +227,6 @@ export default function Header({
           </div>
         )}
       </div>
-
-      {/* 데스크톱 로고/기본 네비 (모바일에선 숨김), 테스트용 상당바라 숨겨놓음 */}
-      {/* <div className="hidden md:flex">
-        <div className="mx-auto w-full max-w-[1920px] px-60 h-16 flex items-center justify-between">
-          <button onClick={goToMain} className="flex items-center gap-2">
-            <span className="inline-block h-8 w-8 rounded-full bg-[#2d4739]" aria-hidden />
-            <span className="font-semibold text-lg">뜨락상회</span>
-          </button>
-
-          <div className="hidden md:flex items-center gap-3">
-            <Link to="/main" className="text-sm hover:underline">홈</Link>
-            <Link to={storeNavHref} className="text-sm hover:underline">스토어</Link>
-            <Link to="/main/classes" className="text-sm hover:underline">클래스</Link>
-          </div>
-        </div>
-      </div>  */}
-
-      {/* 실서버 모드에서만 의미 있는 로딩바 */}
-      {!useMockAuth && loadingMe && (
-        <div className="h-0.5 w-full bg-gray-100">
-          <div className="h-0.5 w-1/3 bg-[#2d4739] animate-pulse" />
-        </div>
-      )}
     </header>
   );
 }

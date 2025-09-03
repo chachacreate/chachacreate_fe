@@ -1,12 +1,59 @@
 import axios from 'axios';
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import type { JWTPayload } from './apiResponse';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''; // 예: '/api'
 
-// --- helpers ----------------------------------------------------
-const getAccessToken = () => localStorage.getItem('accessToken');
+// ====================== JWT helpers (develop 기능 유지) ======================
+export const decodeToken = (token: string): JWTPayload | null => {
+  try {
+    const cleanToken = token.replace(/^Bearer\s+/i, '');
+    const parts = cleanToken.split('.');
+    if (parts.length !== 3) return null;
 
-// x.y.z 형태 대충 검사해서 JWT처럼 보일 때만 Authorization 헤더 주입
+    let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) base64 += '=';
+
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+    const json = new TextDecoder('utf-8').decode(bytes);
+    return JSON.parse(json) as JWTPayload;
+  } catch (error) {
+    console.warn('토큰 디코드 실패:', error);
+    return null;
+  }
+};
+
+export const isTokenExpired = (token: string): boolean => {
+  const decoded = decodeToken(token);
+  if (!decoded || !decoded.exp) return true;
+  return Date.now() >= decoded.exp * 1000;
+};
+
+// localStorage에서 Access Token을 가져올 때 만료 체크
+const getAccessToken = () => {
+  const token = localStorage.getItem('accessToken');
+  if (token && isTokenExpired(token)) {
+    console.warn('Access Token이 만료되었습니다.');
+    localStorage.removeItem('accessToken');
+    return null;
+  }
+  return token;
+};
+
+export const getUserInfoFromToken = (token?: string): JWTPayload | null => {
+  const t = token || getAccessToken();
+  if (!t) return null;
+  if (isTokenExpired(t)) {
+    localStorage.removeItem('accessToken');
+    return null;
+  }
+  return decodeToken(t);
+};
+
+// ====================== 공통 유틸 ======================
 const isLikelyJwt = (t?: string | null) => !!t && t.split('.').length === 3 && t.trim().length > 20;
 
 const isFormData = (data: unknown): data is FormData =>
@@ -20,13 +67,14 @@ const normalizeUrl = (url?: string) => {
   }
   return url;
 };
-// ----------------------------------------------------------------
 
+// ====================== Axios 인스턴스 ======================
 const api = axios.create({
   baseURL: API_BASE_URL, // '/api'
   withCredentials: true,
 });
 
+// ---------------------- Request Interceptor ----------------------
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // 1) URL 정리
@@ -50,30 +98,44 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// ---------------------- Response Interceptor ----------------------
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error) => {
-    const original = error.config as
-      | (InternalAxiosRequestConfig & { _retry?: boolean })
-      | undefined;
+    const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
 
     if (error.response?.status === 401 && original && !original._retry) {
       original._retry = true;
       try {
-        const email = localStorage.getItem('email');
-        if (!email) throw new Error('이메일 정보 없음');
+        // refresh 호출 (email 필요 시 포함)
+        const email = localStorage.getItem('email') || undefined;
+        const refreshUrl = `${API_BASE_URL || ''}/auth/refresh`;
 
-        // refresh 엔드포인트가 '/api/auth/refresh' 라는 가정
         const refreshRes = await axios.post(
-          `${API_BASE_URL || ''}/auth/refresh`, // baseURL이 '/api'니까 '/api/auth/refresh'
-          { email },
+          refreshUrl,
+          email ? { email } : {},
           { withCredentials: true }
         );
 
-        const newAccessToken: string = refreshRes.data.accessToken;
+        // 응답 형태 유연 대응: {accessToken} 또는 {data: {accessToken}}
+        const newAccessToken: string | undefined =
+          refreshRes?.data?.data?.accessToken ?? refreshRes?.data?.accessToken;
+
+        if (!newAccessToken) {
+          throw new Error('새로운 Access Token을 받지 못했습니다.');
+        }
+
+        // 저장
         localStorage.setItem('accessToken', newAccessToken);
 
-        // 재시도 요청 재설정
+        // 토큰에서 유저정보 추출(있으면 email/userName 보강 저장)
+        const userInfo = getUserInfoFromToken(newAccessToken);
+        if (userInfo) {
+          if (userInfo.email) localStorage.setItem('email', userInfo.email);
+          if ((userInfo as any).name) localStorage.setItem('userName', (userInfo as any).name);
+        }
+
+        // 원 요청 갱신
         original.headers = original.headers ?? {};
         if (isLikelyJwt(newAccessToken)) {
           (original.headers as any).Authorization = `Bearer ${newAccessToken}`;
@@ -88,9 +150,12 @@ api.interceptors.response.use(
         // 인스턴스로 재시도
         return api(original);
       } catch (e) {
+        console.error('토큰 갱신 실패:', e);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('email');
-        window.location.href = '/login';
+        localStorage.removeItem('userName');
+        // 앱 라우팅 규칙에 맞게 경로 조정
+        window.location.href = '/login'; // 또는 '/auth/login'
         return Promise.reject(e);
       }
     }

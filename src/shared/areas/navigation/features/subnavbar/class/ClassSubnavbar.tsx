@@ -134,7 +134,7 @@ export default function ClassSubnavbar({
         {/* 마이페이지 */}
         <div className="group">
           <NavLink
-            to="/main/mypage/classreserve"
+            to="/main/mypage/classes"
             end
             className={({ isActive }) =>
               [

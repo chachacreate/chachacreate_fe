@@ -7,9 +7,9 @@ import { createElement, Suspense } from 'react';
 const StoreNoticePage = lazy(
   () => import('@src/domains/seller/areas/store/features/notice/pages/StoreNotice')
 );
-// const StoreCustomPage = lazy(() =>
-//   import("@src/domains/seller/areas/store/features/custom/pages/StoreCustom")
-// );
+const StoreCustomPage = lazy(() =>
+  import("@src/domains/seller/areas/store/features/custom/pages/StoreCustom")
+);
 // /seller/:storeUrl/storeinfo
 const StoreInfoPage = lazy(() =>
   import("@src/domains/seller/areas/store/features/info/pages/StoreInfo")
@@ -28,7 +28,7 @@ export const storeRoutes: RouteObject[] = [
     path: 'store',
     children: [
       { path: 'notice', element: suspense(StoreNoticePage) },
-      // { path: "custom", element: suspense(StoreCustomPage) },
+      { path: "custom", element: suspense(StoreCustomPage) },
     ],
   },
   // /seller/:storeUrl/storeinfo

@@ -1,4 +1,3 @@
-// src/domains/buyer/areas/main/pages/StoreHome.tsx
 import { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Star, ChevronRight } from "lucide-react";
@@ -24,6 +23,7 @@ type StoreSettings = {
   noticeColor?: string;
   highlightColor?: string;
   heroBgColor?: string;
+  iconType?: string;
 };
 type StoreInfo = {
   storeUrl: string;
@@ -38,6 +38,21 @@ type StoreInfo = {
 
 /** ---------- Mock Loader ---------- */
 function useMockStoreInfo(storeUrl: string): StoreInfo {
+  const defaultSettings: StoreSettings = {
+    fontFamily: "'Noto Sans KR', system-ui, -apple-system, Segoe UI, Roboto",
+    fontColor: "#1f2937",
+    headerFooterBg: "#FDFAF2",
+    descriptionColor: "#4b5563",
+    noticeColor: "#7A241F",
+    highlightColor: "#2D4739",
+    heroBgColor: "#F3F0E8",
+    iconType: "star",
+  };
+
+  // Load settings from localStorage if available
+  const savedSettings = localStorage.getItem(`storeSettings_${storeUrl}`);
+  const settings = savedSettings ? { ...defaultSettings, ...JSON.parse(savedSettings) } : defaultSettings;
+
   return {
     storeUrl,
     name: "라임스튜디오",
@@ -102,15 +117,7 @@ function useMockStoreInfo(storeUrl: string): StoreInfo {
           "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?q=80&w=800&auto=format&fit=crop",
       },
     ],
-    settings: {
-      fontFamily: "'Noto Sans KR', system-ui, -apple-system, Segoe UI, Roboto",
-      fontColor: "#1f2937",
-      headerFooterBg: "#FDFAF2",
-      descriptionColor: "#4b5563",
-      noticeColor: "#7A241F",
-      highlightColor: "#2D4739",
-      heroBgColor: "#F3F0E8",
-    },
+    settings,
   };
 }
 
@@ -135,8 +142,6 @@ export default function StoreHome() {
     }),
     [data.settings]
   );
-
-  
 
   return (
     <div style={themeVars} className="w-full bg-white text-[color:var(--store-font-color)]">
@@ -210,7 +215,7 @@ export default function StoreHome() {
         highlight="var(--store-highlight)"
         moreLink={`/store/${data.storeUrl}/products?sort=popular`}
       >
-        <ProductGrid3 products={data.popularTop3} emptyLabel="인기 상품을 준비 중이에요" />
+        <ProductGrid3 products={data.popularTop3} emptyLabel="인기 상품을 준비 중이에요" iconType={data.settings?.iconType} />
       </StoreSection>
 
       {/* ---------- 대표 상품 ---------- */}
@@ -220,7 +225,7 @@ export default function StoreHome() {
         highlight="var(--store-highlight)"
         moreLink={`/store/${data.storeUrl}/products?filter=featured`}
       >
-        <ProductGrid3 products={data.featured3} emptyLabel="대표 상품을 곧 보여드릴게요" badge="대표" />
+        <ProductGrid3 products={data.featured3} emptyLabel="대표 상품을 곧 보여드릴게요" badge="대표" iconType={data.settings?.iconType} />
       </StoreSection>
 
       {/* ---------- 푸터 ---------- */}
@@ -270,10 +275,12 @@ function ProductGrid3({
   products,
   emptyLabel,
   badge,
+  iconType,
 }: {
   products: Product[];
   emptyLabel: string;
   badge?: string;
+  iconType?: string;
 }) {
   if (!products || products.length === 0) return <EmptyProducts label={emptyLabel} />;
 
@@ -283,13 +290,24 @@ function ProductGrid3({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
       {items.map((p, idx) =>
-        p ? <ProductCard key={p.id} product={p} badge={badge} /> : <PlaceholderCard key={`placeholder-${idx}`} />
+        p ? <ProductCard key={p.id} product={p} badge={badge} iconType={iconType} /> : <PlaceholderCard key={`placeholder-${idx}`} />
       )}
     </div>
   );
 }
 
-function ProductCard({ product, badge }: { product: Product; badge?: string }) {
+function ProductCard({ product, badge, iconType }: { product: Product; badge?: string; iconType?: string }) {
+  const getIcon = () => {
+    switch (iconType) {
+      case 'heart':
+        return <svg className="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" /></svg>;
+      case 'bookmark':
+        return <svg className="w-3.5 h-3.5 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" /></svg>;
+      default:
+        return <Star className="w-3.5 h-3.5 text-yellow-500" />;
+    }
+  };
+
   return (
     <Link to={`./product/${product.id}`} className="group block rounded-2xl overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow bg-white">
       <div className="relative aspect-[4/3] bg-gray-50">
@@ -300,7 +318,7 @@ function ProductCard({ product, badge }: { product: Product; badge?: string }) {
         )}
         {badge && (
           <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/90 border border-gray-200 px-2.5 py-1 text-xs font-medium">
-            <Star className="w-3.5 h-3.5 text-yellow-500" />
+            {getIcon()}
             {badge}
           </span>
         )}

@@ -11,6 +11,9 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@toast-ui/editor": "^3.2.2",
+    "@toast-ui/editor-plugin-color-syntax": "^3.1.0",
+    "@toast-ui/react-editor": "^3.2.3",
     "@tosspayments/tosspayments-sdk": "^2.3.7",
     "@fullcalendar/core": "^6.1.19",
     "@fullcalendar/daygrid": "^6.1.19",
@@ -25,9 +28,11 @@
     "react-daum-postcode": "^3.2.0",
     "react-dom": "^19.1.1",
     "react-helmet": "^6.1.0",
+    "react-is": "^19.1.1",
     "react-router-dom": "^7.8.1",
     "recharts": "^3.1.2",
     "sass": "^1.89.2",
+    "tui-color-picker": "^2.2.8"
     "uuid": "^11.1.0"
   },
   "devDependencies": {

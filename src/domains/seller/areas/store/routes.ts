@@ -10,7 +10,7 @@ const StoreNoticePage = lazy(
 const StoreCustomPage = lazy(() =>
   import("@src/domains/seller/areas/store/features/custom/pages/StoreCustom")
 );
-// /seller/:storeUrl/storeinfo
+
 const StoreInfoPage = lazy(() =>
   import("@src/domains/seller/areas/store/features/info/pages/StoreInfo")
 );

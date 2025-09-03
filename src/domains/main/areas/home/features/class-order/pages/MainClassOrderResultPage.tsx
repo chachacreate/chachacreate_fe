@@ -1,9 +1,10 @@
 // src/domains/main/areas/home/features/class-order/pages/MainClassOrderResultPage.tsx
-import { useEffect, useMemo } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import { Check } from "lucide-react";
+import { useEffect, useState, useRef } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import { Check } from 'lucide-react';
+import { post } from '@src/libs/request';
 
 type OrderState = {
   classId?: string;
@@ -17,35 +18,78 @@ type OrderState = {
 
 export default function MainClassOrderResultPage() {
   const nav = useNavigate();
-  const [params] = useSearchParams();
-  const status = (params.get("status") || "").toLowerCase(); // success | fail
+  const [searchParams] = useSearchParams();
   const { state } = useLocation();
-  const { date, time, item } = (state || {}) as OrderState;
+  const { classId, date, time, item } = (state || {}) as OrderState;
 
-  // 실패면 알림 후 주문페이지로 복귀
+  const storeUrl = 'main'; // 페이지 URL 경로 수정 후 반영 필요;
+
+  const [responseData, setResponseData] = useState<any>(null);
+
+  // 한 번만 호출 플래그
+  const calledRef = useRef(false);
+
   useEffect(() => {
-    if (status !== "success") {
-      alert("결제에 실패했습니다.");
-      nav("/main/classes/order", { replace: true });
+    const orderId = searchParams.get('orderId');
+    const amount = searchParams.get('amount');
+    const paymentKey = searchParams.get('paymentKey');
+
+    if (calledRef.current || !orderId || !amount || !paymentKey || !storeUrl || !classId) return;
+
+    calledRef.current = true; // 한 번만 실행되도록
+
+    async function confirm() {
+      try {
+        const reservedTime = `${date}T${time}:00`; // '2025-09-02T22:00:00'
+        const requestData = {
+          id: orderId,
+          reservedTime,
+          amount: Number(amount),
+          paymentKey,
+        };
+
+        const response = await post(`/${storeUrl}/classes/${classId}/reservations`, requestData);
+
+        if (response.status === 201) {
+          setResponseData(response.data);
+
+          // URL 정리 후 status=success만 남기기
+          nav(`/main/classes/order/result?status=success`, { replace: true });
+        } else {
+          console.error('클래스 예약 실패:', response.message);
+        }
+      } catch (error: any) {
+        console.error('API 요청 실패:', error);
+        nav('/main/classes/order', { replace: true });
+      }
     }
-  }, [status, nav]);
 
-  if (status !== "success") return null;
+    confirm();
+  }, [searchParams, nav, date, time, storeUrl, classId]);
 
-  const title = item?.title ?? "여름 복숭아 요거트 케이크 만들기!";
-  const price = item?.price ?? 20000;
+  if (!responseData) {
+    return (
+      <main className="flex items-center justify-center h-screen">
+        <p className="text-lg font-medium">결제를 확인 중입니다...</p>
+      </main>
+    );
+  }
+  // responseData: 결제 승인 응답 데이터
+  console.log(responseData);
+  const title = responseData.classTitle ?? item?.title;
+  const price = responseData.amount ?? item?.price;
 
-  const formatted = useMemo(() => {
-    if (!date || !time) return "";
-    const d = new Date(`${date}T${time}`);
-    const yoil = ["일", "월", "화", "수", "목", "금", "토"][d.getDay()];
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mi = String(d.getMinutes()).padStart(2, "0");
-    return `${yyyy}.${mm}.${dd}(${yoil})  ${hh}:${mi}`;
-  }, [date, time]);
+  // const formatted = useMemo(() => {
+  //   if (!date || !time) return '';
+  //   const d = new Date(`${date}T${time}`);
+  //   const yoil = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+  //   const yyyy = d.getFullYear();
+  //   const mm = String(d.getMonth() + 1).padStart(2, '0');
+  //   const dd = String(d.getDate()).padStart(2, '0');
+  //   const hh = String(d.getHours()).padStart(2, '0');
+  //   const mi = String(d.getMinutes()).padStart(2, '0');
+  //   return `${yyyy}.${mm}.${dd}(${yoil})  ${hh}:${mi}`;
+  // }, [date, time]);
 
   return (
     <>
@@ -53,8 +97,10 @@ export default function MainClassOrderResultPage() {
       <Mainnavbar />
 
       {/* 최대 1920, 2xl에서 좌우 240px 패딩 */}
-      <main className="relative mx-auto max-w-[1920px] px-4 sm:px-8 lg:px-12 xl:px-20 2xl:px-[240px]
-                 py-8 sm:py-10 pb-[calc(80px+env(safe-area-inset-bottom))] md:pb-12">
+      <main
+        className="relative mx-auto max-w-[1920px] px-4 sm:px-8 lg:px-12 xl:px-20 2xl:px-[240px]
+                 py-8 sm:py-10 pb-[calc(80px+env(safe-area-inset-bottom))] md:pb-12"
+      >
         {/* 축하 배경 (반응형, 애니메이션) */}
         <ConfettiBg />
 
@@ -77,7 +123,12 @@ export default function MainClassOrderResultPage() {
               <dd className="font-semibold break-words">🍑 {title}</dd>
 
               <dt className="text-gray-600 font-medium">예약일</dt>
-              <dd className="font-semibold">{formatted || "미지정"}</dd>
+              <dd className="font-semibold">
+                {date ?? responseData.reservedTime?.split('T')[0] ?? '미지정'}{' '}
+                {time ??
+                  responseData.reservedTime?.split('T')[1]?.slice(0, 5) ?? // "22:00:00" -> "22:00"
+                  ''}
+              </dd>
 
               <dt className="text-gray-600 font-medium">결제금액</dt>
               <dd className="font-extrabold">{price.toLocaleString()} 원</dd>
@@ -87,20 +138,19 @@ export default function MainClassOrderResultPage() {
           {/* 버튼들 */}
           <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5">
             <button
-              onClick={() => nav("/main/classes")}
+              onClick={() => nav('/main/classes')}
               className="h-11 sm:h-12 px-6 sm:px-7 rounded-full bg-[#2D4739] text-white font-semibold hover:opacity-90 w-full sm:w-auto"
             >
               목록으로
             </button>
             <button
-              onClick={() => nav("/main/mypage/classes")}
+              onClick={() => nav('/main/mypage/classes')}
               className="h-11 sm:h-12 px-6 sm:px-7 rounded-full bg-[#2D4739] text-white font-semibold hover:opacity-90 w-full sm:w-auto"
             >
               예약확인
             </button>
           </div>
         </section>
-        
       </main>
     </>
   );
@@ -114,11 +164,11 @@ function ConfettiBg() {
     const size = 6 + Math.random() * 14; // px
     const duration = 6 + Math.random() * 6; // s
     const delay = -Math.random() * 6; // s
-    const colors = ["bg-pink-300", "bg-yellow-300", "bg-teal-300", "bg-indigo-300", "bg-rose-300"];
+    const colors = ['bg-pink-300', 'bg-yellow-300', 'bg-teal-300', 'bg-indigo-300', 'bg-rose-300'];
     const color = colors[i % colors.length];
     const rotate = Math.floor(Math.random() * 360);
     const opacity = 0.6 + Math.random() * 0.35;
-    const borderRadius = Math.random() > 0.5 ? "9999px" : "4px"; // 원형/사각 혼합
+    const borderRadius = Math.random() > 0.5 ? '9999px' : '4px'; // 원형/사각 혼합
     return { left, size, duration, delay, color, rotate, opacity, borderRadius };
   });
 
@@ -159,29 +209,29 @@ function ConfettiBg() {
       <span
         className="absolute -left-10 top-28 h-20 w-20 rounded-full bg-pink-300/60 blur-[1px]"
         style={{
-          animation: "confetti-fall 14s linear infinite, confetti-sway 6s ease-in-out infinite",
-          animationDelay: "-3s",
+          animation: 'confetti-fall 14s linear infinite, confetti-sway 6s ease-in-out infinite',
+          animationDelay: '-3s',
         }}
       />
       <span
         className="absolute right-6 top-16 h-24 w-24 rounded-full bg-teal-300/60 blur-[1px]"
         style={{
-          animation: "confetti-fall 16s linear infinite, confetti-sway 7s ease-in-out infinite",
-          animationDelay: "-5s",
+          animation: 'confetti-fall 16s linear infinite, confetti-sway 7s ease-in-out infinite',
+          animationDelay: '-5s',
         }}
       />
       <span
         className="absolute left-1/3 top-10 h-14 w-14 rounded-full bg-yellow-300/70 blur-[1px]"
         style={{
-          animation: "confetti-fall 13s linear infinite, confetti-sway 5.5s ease-in-out infinite",
-          animationDelay: "-2s",
+          animation: 'confetti-fall 13s linear infinite, confetti-sway 5.5s ease-in-out infinite',
+          animationDelay: '-2s',
         }}
       />
       <span
         className="absolute right-1/4 bottom-12 h-20 w-20 rounded-full bg-rose-300/70 blur-[1px]"
         style={{
-          animation: "confetti-fall 15s linear infinite, confetti-sway 6.5s ease-in-out infinite",
-          animationDelay: "-4s",
+          animation: 'confetti-fall 15s linear infinite, confetti-sway 6.5s ease-in-out infinite',
+          animationDelay: '-4s',
         }}
       />
     </div>

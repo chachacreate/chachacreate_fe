@@ -25,11 +25,11 @@ export const productRoutes: RouteObject[] = [
     path: '/seller/:storeUrl/product',
     children: [
       // JSX <Navigate /> 대신 createElement 사용
-      { index: true, element: createElement(Navigate, { to: 'list', replace: true }) },
-      // { path: 'list', element: withSuspense(ProductListPage) },
-      // { path: 'insert', element: withSuspense(ProductInsertPage) },
-      // { path: 'review', element: withSuspense(ProductReviewPage) },
-      // { path: 'order', element: withSuspense(ProductOrderPage) },
+      // { index: true, element: createElement(Navigate, { to: "list", replace: true }) },
+      // { path: "list", element: withSuspense(ProductListPage) },
+      // { path: "insert", element: withSuspense(ProductInsertPage) },
+      // { path: "review", element: withSuspense(ProductReviewPage) },
+      // { path: "order", element: withSuspense(ProductOrderPage) },
     ],
   },
 ];

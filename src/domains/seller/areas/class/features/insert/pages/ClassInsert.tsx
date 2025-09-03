@@ -1,20 +1,25 @@
 // src/domains/seller/areas/class/features/insert/pages/ClassInsert.tsx
-import type { FC, ChangeEvent, MouseEvent } from "react";
-import { useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import SellerSidenavbar from "@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar";
-import DaumPostcodeEmbed from "react-daum-postcode";
+import type { FC, ChangeEvent, MouseEvent } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { post } from '@src/libs/request';
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
+import DaumPostcodeEmbed from 'react-daum-postcode';
+import EditorAPI, {
+  type EditorHandle,
+} from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
+import api from '@src/libs/apiService';
 
 type Params = { storeUrl: string };
 
 type ScheduleRow = {
   id: string;
-  startDate: string;  // YYYY-MM-DD
-  endDate: string;    // YYYY-MM-DD
-  startTime: string;  // HH:MM
-  endTime: string;    // HH:MM
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  startTime: string; // HH:MM
+  endTime: string; // HH:MM
   intervalMin: number; // 30/60/90/120...
 };
 
@@ -24,8 +29,8 @@ type ClassForm = {
   title: string;
   desc: string;
   aiDesc: string;
-  capacity: number | "";
-  price: number | "";
+  capacity: number | '';
+  price: number | '';
   postcode: string;
   address: string;
   addressDetail: string;
@@ -37,48 +42,92 @@ type ClassForm = {
 
 const MAX_NUM = 1_000_000_000_000; // 1조
 const AI_SAMPLES = [
-  "초보자도 따라오기 쉬운 도자기 원데이 클래스입니다. 기본 컵을 만들어보고 유약 색상도 선택해요.",
-  "직접 만든 라탄 트레이로 공간에 포인트를 더해보세요. 안전한 재료와 친절한 가이드로 함께 합니다.",
-  "가죽 소품 입문반: 카드지갑을 시작으로 스티칭 기초를 익힙니다. 선착순 소수정예!",
-  "플라워 클래스: 제철 꽃으로 컬러 조합과 꽃다루는 법을 배워봅니다. 초보 환영!",
+  '초보자도 따라오기 쉬운 도자기 원데이 클래스입니다. 기본 컵을 만들어보고 유약 색상도 선택해요.',
+  '직접 만든 라탄 트레이로 공간에 포인트를 더해보세요. 안전한 재료와 친절한 가이드로 함께 합니다.',
+  '가죽 소품 입문반: 카드지갑을 시작으로 스티칭 기초를 익힙니다. 선착순 소수정예!',
+  '플라워 클래스: 제철 꽃으로 컬러 조합과 꽃다루는 법을 배워봅니다. 초보 환영!',
 ];
 
 const timeOptions = Array.from({ length: 48 }, (_, i) => {
-  const hh = String(Math.floor(i / 2)).padStart(2, "0");
-  const mm = i % 2 === 0 ? "00" : "30";
+  const hh = String(Math.floor(i / 2)).padStart(2, '0');
+  const mm = i % 2 === 0 ? '00' : '30';
   return `${hh}:${mm}`;
 });
 const intervalOptions = [30, 60, 90, 120, 150, 180];
 
+const DEFAULT_RESERVATION_NOTES = `<취소 환불 정책>
+
+1. 클래스 예정일 14일 전까지 취소: 계약금 전액 환급
+2. 클래스 예정일 13일 전까지 취소: 총 이용료의 20% 공제 후 환급
+3. 클래스 예정일 12일 전까지 취소: 총 이용료의 30% 공제 후 환급
+4. 클래스 예정일 10-11일 전까지 취소: 총 이용료의 50%공제 후 환급
+5. 클래스 예정일 8-9일 전까지 취소: 총 이용료의 70% 공제 후 환급
+6. 클래스 예정일 일주일 내 취소: 총 이용료의 100% 위약금 부과
+
+☆ 날짜 및 시간 변경은 최소 6일 전까지 가능하며, 일주일 전 취소는 어려운 점 양해 부탁드립니다 ☆
+
+<클래스 관련 자주 묻는 질문>
+
+Q. 지각 관련 규칙이 있나요?
+
+A.
+
+Q. 공방 위치는 어디인가요?
+
+A.
+
+Q. 공방 전용 주차장이 있나요?
+
+A.
+
+Q. 당일 예약도 가능한가요?
+
+A.
+
+Q. 키즈는 몇 살부터 진행 가능한가요? 보호자 동반 필수인가요?
+
+A.
+
+Q. 클래스 소요시간은 어떻게 되나요?
+
+A. 
+
+Q. 완성 작품은 당일 픽업 가능한가요?
+
+A.
+`;
+
 const createEmptyForm = (classNumber: number = 1): ClassForm => ({
   id: crypto.randomUUID(),
   classNumber,
-  title: "",
-  desc: "",
-  aiDesc: "",
-  capacity: "",
-  price: "",
-  postcode: "",
-  address: "",
-  addressDetail: "",
+  title: '',
+  desc: '',
+  aiDesc: '',
+  capacity: '',
+  price: '',
+  postcode: '',
+  address: '',
+  addressDetail: '',
   images: [],
   schedules: [
     {
       id: crypto.randomUUID(),
-      startDate: "",
-      endDate: "",
-      startTime: "10:00",
-      endTime: "18:00",
+      startDate: '',
+      endDate: '',
+      startTime: '10:00',
+      endTime: '18:00',
       intervalMin: 60,
     },
   ],
   holidays: [],
-  reservationNotes: "",
+  reservationNotes: DEFAULT_RESERVATION_NOTES,
 });
 
 const ClassInsert: FC = () => {
   const navigate = useNavigate();
-  const { storeUrl = "" } = useParams<Params>();
+  const { storeUrl = 'store1' } = useParams<Params>();
+
+  const editorRefs = useRef<Record<string, EditorHandle | null>>({});
 
   // ✅ 판매자 이력 여부 (임시: true → 오버레이 숨김)
   const hasResume = true;
@@ -86,60 +135,54 @@ const ClassInsert: FC = () => {
   // 여러 개의 클래스 폼
   const [classForms, setClassForms] = useState<ClassForm[]>([createEmptyForm(1)]);
   const [classCounter, setClassCounter] = useState(1);
-  
+
   // 우편번호 모달
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
   const [currentFormIndex, setCurrentFormIndex] = useState(0);
-  
+
   // 각 폼별 임시 휴일 입력
   const [pendingHolidays, setPendingHolidays] = useState<{ [formId: string]: string }>({});
 
-// 새 폼 추가
-const addNewForm = () => {
-  setClassForms(prev => {
-    const nextNo = prev.length + 1;
-    const nextForm = { ...createEmptyForm(nextNo), classNumber: nextNo };
-    return [nextForm, ...prev];
-  });
-  setClassCounter(c => c + 1);
-};
+  // 설명 이미지 저장
+  const [editorImageUrls, setEditorImageUrls] = useState<string[]>([]);
 
-// 폼 삭제 (총 개수 -1, 번호 재정렬)
-const removeForm = (formId: string) => {
-  setClassForms(prev => {
-    if (prev.length === 1) return prev; // 최소 1개 유지
+  // 새 폼 추가
+  const addNewForm = () => {
+    setClassForms((prev) => {
+      const nextNo = prev.length + 1;
+      const nextForm = { ...createEmptyForm(nextNo), classNumber: nextNo };
+      return [nextForm, ...prev];
+    });
+    setClassCounter((c) => c + 1);
+  };
 
-    // 1) 삭제
-    const filtered = prev.filter(form => form.id !== formId);
-    // 2) 번호 재정렬 (1부터)
-    const renumbered = filtered.map((form, idx) => ({
-      ...form,
-      classNumber: idx + 1,
-    }));
+  // 폼 삭제 (총 개수 -1, 번호 재정렬)
+  const removeForm = (formId: string) => {
+    setClassForms((prev) => {
+      if (prev.length === 1) return prev; // 최소 1개 유지
 
-    // 3) 카운터 동기화 (총 개수와 일치)
-    setClassCounter(renumbered.length);
+      // ⬇️ 에디터 ref도 같이 정리 (폼 삭제 시 누수 방지)
+      delete editorRefs.current[formId];
 
-    return renumbered;
-  });
-};
+      const filtered = prev.filter((f) => f.id !== formId);
+      const renumbered = filtered.map((f, i) => ({ ...f, classNumber: i + 1 }));
+      setClassCounter(renumbered.length);
+      return renumbered;
+    });
+  };
 
   // 폼 업데이트
-  const updateForm = <K extends keyof ClassForm>(
-    formId: string,
-    key: K,
-    value: ClassForm[K]
-  ) => {
-    setClassForms(prev => 
-      prev.map(form => form.id === formId ? { ...form, [key]: value } : form)
+  const updateForm = <K extends keyof ClassForm>(formId: string, key: K, value: ClassForm[K]) => {
+    setClassForms((prev) =>
+      prev.map((form) => (form.id === formId ? { ...form, [key]: value } : form))
     );
   };
 
   // 숫자 가드
   const guardInt = (v: string) => {
-    if (!v) return "";
-    const n = Number(v.replace(/[^\d]/g, ""));
-    if (Number.isNaN(n)) return "";
+    if (!v) return '';
+    const n = Number(v.replace(/[^\d]/g, ''));
+    if (Number.isNaN(n)) return '';
     if (n < 0) return 0;
     if (n >= MAX_NUM) return MAX_NUM - 1;
     return n;
@@ -158,20 +201,34 @@ const removeForm = (formId: string) => {
     };
 
     updateForm(formId, 'images', [next]);
-    e.target.value = "";
+    e.target.value = '';
   };
 
   const removeImage = (formId: string, imageId: string) => {
-    const form = classForms.find(f => f.id === formId);
+    const form = classForms.find((f) => f.id === formId);
     if (!form) return;
-    
-    updateForm(formId, 'images', form.images.filter(i => i.id !== imageId));
+
+    updateForm(
+      formId,
+      'images',
+      form.images.filter((i) => i.id !== imageId)
+    );
   };
 
   // AI 설명 생성
   const genAiDesc = (formId: string) => {
     const pick = AI_SAMPLES[Math.floor(Math.random() * AI_SAMPLES.length)];
     updateForm(formId, 'aiDesc', pick);
+  };
+
+  // URL 추출 유틸 추가 (최종 이미지만 저장)
+  const extractImageUrlsFromHtml = (html: string): string[] => {
+    if (!html) return [];
+    const urls: string[] = [];
+    const re = /<img[^>]*src=["']([^"']+)["'][^>]*>/g;
+    for (const m of html.matchAll(re)) urls.push(m[1]);
+    // 중복 제거
+    return Array.from(new Set(urls));
   };
 
   // 스케줄 업데이트
@@ -181,13 +238,13 @@ const removeForm = (formId: string) => {
     key: K,
     value: ScheduleRow[K]
   ) => {
-    const form = classForms.find(f => f.id === formId);
+    const form = classForms.find((f) => f.id === formId);
     if (!form) return;
 
-    const updatedSchedules = form.schedules.map(s => 
+    const updatedSchedules = form.schedules.map((s) =>
       s.id === scheduleId ? { ...s, [key]: value } : s
     );
-    
+
     updateForm(formId, 'schedules', updatedSchedules);
   };
 
@@ -196,21 +253,25 @@ const removeForm = (formId: string) => {
     const pending = pendingHolidays[formId];
     if (!pending) return;
 
-    const form = classForms.find(f => f.id === formId);
+    const form = classForms.find((f) => f.id === formId);
     if (!form) return;
 
     if (!form.holidays.includes(pending)) {
       updateForm(formId, 'holidays', [...form.holidays, pending].sort());
     }
-    
-    setPendingHolidays(prev => ({ ...prev, [formId]: "" }));
+
+    setPendingHolidays((prev) => ({ ...prev, [formId]: '' }));
   };
 
   const removeHoliday = (formId: string, date: string) => {
-    const form = classForms.find(f => f.id === formId);
+    const form = classForms.find((f) => f.id === formId);
     if (!form) return;
-    
-    updateForm(formId, 'holidays', form.holidays.filter(d => d !== date));
+
+    updateForm(
+      formId,
+      'holidays',
+      form.holidays.filter((d) => d !== date)
+    );
   };
 
   // 우편번호 검색
@@ -220,14 +281,14 @@ const removeForm = (formId: string) => {
   };
 
   // 제출
-  const onSubmit = (e: MouseEvent<HTMLButtonElement>) => {
+
+  const onSubmit = async (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    
-    // 유효성 검사
+
+    // === 기존 유효성 검사는 그대로 유지 ===
     for (let i = 0; i < classForms.length; i++) {
       const form = classForms[i];
       const formNum = i + 1;
-      
       if (!form.title.trim()) {
         alert(`${formNum}번째 클래스의 클래스명을 입력해 주세요.`);
         return;
@@ -248,17 +309,79 @@ const removeForm = (formId: string) => {
         alert(`${formNum}번째 클래스의 일정 시작/종료 날짜를 입력해 주세요.`);
         return;
       }
+      // (선택) 썸네일 최소 1장 가드 – 백엔드도 검사하지만 프론트에서 선제 차단
+      if ((form.images ?? []).filter((i) => i.file).length < 1) {
+        alert(`${formNum}번째 클래스의 썸네일 이미지를 1장 이상 추가해 주세요.`);
+        return;
+      }
     }
 
-    alert(`${classForms.length}개 클래스 등록(데모) — 콘솔 확인!`);
-    console.log('등록할 클래스들:', classForms);
-    
-    // 등록 후 폼 초기화
-    setClassForms([createEmptyForm(1)]);
-    setPendingHolidays({});
-    setClassCounter(1);
-    
-    navigate(`/seller/${storeUrl}/class/list`);
+    // ---------- 폼 → DTO ----------
+    const toHHMMSS = (hhmm?: string) => (hhmm && hhmm.length === 5 ? `${hhmm}:00` : hhmm || '');
+    const toDateTime = (date?: string, time?: string) =>
+      date ? `${date} ${toHHMMSS(time || '00:00')}` : '';
+
+    const cores = classForms.map((f) => {
+      const s = f.schedules[0];
+      // 에디터(한 개 사용 가정)에서 마크다운 읽기
+      const html = editorRefs.current[f.id]?.getHTML() || '';
+      const detailImageUrls = extractImageUrlsFromHtml(html);
+
+      return {
+        title: f.title?.trim() || '',
+        detail: html,
+        detailImageUrls,
+        price: typeof f.price === 'number' ? f.price : undefined,
+        guideline: f.reservationNotes?.trim() || '',
+        participant: typeof f.capacity === 'number' ? f.capacity : undefined,
+        postNum: f.postcode || '',
+        addressRoad: f.address || '',
+        addressDetail: f.addressDetail || '',
+        addressExtra: '',
+        startDate: toDateTime(s?.startDate, s?.startTime), // "yyyy-MM-dd HH:mm:ss"
+        endDate: toDateTime(s?.endDate, s?.endTime),
+        startTime: toHHMMSS(s?.startTime), // "HH:mm:ss"
+        endTime: toHHMMSS(s?.endTime),
+        timeInterval: s?.intervalMin ?? 60,
+      };
+    });
+
+    // ---------- FormData ----------
+    const fd = new FormData();
+    fd.append('clazzes', JSON.stringify(cores));
+    classForms.forEach((f, idx) => {
+      (f.images ?? [])
+        .map((i) => i.file)
+        .filter((file): file is File => !!file)
+        .forEach((file) => fd.append(`thumbnails_${idx}`, file));
+    });
+
+    // (선택) 디버깅: FormData 내용 확인
+    // for (const [k, v] of fd.entries()) console.log('FD:', k, v);
+
+    try {
+      const res = await post<number[]>(`/seller/${storeUrl}/classes`, fd);
+
+      // ✅ 진짜 성공인지 판정: id 배열이 왔는지 확인
+      const ids = res.data;
+      if (!Array.isArray(ids) || ids.length === 0 || !ids.every((n) => typeof n === 'number')) {
+        // 서버가 에러를 메시지로 보냈는데 200으로 감쌌을 수도 있음 → 에러로 처리
+        throw new Error(res.message || '서버가 생성된 ID를 반환하지 않았습니다.');
+      }
+
+      console.log('✅ 생성된 클래스 ID들:', ids);
+      alert(`클래스 ${ids.length}개가 등록되었습니다.`);
+
+      // 성공 시에만 리셋/이동
+      setClassForms([createEmptyForm(1)]);
+      setPendingHolidays({});
+      setClassCounter(1);
+      navigate(`/seller/${storeUrl}/class/list`);
+    } catch (err: any) {
+      console.error(err);
+      const msg = err?.response?.data?.message || err?.message || '업로드 실패';
+      alert(msg);
+    }
   };
 
   return (
@@ -285,12 +408,16 @@ const removeForm = (formId: string) => {
 
           {/* 클래스 폼들 */}
           {classForms.map((form, formIndex) => {
-            const addressSummary = form.address && form.addressDetail 
-              ? `${form.address} ${form.addressDetail}` 
-              : form.address || "";
+            const addressSummary =
+              form.address && form.addressDetail
+                ? `${form.address} ${form.addressDetail}`
+                : form.address || '';
 
             return (
-              <section key={form.id} className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 lg:p-8">
+              <section
+                key={form.id}
+                className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 lg:p-8"
+              >
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <h2 className="text-lg font-bold">클래스 {form.classNumber}</h2>
@@ -311,7 +438,7 @@ const removeForm = (formId: string) => {
                   {/* 사진 추가 */}
                   <div className="flex flex-wrap gap-2">
                     <label className="px-3 py-2 rounded-md border text-sm cursor-pointer hover:bg-gray-50">
-                      {form.images.length > 0 ? "사진 변경" : "+ 사진 추가"}
+                      {form.images.length > 0 ? '사진 변경' : '+ 사진 추가'}
                       <input
                         type="file"
                         accept="image/*"
@@ -388,11 +515,11 @@ const removeForm = (formId: string) => {
                   {/* 상세설명 */}
                   <label className="grid gap-1">
                     <span className="text-sm font-medium">클래스 상세설명</span>
-                    <textarea
-                      className="border rounded-md px-3 py-2 min-h-[120px]"
-                      placeholder="클래스 소개, 커리큘럼, 난이도, 준비물 등을 적어주세요."
-                      value={form.desc}
-                      onChange={(e) => updateForm(form.id, 'desc', e.target.value)}
+                    <EditorAPI
+                      ref={(el) => {
+                        editorRefs.current[form.id] = el;
+                      }}
+                      initialValue={form.desc ?? ''}
                     />
                   </label>
 
@@ -403,7 +530,23 @@ const removeForm = (formId: string) => {
                       <button
                         type="button"
                         className="px-3 py-1.5 rounded-md border text-sm"
-                        onClick={() => genAiDesc(form.id)}
+                        onClick={async () => {
+                          try {
+                            const resp = await api.post('/ai/class-description', {
+                              title: form.title,
+                              prompt: form.aiDesc,
+                            });
+                            const content = resp.data?.content ?? resp.data?.data ?? '';
+
+                            // ✅ 이 폼의 에디터에만 반영
+                            editorRefs.current[form.id]?.setMarkdown(content);
+
+                            // (선택) 상태에도 저장
+                            updateForm(form.id, 'desc', content);
+                          } catch (e: any) {
+                            alert(e?.response?.data?.message || e?.message || 'AI 설명 생성 실패');
+                          }
+                        }}
                       >
                         생성하기
                       </button>
@@ -425,7 +568,9 @@ const removeForm = (formId: string) => {
                         className="border rounded-md px-3 py-2"
                         placeholder="예) 8"
                         value={form.capacity}
-                        onChange={(e) => updateForm(form.id, 'capacity', guardInt(e.target.value) as number | "")}
+                        onChange={(e) =>
+                          updateForm(form.id, 'capacity', guardInt(e.target.value) as number | '')
+                        }
                       />
                     </label>
                     <label className="grid gap-1">
@@ -435,7 +580,9 @@ const removeForm = (formId: string) => {
                         className="border rounded-md px-3 py-2"
                         placeholder="예) 55000"
                         value={form.price}
-                        onChange={(e) => updateForm(form.id, 'price', guardInt(e.target.value) as number | "")}
+                        onChange={(e) =>
+                          updateForm(form.id, 'price', guardInt(e.target.value) as number | '')
+                        }
                       />
                     </label>
                   </div>
@@ -455,7 +602,9 @@ const removeForm = (formId: string) => {
                               type="date"
                               className="border rounded-md px-3 py-2"
                               value={s.startDate}
-                              onChange={(e) => updateSchedule(form.id, s.id, "startDate", e.target.value)}
+                              onChange={(e) =>
+                                updateSchedule(form.id, s.id, 'startDate', e.target.value)
+                              }
                             />
                           </label>
 
@@ -465,7 +614,9 @@ const removeForm = (formId: string) => {
                               type="date"
                               className="border rounded-md px-3 py-2"
                               value={s.endDate}
-                              onChange={(e) => updateSchedule(form.id, s.id, "endDate", e.target.value)}
+                              onChange={(e) =>
+                                updateSchedule(form.id, s.id, 'endDate', e.target.value)
+                              }
                             />
                           </label>
 
@@ -474,7 +625,9 @@ const removeForm = (formId: string) => {
                             <select
                               className="border rounded-md px-3 py-2"
                               value={s.startTime}
-                              onChange={(e) => updateSchedule(form.id, s.id, "startTime", e.target.value)}
+                              onChange={(e) =>
+                                updateSchedule(form.id, s.id, 'startTime', e.target.value)
+                              }
                             >
                               {timeOptions.map((t) => (
                                 <option key={`st-${s.id}-${t}`} value={t}>
@@ -489,7 +642,9 @@ const removeForm = (formId: string) => {
                             <select
                               className="border rounded-md px-3 py-2"
                               value={s.endTime}
-                              onChange={(e) => updateSchedule(form.id, s.id, "endTime", e.target.value)}
+                              onChange={(e) =>
+                                updateSchedule(form.id, s.id, 'endTime', e.target.value)
+                              }
                             >
                               {timeOptions.map((t) => (
                                 <option key={`et-${s.id}-${t}`} value={t}>
@@ -504,7 +659,9 @@ const removeForm = (formId: string) => {
                             <select
                               className="border rounded-md px-3 py-2"
                               value={s.intervalMin}
-                              onChange={(e) => updateSchedule(form.id, s.id, "intervalMin", Number(e.target.value))}
+                              onChange={(e) =>
+                                updateSchedule(form.id, s.id, 'intervalMin', Number(e.target.value))
+                              }
                             >
                               {intervalOptions.map((m) => (
                                 <option key={`iv-${s.id}-${m}`} value={m}>
@@ -525,8 +682,10 @@ const removeForm = (formId: string) => {
                       <input
                         type="date"
                         className="border rounded-md px-3 py-2"
-                        value={pendingHolidays[form.id] || ""}
-                        onChange={(e) => setPendingHolidays(prev => ({ ...prev, [form.id]: e.target.value }))}
+                        value={pendingHolidays[form.id] || ''}
+                        onChange={(e) =>
+                          setPendingHolidays((prev) => ({ ...prev, [form.id]: e.target.value }))
+                        }
                       />
                       <button
                         type="button"
@@ -597,18 +756,18 @@ const removeForm = (formId: string) => {
           {/* 이력 안내 오버레이 */}
           <div
             className={[
-              "absolute inset-0 flex justify-center p-4 sm:p-6 transition-opacity",
+              'absolute inset-0 flex justify-center p-4 sm:p-6 transition-opacity',
               hasResume
-                ? "opacity-0 pointer-events-none"
-                : "opacity-100 items-start sm:items-center pt-12 sm:pt-0",
-            ].join(" ")}
+                ? 'opacity-0 pointer-events-none'
+                : 'opacity-100 items-start sm:items-center pt-12 sm:pt-0',
+            ].join(' ')}
             aria-hidden={hasResume}
           >
             <div className="w-full max-w-[720px] rounded-2xl border bg-white/85 backdrop-blur-md shadow-xl p-4 sm:p-6">
               <h3 className="text-base sm:text-lg font-semibold">판매자 이력 등록이 필요해요</h3>
               <p className="mt-2 text-sm sm:text-base text-gray-700">
-                클래스 등록 전에 판매자 이력이 등록되어 있어야 합니다.
-                먼저 이력 페이지에서 프로필/경력 정보를 입력해 주세요.
+                클래스 등록 전에 판매자 이력이 등록되어 있어야 합니다. 먼저 이력 페이지에서
+                프로필/경력 정보를 입력해 주세요.
               </p>
               <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
@@ -648,7 +807,7 @@ const removeForm = (formId: string) => {
                 }
                 setIsPostcodeOpen(false);
               }}
-              style={{ width: "100%", height: "420px" }}
+              style={{ width: '100%', height: '420px' }}
             />
           </div>
         </div>

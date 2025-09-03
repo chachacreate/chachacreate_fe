@@ -1,71 +1,97 @@
-// Axios 인스턴스와 인터셉터 설정
 import axios from 'axios';
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''; // 예: '/api'
 
-// localStorage에서 Access Token을 가져오는 함수
+// --- helpers ----------------------------------------------------
 const getAccessToken = () => localStorage.getItem('accessToken');
 
-// Axios 인스턴스 생성
+// x.y.z 형태 대충 검사해서 JWT처럼 보일 때만 Authorization 헤더 주입
+const isLikelyJwt = (t?: string | null) => !!t && t.split('.').length === 3 && t.trim().length > 20;
+
+const isFormData = (data: unknown): data is FormData =>
+  typeof FormData !== 'undefined' && data instanceof FormData;
+
+// baseURL이 '/api'인데 요청 url이 '/api/...'로 오면 '/api/api' 중복 제거
+const normalizeUrl = (url?: string) => {
+  if (!url) return url;
+  if (API_BASE_URL?.endsWith('/api') && url.startsWith('/api/')) {
+    return url.replace(/^\/api\//, '/'); // '/api/foo' -> '/foo'
+  }
+  return url;
+};
+// ----------------------------------------------------------------
+
 const api = axios.create({
-  baseURL: API_BASE_URL, // 기본 URL 설정
-  headers: { 'Content-Type': 'application/json' }, // 기본 헤더 설정
-  withCredentials: true, // 쿠키 포함 요청 허용 (Refresh Token용)
+  baseURL: API_BASE_URL, // '/api'
+  withCredentials: true,
 });
 
-// 요청 인터셉터: 모든 요청에 Access Token 자동 삽입
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // 1) URL 정리
+    if (config.url) config.url = normalizeUrl(config.url);
+
+    // 2) Authorization (JWT처럼 보일 때만)
     const token = getAccessToken();
-
-    // headers가 undefined일 경우 빈 객체로 초기화
-    config.headers = config.headers || {};
-
-    // 토큰이 존재하면 Authorization 헤더에 삽입
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+    config.headers = config.headers ?? {};
+    if (isLikelyJwt(token)) {
+      (config.headers as any).Authorization = `Bearer ${token}`;
+    } else {
+      delete (config.headers as any).Authorization;
     }
 
+    // 3) FormData면 Content-Type 제거 (브라우저가 boundary 포함해서 자동 설정)
+    if (isFormData(config.data)) {
+      delete (config.headers as any)['Content-Type'];
+    }
     return config;
   },
-  (error) => Promise.reject(error) // 요청 에러 처리
+  (error) => Promise.reject(error)
 );
 
-// 응답 인터셉터: 401 Unauthorized 시 Access Token 자동 갱신
 api.interceptors.response.use(
-  (response: AxiosResponse) => response, // 정상 응답 그대로 반환
+  (response: AxiosResponse) => response,
   async (error) => {
-    // 원래 요청 객체
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const original = error.config as
+      | (InternalAxiosRequestConfig & { _retry?: boolean })
+      | undefined;
 
-    // 401이고, 아직 재시도하지 않았다면
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
+    if (error.response?.status === 401 && original && !original._retry) {
+      original._retry = true;
       try {
         const email = localStorage.getItem('email');
         if (!email) throw new Error('이메일 정보 없음');
 
-        // 서버에 Refresh Token으로 새로운 Access Token 요청
-        const res = await axios.post(
-          `${API_BASE_URL}/api/auth/refresh`,
+        // refresh 엔드포인트가 '/api/auth/refresh' 라는 가정
+        const refreshRes = await axios.post(
+          `${API_BASE_URL || ''}/auth/refresh`, // baseURL이 '/api'니까 '/api/auth/refresh'
           { email },
-          { withCredentials: true } // 쿠키 자동 전송
+          { withCredentials: true }
         );
 
-        const newAccessToken = res.data.accessToken;
+        const newAccessToken: string = refreshRes.data.accessToken;
         localStorage.setItem('accessToken', newAccessToken);
 
-        // 원래 요청에 새 Access Token 적용 후 재시도
-        originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-        return axios(originalRequest);
-      } catch (refreshError) {
-        // 갱신 실패 시 로그아웃 처리
+        // 재시도 요청 재설정
+        original.headers = original.headers ?? {};
+        if (isLikelyJwt(newAccessToken)) {
+          (original.headers as any).Authorization = `Bearer ${newAccessToken}`;
+        } else {
+          delete (original.headers as any).Authorization;
+        }
+        if (original.url) original.url = normalizeUrl(original.url);
+        if (isFormData(original.data)) {
+          delete (original.headers as any)['Content-Type'];
+        }
+
+        // 인스턴스로 재시도
+        return api(original);
+      } catch (e) {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('email');
         window.location.href = '/login';
-        return Promise.reject(refreshError);
+        return Promise.reject(e);
       }
     }
 
@@ -73,4 +99,4 @@ api.interceptors.response.use(
   }
 );
 
-export default api; // 다른 모듈에서 api 인스턴스를 재사용 가능
+export default api;

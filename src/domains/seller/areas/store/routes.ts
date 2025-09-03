@@ -1,36 +1,36 @@
 // src/domains/seller/areas/store/routes.ts
-import React, { lazy, type ComponentType, type LazyExoticComponent } from "react";
-import type { RouteObject } from "react-router-dom";
-import { createElement, Suspense } from "react";
+import React, { lazy, type ComponentType, type LazyExoticComponent } from 'react';
+import type { RouteObject } from 'react-router-dom';
+import { createElement, Suspense } from 'react';
 
 // /seller/:storeUrl/store/*
-const StoreNoticePage = lazy(() =>
-  import("@src/domains/seller/areas/store/features/notice/pages/StoreNotice")
+const StoreNoticePage = lazy(
+  () => import('@src/domains/seller/areas/store/features/notice/pages/StoreNotice')
 );
-const StoreCustomPage = lazy(() =>
-  import("@src/domains/seller/areas/store/features/custom/pages/StoreCustom")
-);
+//const StoreCustomPage = lazy(() =>
+//import("@src/domains/seller/areas/store/features/custom/pages/StoreCustom")
+//);
 // /seller/:storeUrl/storeinfo
-const StoreInfoPage = lazy(() =>
-  import("@src/domains/seller/areas/store/features/storeinfo/pages/StoreInfo")
-);
+//const StoreInfoPage = lazy(() =>
+//import("@src/domains/seller/areas/store/features/storeinfo/pages/StoreInfo")
+//);
 
 const suspense = (Comp: LazyExoticComponent<ComponentType<any>>) =>
   createElement(
     Suspense,
-    { fallback: createElement("div", { className: "p-6" }, "로딩…") },
+    { fallback: createElement('div', { className: 'p-6' }, '로딩…') },
     createElement(Comp)
   );
 
 export const storeRoutes: RouteObject[] = [
   // /seller/:storeUrl/store/*
   {
-    path: "store",
+    path: 'store',
     children: [
-      { path: "notice", element: suspense(StoreNoticePage) },
-      { path: "custom", element: suspense(StoreCustomPage) },
+      { path: 'notice', element: suspense(StoreNoticePage) },
+      //{ path: "custom", element: suspense(StoreCustomPage) },
     ],
   },
   // /seller/:storeUrl/storeinfo
-  { path: "storeinfo", element: suspense(StoreInfoPage) },
+  //{ path: "storeinfo", element: suspense(StoreInfoPage) },
 ];

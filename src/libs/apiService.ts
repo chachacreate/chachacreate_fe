@@ -3,8 +3,9 @@ import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import type { JWTPayload } from './apiResponse';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''; // 예: '/api'
+const API_LEGACY_URL = import.meta.env.VITE_API_LEGACY_URL ?? 'http://localhost:9999/legacy'; // Legacy URL
 
-// ====================== JWT helpers (develop 기능 유지) ======================
+// ====================== JWT helpers (Spring Boot용) ======================
 export const decodeToken = (token: string): JWTPayload | null => {
   try {
     const cleanToken = token.replace(/^Bearer\s+/i, '');
@@ -68,13 +69,13 @@ const normalizeUrl = (url?: string) => {
   return url;
 };
 
-// ====================== Axios 인스턴스 ======================
+// ====================== Spring Boot API 인스턴스 (JWT 포함) ======================
 const api = axios.create({
   baseURL: API_BASE_URL, // '/api'
   withCredentials: true,
 });
 
-// ---------------------- Request Interceptor ----------------------
+// ---------------------- Request Interceptor (Boot용) ----------------------
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // 1) URL 정리
@@ -98,11 +99,13 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ---------------------- Response Interceptor ----------------------
+// ---------------------- Response Interceptor (Boot용) ----------------------
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error) => {
-    const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    const original = error.config as
+      | (InternalAxiosRequestConfig & { _retry?: boolean })
+      | undefined;
 
     if (error.response?.status === 401 && original && !original._retry) {
       original._retry = true;
@@ -111,11 +114,9 @@ api.interceptors.response.use(
         const email = localStorage.getItem('email') || undefined;
         const refreshUrl = `${API_BASE_URL || ''}/auth/refresh`;
 
-        const refreshRes = await axios.post(
-          refreshUrl,
-          email ? { email } : {},
-          { withCredentials: true }
-        );
+        const refreshRes = await axios.post(refreshUrl, email ? { email } : {}, {
+          withCredentials: true,
+        });
 
         // 응답 형태 유연 대응: {accessToken} 또는 {data: {accessToken}}
         const newAccessToken: string | undefined =
@@ -164,4 +165,42 @@ api.interceptors.response.use(
   }
 );
 
-export default api;
+// ====================== Legacy API 인스턴스 (세션 기반, JWT 없음) ======================
+const legacyApi = axios.create({
+  baseURL: API_LEGACY_URL, // 'http://localhost:9999/legacy'
+  withCredentials: true, // 세션 쿠키 포함
+});
+
+// ---------------------- Request Interceptor (Legacy용) ----------------------
+legacyApi.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    // Legacy는 JWT 없이 세션 기반이므로 Authorization 헤더 제거
+    config.headers = config.headers ?? {};
+    delete (config.headers as any).Authorization;
+
+    // FormData면 Content-Type 제거
+    if (isFormData(config.data)) {
+      delete (config.headers as any)['Content-Type'];
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// ---------------------- Response Interceptor (Legacy용) ----------------------
+legacyApi.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  async (error) => {
+    // Legacy는 401 시 토큰 갱신 없이 바로 로그인 페이지로
+    if (error.response?.status === 401) {
+      console.warn('Legacy 세션 만료, 로그인 페이지로 이동');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ====================== Export ======================
+export default api; // Spring Boot API (기존 호환성 유지)
+export { legacyApi }; // Legacy API

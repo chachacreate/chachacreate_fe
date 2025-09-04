@@ -125,7 +125,7 @@ const createEmptyForm = (classNumber: number = 1): ClassForm => ({
 
 const ClassInsert: FC = () => {
   const navigate = useNavigate();
-  const { storeUrl = 'store1' } = useParams<Params>();
+  const { storeUrl = 'store' } = useParams();
 
   const editorRefs = useRef<Record<string, EditorHandle | null>>({});
 
@@ -513,15 +513,15 @@ const ClassInsert: FC = () => {
                   </div>
 
                   {/* 상세설명 */}
-                  <label className="grid gap-1">
-                    <span className="text-sm font-medium">클래스 상세설명</span>
+                  <fieldset className="grid gap-1">
+                    <legend className="text-sm font-medium">클래스 상세설명</legend>
                     <EditorAPI
                       ref={(el) => {
                         editorRefs.current[form.id] = el;
                       }}
                       initialValue={form.desc ?? ''}
                     />
-                  </label>
+                  </fieldset>
 
                   {/* AI 설명 */}
                   <div className="grid gap-2">

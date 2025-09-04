@@ -5,7 +5,12 @@ import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainna
 import { ArrowLeft } from 'lucide-react';
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk';
 import { v4 as uuidv4 } from 'uuid';
-import { getCurrentUser, getCurrentUserCustomerKey, isLoggedIn } from '@src/shared/util/jwtUtils';
+import {
+  formatPhoneForPayment,
+  getCurrentUser,
+  getCurrentUserCustomerKey,
+  isLoggedIn,
+} from '@src/shared/util/jwtUtils';
 
 const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY;
 
@@ -108,10 +113,6 @@ export default function MainClassOrderPage() {
 
   const [orderId] = useState(() => uuidv4());
   const [isProcessing, setIsProcessing] = useState(false);
-
-  const formatPhoneForPayment = (phone: string): string => {
-    return phone?.replace(/-/g, '') || '';
-  };
 
   const handlePaymentRequest = async () => {
     if (!payment || isProcessing) return;

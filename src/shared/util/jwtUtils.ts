@@ -128,6 +128,10 @@ export function isSeller(): boolean {
   return hasRole('SELLER');
 }
 
+export const formatPhoneForPayment = (phone: string): string => {
+  return phone?.replace(/-/g, '') || '';
+};
+
 /**
  * 이메일로 Toss Payments용 고객 키 생성
  */

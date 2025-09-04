@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import App from "@src/app/App";
+import App from "@src/App/App";
 
 // 페이지
 import MainLandingPage from "@src/domains/main/areas/home/features/main-landing/pages/MainLandingPage";

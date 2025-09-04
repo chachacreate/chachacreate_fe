@@ -1,9 +1,8 @@
-// src/shared/areas/layout/features/header/Header.tsx
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import Searchbar from '@src/shared/areas/navigation/features/searchbar/Searchbar';
 import { getUserInfoFromToken } from '@src/libs/apiService';
-import { goToLogin, goToMain, goToMessage, goToSignup } from '@src/shared/LegacyNavigate';
+import { goToLogin, goToMain, goToMessage, goToSignup, logOut } from '@src/shared/LegacyNavigate';
 import type { JWTPayload } from '@src/libs/apiResponse';
 
 type UserLite = { name: string } | null;
@@ -29,7 +28,6 @@ const RESERVED_PREFIXES = new Set([
 
 export default function Header({ user, storeSlug, onLogout, hideTopBar = false }: HeaderProps) {
   const location = useLocation();
-  const navigate = useNavigate();
 
   const [me, setMe] = useState<UserLite>(user ?? null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -38,11 +36,13 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
   const handleLogout = async () => {
     try {
       if (onLogout) await onLogout();
+      await logOut();
     } finally {
       localStorage.removeItem('accessToken');
       setMe(null);
       setMenuOpen(false);
-      navigate('/main');
+      goToMain();
+      alert('로그아웃 성공!');
     }
   };
 
@@ -55,37 +55,20 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
 
     const token = localStorage.getItem('accessToken');
     if (!token) {
-      console.log('Header: 토큰이 없습니다.');
       setMe(null);
       return;
     }
 
-    console.log('Header: 토큰이 존재합니다:', token.substring(0, 20) + '...');
-
     // 토큰에서 사용자 정보 추출 (apiService의 함수 사용)
     const userInfo: JWTPayload | null = getUserInfoFromToken(token);
-    console.log('Header: 디코드된 사용자 정보:', userInfo);
 
     if (userInfo) {
       const userLite = { name: userInfo.name };
-      console.log('Header: userLite 설정:', userLite);
       setMe(userLite);
-
-      // localStorage에 사용자 정보 저장 (캐시용)
-      localStorage.setItem('userName', userInfo.name);
-      localStorage.setItem('email', userInfo.email);
-      console.log(
-        'Header: localStorage에 저장완료 - userName:',
-        userInfo.name,
-        'email:',
-        userInfo.email
-      );
     } else {
       console.warn('Header: 토큰이 유효하지 않습니다.');
       // 토큰이 유효하지 않은 경우 (만료되었거나 잘못된 형식)
       localStorage.removeItem('accessToken');
-      localStorage.removeItem('email');
-      localStorage.removeItem('userName');
       setMe(null);
     }
   }, [user]);

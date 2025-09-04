@@ -11,6 +11,8 @@ import {
 } from '@src/shared/util/LegacyNavigate';
 import type { JWTPayload } from '@src/libs/apiResponse';
 import { clearTokens, getCurrentUser } from '@src/shared/util/jwtUtils';
+import mobLogo from "@src/shared/resources/images/logo/mainlogo_mob.png";
+
 
 type UserLite = { name: string } | null;
 
@@ -125,13 +127,21 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
         <div className="mx-auto w-full max-w-[1920px] px-4 min-[1920px]:px-60 h-[50px] flex items-center gap-3">
           {/* 로고 (모바일에서만 표시) */}
           <button onClick={goToMain} className="flex items-center gap-2">
-            <span className="inline-block h-8 w-8 rounded-full bg-white/90" aria-hidden />
+          <img src={mobLogo} alt="뜨락상회 로고" className="h-8 w-auto" />
           </button>
 
-          {/* Searchbar (가운데, 공통 컴포넌트) */}
-          <div className="flex-1">
-            <Searchbar />
-          </div>
+           {/* 검색바: 네브 전용 스타일로 */}
+            <div className="flex-1">
+              <Searchbar
+                variant="navDark"
+                hideButton
+                wrapperClassName="[&>svg]:hidden" 
+                placeholder="검색어를 입력하세요"
+                // 필요 시 세부 오버라이드도 가능:
+                // wrapperClassName="h-[38px]"
+                // inputClassName="text-base"
+              />
+            </div>
 
           {/* 메시지 아이콘 (우측) */}
           <button onClick={handleGoToMessage} aria-label="메시지" className="p-2 -mr-1">

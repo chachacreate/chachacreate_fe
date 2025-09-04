@@ -86,31 +86,31 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
   };
 
   return (
-    <header className="w-full border-b border-gray-100">
+    <header className="w-full border-b border-gray-100 font-['Jua',ui-sans-serif,system-ui,sans-serif]">
       {/* 데스크톱 상단 유틸바 (모바일에선 숨김) */}
       {!hideTopBar && (
         <div className="hidden md:block w-full bg-[#2d4739] text-white">
-          <div className="mx-auto w-full max-w-[1920px] px-60 h-10 flex items-center justify-end">
-            <nav className="flex items-center gap-4 text-sm">
+          <div className="mx-auto w-full max-w-[1920px] px-60 h-[50px] flex items-center justify-end">
+            <nav className="flex items-center gap-4 text-[15px]">
               {me ? (
                 <>
                   <span className="whitespace-nowrap">
                     <strong>{userName}</strong>님 반갑습니다!
                   </span>
-                  <button onClick={handleGoToMessage} className="hover:underline whitespace-nowrap">
+                  <button onClick={handleGoToMessage} className="hover:underline hover:underline-offset-2 whitespace-nowrap">
                     {isStore ? `${inferredStoreSlug}에 메시지 보내기` : '메시지'}
                   </button>
-                  <button onClick={handleLogout} className="hover:underline whitespace-nowrap">
+                  <button onClick={handleLogout} className="hover:underline hover:underline-offset-2 whitespace-nowrap">
                     로그아웃
                   </button>
                 </>
               ) : (
                 <>
-                  <button onClick={goToLogin} className="hover:underline">
+                  <button onClick={goToLogin} className="hover:underline hover:underline-offset-2">
                     로그인
                   </button>
                   <span aria-hidden="true">|</span>
-                  <button onClick={goToSignup} className="hover:underline">
+                  <button onClick={goToSignup} className="hover:underline hover:underline-offset-2">
                     회원가입
                   </button>
                 </>
@@ -122,7 +122,7 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
 
       {/* 모바일 전용 상단 바: 로고 | Searchbar | 메시지아이콘 | 햄버거 */}
       <div className="md:hidden w-full bg-[#2d4739] text-white">
-        <div className="mx-auto w-full max-w-[1920px] px-4 min-[1920px]:px-60 h-14 flex items-center gap-3">
+        <div className="mx-auto w-full max-w-[1920px] px-4 min-[1920px]:px-60 h-[50px] flex items-center gap-3">
           {/* 로고 (모바일에서만 표시) */}
           <button onClick={goToMain} className="flex items-center gap-2">
             <span className="inline-block h-8 w-8 rounded-full bg-white/90" aria-hidden />
@@ -164,7 +164,7 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
         {/* 모바일 드롭다운: 배경/텍스트 색상 헤더와 동일, 항목만 변경 */}
         {menuOpen && (
           <div className="md:hidden border-t border-white/20 bg-[#2d4739] text-white">
-            <div className="mx-auto w-full max-w-[1920px] px-4 min-[1920px]:px-60 py-3 text-sm space-y-2">
+            <div className="mx-auto w-full max-w-[1920px] px-4 min-[1920px]:px-60 py-3 text-[15px] space-y-2">
               {me ? (
                 <>
                   <div className="opacity-90">
@@ -174,7 +174,7 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
                     onClick={() => {
                       handleLogout();
                     }}
-                    className="block w-full text-left hover:underline"
+                    className="block w-full text-left hover:underline hover:underline-offset-2"
                   >
                     로그아웃
                   </button>
@@ -186,7 +186,7 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
                       goToLogin();
                       setMenuOpen(false);
                     }}
-                    className="block w-full text-left hover:underline"
+                    className="block w-full text-left hover:underline hover:underline-offset-2"
                   >
                     로그인
                   </button>
@@ -195,7 +195,7 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
                       goToSignup();
                       setMenuOpen(false);
                     }}
-                    className="block w-full text-left hover:underline"
+                    className="block w-full text-left hover:underline hover:underline-offset-2"
                   >
                     회원가입
                   </button>

@@ -1,7 +1,29 @@
+/* Google Fonts import를 최상단에 추가 */
+@import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* 나머지 커스텀 스타일들... */
+@layer components {
+  .all-\[unset\] {
+    all: unset;
+  }
+}
+
+/* 기존 스타일들 그대로 유지 */
+:root {
+  --bold-font-family: "Jua"; /* 여기도 "Jua"로 수정 */
+  --bold-font-size: 64px;
+  --bold-font-style: normal;
+  --bold-font-weight: 400;
+  --bold-letter-spacing: -0.4300000071525574px;
+  --bold-line-height: 22px;
+  --animate-spin: spin 1s linear infinite;
+}
+
+/* 나머지 애니메이션과 키프레임들... */
 /* --- 네가 준 커스텀 유틸/애니메이션 여기 둬도 됩니다 --- */
 @layer components {
   .all-\[unset\] {

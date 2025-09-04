@@ -1,4 +1,3 @@
-// src/domains/main/areas/home/features/class-order/pages/MainClassOrderPage.tsx
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import Header from '@src/shared/areas/layout/features/header/Header';
@@ -6,8 +5,7 @@ import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainna
 import { ArrowLeft } from 'lucide-react';
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk';
 import { v4 as uuidv4 } from 'uuid';
-import { jwtDecode } from 'jwt-decode';
-import CryptoJS from 'crypto-js';
+import { getCurrentUser, getCurrentUserCustomerKey, isLoggedIn } from '@src/shared/util/jwtUtils';
 
 const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY;
 
@@ -27,19 +25,6 @@ type OrderState = {
   storeName?: string;
 };
 
-type DecodedToken = {
-  email: string;
-  name: string;
-  phone: string;
-};
-
-function generateCustomerKey(email: string): string {
-  // salt를 추가하면 안전성 증가
-  const salt = 'mySecretSalt_';
-  const hash = CryptoJS.SHA256(salt + email).toString(); // 64자 hex
-  return `ck_${hash.slice(0, 30)}`; // Toss 정책 50자 이하
-}
-
 export default function MainClassOrderPage() {
   const nav = useNavigate();
   const { state } = useLocation();
@@ -49,8 +34,19 @@ export default function MainClassOrderPage() {
   const addressRoad = item?.location;
   const price = item?.price;
 
-  // 결제/동의
-  // const [payMethod, setPayMethod] = useState<"bank" | "card">("bank");
+  // JWT 유틸 사용해서 사용자 정보 가져오기
+  const userInfo = getCurrentUser();
+
+  // 로그인 체크
+  if (!isLoggedIn() || !userInfo) {
+    console.error('로그인이 필요합니다.');
+    nav('/login');
+    return null;
+  }
+
+  const { email, name, phone } = userInfo;
+
+  // 결제/동의 상태
   const [agreeAll, setAgreeAll] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeNotice, setAgreeNotice] = useState(false);
@@ -69,37 +65,21 @@ export default function MainClassOrderPage() {
   const [payment, setPayment] = useState<any>(null);
   const clientKey = TOSS_CLIENT_KEY;
 
-  const token = localStorage.getItem('accessToken');
-  // const token = ''; // 테스트용
-  if (!token) {
-    console.error('Tocken이 존재하지 않습니다.');
-    return;
-  }
-
-  const decoded: DecodedToken = jwtDecode(token);
-  const email = decoded.email;
-  const name = decoded.name;
-  const phone = decoded.phone;
-  console.log(email, name, phone);
-
   useEffect(() => {
     async function fetchPayment() {
       try {
-        if (!email) {
-          throw new Error('JWT에 email이 없습니다.');
+        // JWT 유틸로 안전한 customerKey 생성
+        const customerKey = getCurrentUserCustomerKey();
+        if (!customerKey) {
+          throw new Error('고객 키 생성 실패');
         }
-
-        // ✅ 안전한 customerKey 생성
-        const customerKey = generateCustomerKey(email);
 
         const tossPayments = await loadTossPayments(clientKey);
         if (!tossPayments) {
           throw new Error('Toss Payments SDK 로드 실패');
         }
-        const payment = tossPayments.payment({
-          customerKey,
-        });
 
+        const payment = tossPayments.payment({ customerKey });
         setPayment(payment);
       } catch (error) {
         console.error('Error fetching payment:', error);
@@ -107,7 +87,7 @@ export default function MainClassOrderPage() {
     }
 
     fetchPayment();
-  }, [clientKey, email]);
+  }, [clientKey]);
 
   const formatted = useMemo(() => {
     if (!date || !time) return '';
@@ -129,6 +109,10 @@ export default function MainClassOrderPage() {
   const [orderId] = useState(() => uuidv4());
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const formatPhoneForPayment = (phone: string): string => {
+    return phone?.replace(/-/g, '') || '';
+  };
+
   const handlePaymentRequest = async () => {
     if (!payment || isProcessing) return;
     setIsProcessing(true);
@@ -142,9 +126,9 @@ export default function MainClassOrderPage() {
           window.location.origin +
           `/main/classes/order/result?status=success&name=${name}&classId=${classId}&time=${time}&date=${date}&time=${time}`,
         failUrl: window.location.origin + `/main/classes/order/result?status=fail`,
-        customerEmail: 'email@email',
+        customerEmail: email,
         customerName: name,
-        customerMobilePhone: phone,
+        customerMobilePhone: formatPhoneForPayment(phone),
       });
     } catch (error) {
       console.error(error);

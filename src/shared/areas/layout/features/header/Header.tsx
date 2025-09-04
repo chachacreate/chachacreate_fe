@@ -2,8 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import Searchbar from '@src/shared/areas/navigation/features/searchbar/Searchbar';
 import { getUserInfoFromToken } from '@src/libs/apiService';
-import { goToLogin, goToMain, goToMessage, goToSignup, logOut } from '@src/shared/LegacyNavigate';
+import {
+  goToLogin,
+  goToMain,
+  goToMessage,
+  goToSignup,
+  logOut,
+} from '@src/shared/util/LegacyNavigate';
 import type { JWTPayload } from '@src/libs/apiResponse';
+import { clearTokens, getCurrentUser } from '@src/shared/util/jwtUtils';
 
 type UserLite = { name: string } | null;
 
@@ -36,9 +43,8 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
   const handleLogout = async () => {
     try {
       if (onLogout) await onLogout();
-      await logOut();
     } finally {
-      localStorage.removeItem('accessToken');
+      clearTokens(); // 로컬 토큰 정리
       setMe(null);
       setMenuOpen(false);
       goToMain();
@@ -53,22 +59,11 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
       return;
     }
 
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      setMe(null);
-      return;
-    }
-
-    // 토큰에서 사용자 정보 추출 (apiService의 함수 사용)
-    const userInfo: JWTPayload | null = getUserInfoFromToken(token);
-
+    // JWT 유틸 함수 사용
+    const userInfo = getCurrentUser();
     if (userInfo) {
-      const userLite = { name: userInfo.name };
-      setMe(userLite);
+      setMe({ name: userInfo.name });
     } else {
-      console.warn('Header: 토큰이 유효하지 않습니다.');
-      // 토큰이 유효하지 않은 경우 (만료되었거나 잘못된 형식)
-      localStorage.removeItem('accessToken');
       setMe(null);
     }
   }, [user]);

@@ -128,7 +128,7 @@ export function isSeller(): boolean {
   return hasRole('SELLER');
 }
 
-export const formatPhoneForPayment = (phone: string): string => {
+export const formatPhoneForPayment = (phone?: string): string => {
   return phone?.replace(/-/g, '') || '';
 };
 

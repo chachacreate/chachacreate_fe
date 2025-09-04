@@ -11,14 +11,14 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@toast-ui/editor": "^3.2.2",
-    "@toast-ui/editor-plugin-color-syntax": "^3.1.0",
-    "@toast-ui/react-editor": "^3.2.3",
-    "@tosspayments/tosspayments-sdk": "^2.3.7",
     "@fullcalendar/core": "^6.1.19",
     "@fullcalendar/daygrid": "^6.1.19",
     "@fullcalendar/interaction": "^6.1.19",
     "@fullcalendar/react": "^6.1.19",
+    "@toast-ui/editor": "^3.2.2",
+    "@toast-ui/editor-plugin-color-syntax": "^3.1.0",
+    "@toast-ui/react-editor": "^3.2.3",
+    "@tosspayments/tosspayments-sdk": "^2.3.7",
     "axios": "^1.11.0",
     "crypto-js": "^4.2.0",
     "jwt-decode": "^4.0.0",

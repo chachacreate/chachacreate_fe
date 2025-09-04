@@ -1,11 +1,11 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
-import '@toast-ui/editor/dist/toastui-editor.css';
+
 import { Editor } from '@toast-ui/react-editor';
 import type { Editor as EditorType } from '@toast-ui/react-editor';
-
-import colorSyntax from '@toast-ui/editor-plugin-color-syntax';
+import '@toast-ui/editor/dist/toastui-editor.css';
 import 'tui-color-picker/dist/tui-color-picker.css';
 import '@toast-ui/editor-plugin-color-syntax/dist/toastui-editor-plugin-color-syntax.css';
+import colorSyntax from '@toast-ui/editor-plugin-color-syntax';
 import '@toast-ui/editor/dist/i18n/ko-kr';
 
 import api from '@src/libs/apiService';
@@ -34,44 +34,46 @@ const EditorAPI = forwardRef<EditorHandle, Props>((props, ref) => {
   }));
 
   return (
-    <Editor
-      ref={editorRef}
-      height="500px"
-      initialEditType="wysiwyg"
-      hideModeSwitch
-      plugins={[colorSyntax]}
-      language="ko-kr"
-      initialValue={initialValue}
-      toolbarItems={[
-        // 원하는 툴바만 지정
-        ['heading', 'bold', 'italic', 'strike'],
-        ['hr', 'quote'],
-        ['ul', 'ol', 'task'],
-        ['table', 'image', 'link'],
-        ['code', 'codeblock'],
-      ]}
-      hooks={{
-        // 타입 안정: Blob | File, alt는 선택값
-        addImageBlobHook: async (
-          blob: Blob | File,
-          callback: (url: string, alt?: string) => void
-        ) => {
-          try {
-            const fd = new FormData();
-            fd.append('file', blob);
+    <>
+      <Editor
+        ref={editorRef}
+        height="500px"
+        initialEditType="wysiwyg"
+        hideModeSwitch
+        plugins={[colorSyntax]}
+        language="ko-KR"
+        initialValue={initialValue}
+        toolbarItems={[
+          // 원하는 툴바만 지정
+          ['heading', 'bold', 'italic', 'strike'],
+          ['hr', 'quote'],
+          ['ul', 'ol', 'task'],
+          ['table', 'image', 'link'],
+          ['code', 'codeblock'],
+        ]}
+        hooks={{
+          // 타입 안정: Blob | File, alt는 선택값
+          addImageBlobHook: async (
+            blob: Blob | File,
+            callback: (url: string, alt?: string) => void
+          ) => {
+            try {
+              const fd = new FormData();
+              fd.append('file', blob);
 
-            const resp = await api.post('/files/upload', fd);
-            const url = resp.data?.url;
-            if (!url) throw new Error('업로드 URL 없음');
+              const resp = await api.post('/files/upload', fd);
+              const url = resp.data?.url;
+              if (!url) throw new Error('업로드 URL 없음');
 
-            callback(url, '');
-            onImageUploaded?.(url);
-          } catch (e: any) {
-            alert(e?.response?.data?.message || e?.message || '이미지 업로드 실패');
-          }
-        },
-      }}
-    />
+              callback(url, '');
+              onImageUploaded?.(url);
+            } catch (e: any) {
+              alert(e?.response?.data?.message || e?.message || '이미지 업로드 실패');
+            }
+          },
+        }}
+      />
+    </>
   );
 });
 

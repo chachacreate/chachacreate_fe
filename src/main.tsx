@@ -6,7 +6,6 @@ import App from '@src/App/App';
 
 // 페이지
 import MainLandingPage from '@src/domains/main/areas/home/features/main-landing/pages/MainLandingPage';
-import StoreClassesPage from '@src/domains/buyer/areas/classes/pages/StoreClassesPage';
 import './routes/index.css';
 
 import { sellerRoutes } from '@src/domains/seller/routes';
@@ -24,8 +23,6 @@ export const router = createBrowserRouter([
       ...mainRoutes,
       ...sellerRoutes,
       ...buyerRoutes,
-      // buyerRoutes
-      { path: ':store/classes', element: <StoreClassesPage /> },
     ],
   },
 ]);

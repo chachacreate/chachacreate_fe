@@ -22,7 +22,7 @@ const suspense = (Comp: LazyExoticComponent<ComponentType<any>>) =>
  */
 export const buyerRoutes: RouteObject[] = [
   {
-    path: '/:storeUrl',
+    path: '/:store',
     children: [
       { index: true, element: suspense(StoreHomePage) },
 

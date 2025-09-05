@@ -126,9 +126,16 @@ const ClassList: FC = () => {
         if (!alive) return;
         setRows(mapped);
         setSelected({});
-      } catch (e) {
+      } catch (e: any) {
         if (!alive) return;
-        setLoadError(e instanceof Error ? e.message : '클래스 목록을 불러오지 못했어요.');
+        if (e?.response.data?.status === 404) {
+          // 404: 클래스 없는 경우는 빈 배열 처리
+          setRows([]);
+          setSelected({});
+        } else {
+          // 기타 서버 오류의 경우
+          setLoadError(e instanceof Error ? e.message : '클래스 목록을 불러오지 못했어요.');
+        }
       } finally {
         if (alive) setIsLoading(false);
       }

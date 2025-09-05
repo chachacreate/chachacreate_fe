@@ -11,8 +11,7 @@ import {
 } from '@src/shared/util/LegacyNavigate';
 import type { JWTPayload } from '@src/libs/apiResponse';
 import { clearTokens, getCurrentUser } from '@src/shared/util/jwtUtils';
-import mobLogo from "@src/shared/resources/images/logo/mainlogo_mob.png";
-
+import mobLogo from '@src/shared/resources/images/logo/mainlogo_mob.png';
 
 type UserLite = { name: string } | null;
 
@@ -50,6 +49,7 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
       setMe(null);
       setMenuOpen(false);
       goToMain();
+      await logOut();
       alert('로그아웃 성공!');
     }
   };
@@ -99,10 +99,16 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
                   <span className="whitespace-nowrap">
                     <strong>{userName}</strong>님 반갑습니다!
                   </span>
-                  <button onClick={handleGoToMessage} className="hover:underline hover:underline-offset-2 whitespace-nowrap">
+                  <button
+                    onClick={handleGoToMessage}
+                    className="hover:underline hover:underline-offset-2 whitespace-nowrap"
+                  >
                     {isStore ? `${inferredStoreSlug}에 메시지 보내기` : '메시지'}
                   </button>
-                  <button onClick={handleLogout} className="hover:underline hover:underline-offset-2 whitespace-nowrap">
+                  <button
+                    onClick={handleLogout}
+                    className="hover:underline hover:underline-offset-2 whitespace-nowrap"
+                  >
                     로그아웃
                   </button>
                 </>
@@ -127,21 +133,21 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
         <div className="mx-auto w-full max-w-[1920px] px-4 min-[1920px]:px-60 h-[50px] flex items-center gap-3">
           {/* 로고 (모바일에서만 표시) */}
           <button onClick={goToMain} className="flex items-center gap-2">
-          <img src={mobLogo} alt="뜨락상회 로고" className="h-8 w-auto" />
+            <img src={mobLogo} alt="뜨락상회 로고" className="h-8 w-auto" />
           </button>
 
-           {/* 검색바: 네브 전용 스타일로 */}
-            <div className="flex-1">
-              <Searchbar
-                variant="navDark"
-                hideButton
-                wrapperClassName="[&>svg]:hidden" 
-                placeholder="검색어를 입력하세요"
-                // 필요 시 세부 오버라이드도 가능:
-                // wrapperClassName="h-[38px]"
-                // inputClassName="text-base"
-              />
-            </div>
+          {/* 검색바: 네브 전용 스타일로 */}
+          <div className="flex-1">
+            <Searchbar
+              variant="navDark"
+              hideButton
+              wrapperClassName="[&>svg]:hidden"
+              placeholder="검색어를 입력하세요"
+              // 필요 시 세부 오버라이드도 가능:
+              // wrapperClassName="h-[38px]"
+              // inputClassName="text-base"
+            />
+          </div>
 
           {/* 메시지 아이콘 (우측) */}
           <button onClick={handleGoToMessage} aria-label="메시지" className="p-2 -mr-1">

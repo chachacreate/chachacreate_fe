@@ -1,11 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
+import { useParams } from 'react-router-dom';
+import { get, post } from '@src/libs/request';
+
+type ClassOptionResponseDTO = {
+  id: number;
+  name: string;
+};
+
+type ResumeResponseDTO = {
+  resumeId: number;
+  status: string;
+  images: { id: number; url: string; content: string }[];
+};
 
 export default function ResumeVerification() {
-  const [storeName] = useState('스토어 이름'); // 수정 불가
-  const [descriptions, setDescriptions] = useState(['']); // 초기 1개
+  const { storeUrl } = useParams();
+
+  // 스토어 이름(API로 주입)
+  const [storeName, setStoreName] = useState('');
+
+  // 설명/파일/미리보기 (인덱스 매칭)
+  const [descriptions, setDescriptions] = useState<string[]>(['']); // 초기 1개
+  const [files, setFiles] = useState<(File | null)[]>([null]);
+  const [previews, setPreviews] = useState<(string | null)[]>([null]); // objectURL 저장
   const maxDescriptions = 5;
 
   const [agreements, setAgreements] = useState({
@@ -21,20 +41,56 @@ export default function ResumeVerification() {
     marketing: false,
   });
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [currentIndexForFile, setCurrentIndexForFile] = useState<number>(0);
+
+  // ----- helpers -----
+  const revokeUrl = (url: string | null) => {
+    if (url) URL.revokeObjectURL(url);
+  };
+
+  // 접속 시 스토어 이름 불러오기
+  useEffect(() => {
+    const fetchPrefill = async () => {
+      if (!storeUrl) return;
+      try {
+        const res = await get<ClassOptionResponseDTO>(`/api/seller/${storeUrl}/resumes/prefill`);
+        setStoreName(res.data.name);
+      } catch {
+        setStoreName('스토어 불러오기 실패');
+      }
+    };
+    fetchPrefill();
+  }, [storeUrl]);
+
+  // 언마운트/갱신 시 기존 objectURL 정리
+  useEffect(() => {
+    return () => {
+      previews.forEach(revokeUrl);
+    };
+  }, [previews]);
+
   const handleDescriptionChange = (index: number, value: string) => {
-    const newDescriptions = [...descriptions];
-    newDescriptions[index] = value.slice(0, 150); // 최대 150자
-    setDescriptions(newDescriptions);
+    const next = [...descriptions];
+    next[index] = value.slice(0, 150);
+    setDescriptions(next);
   };
 
   const addDescription = () => {
     if (descriptions.length < maxDescriptions) {
-      setDescriptions([...descriptions, '']);
+      setDescriptions((prev) => [...prev, '']);
+      setFiles((prev) => [...prev, null]);
+      setPreviews((prev) => [...prev, null]);
     }
   };
 
   const removeDescription = (index: number) => {
-    setDescriptions(descriptions.filter((_, i) => i !== index));
+    // 미리보기 URL 해제
+    revokeUrl(previews[index]);
+
+    setDescriptions((prev) => prev.filter((_, i) => i !== index));
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const toggleAgreement = (key: keyof typeof agreements) => {
@@ -58,12 +114,78 @@ export default function ResumeVerification() {
     setOpenCards({ ...openCards, [key]: !openCards[key] });
   };
 
-  const handleSubmit = () => {
+  const onClickFileBox = (idx: number) => {
+    setCurrentIndexForFile(idx);
+    fileInputRef.current?.click();
+  };
+
+  const onChangeHiddenFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+
+    // 파일 상태 반영
+    setFiles((prev) => {
+      const next = [...prev];
+      next[currentIndexForFile] = f;
+      return next;
+    });
+
+    // 미리보기 URL 생성/교체 (기존 URL 해제)
+    setPreviews((prev) => {
+      const next = [...prev];
+      // 기존 objectURL 정리
+      revokeUrl(next[currentIndexForFile]);
+      next[currentIndexForFile] = f ? URL.createObjectURL(f) : null;
+      return next;
+    });
+
+    // 같은 파일 다시 선택할 수 있게 초기화
+    e.currentTarget.value = '';
+  };
+
+  const handleSubmit = async () => {
     if (!(agreements.terms && agreements.privacy)) {
       alert('필수 약관에 동의해야 신청할 수 있습니다.');
       return;
     }
-    console.log({ storeName, descriptions, agreements });
+    const hasAnyFile = files.some((f) => !!f);
+    if (!hasAnyFile) {
+      alert('최소 1장 이상의 이미지를 선택해주세요.');
+      return;
+    }
+    if (!storeUrl) {
+      alert('스토어 URL이 유효하지 않습니다.');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+
+      // 파일이 있는 항목만 전송(images[*].file / images[*].content)
+      let idx = 0;
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        if (!f) continue;
+        formData.append(`images[${idx}].file`, f);
+        formData.append(`images[${idx}].content`, descriptions[i] ?? '');
+        idx++;
+      }
+
+      const res = await post<ResumeResponseDTO>(`/api/seller/${storeUrl}/resumes`, formData);
+
+      alert('이력서 등록 완료!');
+      console.log('등록 응답:', res.data);
+
+      // 미리보기 URL 전부 해제 후 초기화
+      previews.forEach(revokeUrl);
+      setDescriptions(['']);
+      setFiles([null]);
+      setPreviews([null]);
+      setAgreements({ all: false, terms: false, privacy: false, marketing: false });
+      setOpenCards({ terms: false, privacy: false, marketing: false });
+    } catch (err) {
+      console.error('이력서 등록 실패:', err);
+      alert('이력서 등록 중 오류가 발생했습니다.');
+    }
   };
 
   const isSubmitEnabled = agreements.terms && agreements.privacy;
@@ -98,9 +220,23 @@ export default function ResumeVerification() {
           <div className="space-y-4">
             {descriptions.map((desc, idx) => (
               <div key={idx} className="flex gap-4 items-stretch">
-                <div className="w-32 h-32 flex-shrink-0 border rounded-lg bg-gray-100 flex items-center justify-center cursor-pointer hover:bg-gray-200">
-                  <span className="text-3xl font-bold text-gray-400">+</span>
+                {/* 파일 선택 박스(플러스 박스) */}
+                <div
+                  className="w-32 h-32 flex-shrink-0 border rounded-lg bg-gray-100 flex items-center justify-center cursor-pointer overflow-hidden hover:bg-gray-200"
+                  onClick={() => onClickFileBox(idx)}
+                  title="이미지 선택"
+                >
+                  {previews[idx] ? (
+                    <img
+                      src={previews[idx] as string}
+                      alt={`선택한 이미지 ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-3xl font-bold text-gray-400">+</span>
+                  )}
                 </div>
+
                 <div className="flex-1 flex flex-col">
                   <textarea
                     placeholder={`내용을 입력하세요 (${idx + 1}번째)`}
@@ -120,6 +256,7 @@ export default function ResumeVerification() {
                 </div>
               </div>
             ))}
+
             {descriptions.length < maxDescriptions && (
               <button
                 type="button"
@@ -151,7 +288,7 @@ export default function ResumeVerification() {
 
             <hr className="border-gray-300" />
 
-            {/* 약관 카드 */}
+            {/* 약관 카드들 */}
             {[
               {
                 key: 'terms',
@@ -226,6 +363,15 @@ export default function ResumeVerification() {
           >
             신청하기
           </button>
+
+          {/* 숨겨진 파일 입력 */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onChangeHiddenFile}
+          />
         </div>
         <div className="h-24" />
       </SellerSidenavbar>

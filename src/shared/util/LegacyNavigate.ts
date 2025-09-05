@@ -26,6 +26,10 @@ export const goToSignup = () => {
   window.location.href = `/auth/join/agree`;
 };
 
+export const goToStoreMain = (storeUrl: string) => {
+  window.location.href = `/${storeUrl}`;
+};
+
 // 메시지 이동 함수
 export const goToMessage = (storeSlug?: string | null) => {
   const messageHref = storeSlug ? `/${storeSlug}/mypage/message` : `/main/mypage/message`;

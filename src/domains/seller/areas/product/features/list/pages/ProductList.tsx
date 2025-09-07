@@ -1,3 +1,4 @@
+// src/domains/seller/areas/product/features/list/pages/ProductList.tsx
 import type { FC } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -79,7 +80,7 @@ const ProductList: FC = () => {
     [allDelCheckable, delSelected]
   );
 
-  // DTO → Row 매핑 (백엔드 제공 이름 우선 사용)
+  // DTO → Row 매핑
   const mapDtoToRow = (dto: any): ProductRow => {
     const productId = dto?.productId ?? dto?.id ?? dto?.PRODUCT_ID;
 
@@ -93,7 +94,7 @@ const ProductList: FC = () => {
 
     const categoryLarge = dto?.typeCategoryName ?? dto?.TYPE_CATEGORY_NAME ?? '-';
 
-    // ✅ 중분류: 백엔드 alias `middle_category_name` 우선
+    // 중분류: 백엔드 alias `middle_category_name` 우선
     const categoryMiddle =
       dto?.middleCategoryName ??
       dto?.uCategoryName ??
@@ -142,7 +143,7 @@ const ProductList: FC = () => {
 
       setRows(mapped);
 
-      // ✅ 삭제표시된 상품은 대표 자동 해제
+      // 삭제표시된 상품은 대표 자동 해제
       const nextRep: Record<string, boolean> = {};
       mapped.forEach((r) => {
         if (r.isRepresentative && !r.deletedAt) nextRep[r.id] = true;
@@ -157,7 +158,6 @@ const ProductList: FC = () => {
     }
   };
 
-  // 스토어 변경 시 목록 조회
   useEffect(() => {
     if (!storeUrl) return;
     fetchProducts();
@@ -215,7 +215,7 @@ const ProductList: FC = () => {
     }
   };
 
-  // ====== 삭제 선택/전체선택/토글(삭제/복구) ======
+  // ====== 삭제 선택/전체선택/토글 ======
   const toggleDel = (id: string) => setDelSelected((p) => ({ ...p, [id]: !p[id] }));
 
   const toggleAllDel = () => {
@@ -228,51 +228,53 @@ const ProductList: FC = () => {
     setDelSelected(next);
   };
 
-  // 공통 송신: delete_check 일괄 토글
-  const sendDeleteCheck = async (deleteCheck: 0 | 1) => {
+  // 단일 토글: 현재 상태 기준으로 개별 flip (delete_check 0↔1)
+  const toggleDeletion = async () => {
     if (Object.values(delSelected).every((v) => !v)) return;
+    if (!confirm('선택한 상품의 삭제 상태를 토글하시겠습니까?')) return;
 
-    const verb = deleteCheck === 1 ? '삭제' : '복구';
-    if (!confirm(`선택한 상품을 ${verb} 처리하시겠습니까?`)) return;
+    // 선택된 ID들
+    const idsChosen = Object.entries(delSelected)
+      .filter(([, v]) => v)
+      .map(([id]) => id);
 
-    // ✅ 삭제표시 직후 UI에서도 대표 즉시 해제
-    if (deleteCheck === 1) {
-      const idsToDelete = Object.entries(delSelected)
-        .filter(([, v]) => v)
-        .map(([id]) => id);
-      setRepSelected((prev) => {
-        const next = { ...prev };
-        idsToDelete.forEach((id) => {
-          if (next[id]) delete next[id];
-        });
-        return next;
+    // 현재 rows에서 상태 조회 → 개별 deleteCheck 계산 (운영중이면 1, 이미 삭제면 0)
+    const idToRow = new Map(rows.map((r) => [r.id, r]));
+    const payload = idsChosen.map((id) => {
+      const row = idToRow.get(id);
+      const willBe = row?.deletedAt ? 0 : 1; // flip
+      return { productId: Number(id), deleteCheck: willBe };
+    });
+
+    // 운영중 → 삭제될 것들은 대표 선택 즉시 해제
+    setRepSelected((prev) => {
+      const next = { ...prev };
+      payload.forEach(({ productId, deleteCheck }) => {
+        if (deleteCheck === 1) {
+          const key = String(productId);
+          if (next[key]) delete next[key];
+        }
       });
-    }
+      return next;
+    });
 
     try {
-      const payload = Object.entries(delSelected)
-        .filter(([, v]) => v)
-        .map(([id]) => ({ productId: Number(id), deleteCheck }));
-
       const res = await axios.delete(`${LEGACY_BASE}/${storeUrl}/seller/products`, {
         withCredentials: true,
-        data: payload,
+        data: payload, // 각 항목에 deleteCheck 포함
       });
 
       if (res.status >= 200 && res.status < 300) {
-        alert(`선택한 상품 ${verb} 처리 완료`);
+        alert('선택 항목의 삭제 상태를 변경했습니다.');
         await fetchProducts(); // 서버 상태 동기화
       } else {
-        throw new Error(res.statusText || `${verb} 처리 실패`);
+        throw new Error(res.statusText || '삭제/복구 토글 실패');
       }
     } catch (e: any) {
       console.error(e);
-      alert(e?.response?.data?.message || e?.message || '처리 실패');
+      alert(e?.response?.data?.message || e?.message || '삭제/복구 토글에 실패했습니다.');
     }
   };
-
-  const bulkMarkDeleted = () => sendDeleteCheck(1); // 삭제 표시
-  const bulkRestore = () => sendDeleteCheck(0); // 복구
 
   const goInsert = () => navigate(`/seller/${storeUrl}/product/insert`);
   const goEdit = (id: string) =>
@@ -335,7 +337,7 @@ const ProductList: FC = () => {
               </div>
             </div>
 
-            {/* 삭제/복구 */}
+            {/* 삭제/복구 토글 */}
             <div className="bg-white rounded-lg border p-3 flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">삭제/복구 선택</div>
@@ -351,34 +353,19 @@ const ProductList: FC = () => {
                   />
                   전체 선택
                 </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={bulkRestore}
-                    disabled={delCount === 0}
-                    className={[
-                      'px-3 py-1.5 rounded-md border text-sm font-medium',
-                      delCount === 0
-                        ? 'opacity-50 cursor-not-allowed bg-gray-100'
-                        : 'bg-white hover:bg-gray-50 border-green-200 text-green-600 hover:text-green-700',
-                    ].join(' ')}
-                  >
-                    선택 복구
-                  </button>
-                  <button
-                    type="button"
-                    onClick={bulkMarkDeleted}
-                    disabled={delCount === 0}
-                    className={[
-                      'px-3 py-1.5 rounded-md border text-sm font-medium',
-                      delCount === 0
-                        ? 'opacity-50 cursor-not-allowed bg-gray-100'
-                        : 'bg-white hover:bg-gray-50 border-red-200 text-red-600 hover:text-red-700',
-                    ].join(' ')}
-                  >
-                    선택 삭제
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={toggleDeletion}
+                  disabled={delCount === 0}
+                  className={[
+                    'px-3 py-1.5 rounded-md border text-sm font-medium',
+                    delCount === 0
+                      ? 'opacity-50 cursor-not-allowed bg-gray-100'
+                      : 'bg-white hover:bg-gray-50 border-red-200 text-red-600 hover:text-red-700',
+                  ].join(' ')}
+                >
+                  선택 삭제/복구
+                </button>
               </div>
             </div>
           </div>

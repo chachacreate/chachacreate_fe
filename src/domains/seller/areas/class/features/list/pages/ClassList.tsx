@@ -5,47 +5,53 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
-import { get } from '@src/libs/request';
+import { get } from '@src/libs/request'; // ✅ patch 제거 (동일 오리진 fetch 사용)
 
 /** ===== 라우터 파라미터 ===== */
 type Params = { storeUrl: string };
 
-/** ===== API 응답 타입(예시와 동일) ===== */
+/** ===== API 응답 타입(목록 아이템) ===== */
 type SellerClassDTO = {
   classId: number;
   thumbnailUrl?: string | null;
   title: string;
-  location: string; // 전체 주소
-  participant: number; // 최대 인원
+  location: string;
+  participant: number;
   price: number;
   period: string; // "YYYY-MM-DD ~ YYYY-MM-DD"
-  /** ✅ 추가: 시간 간격(분) */
-  timeInterval?: number;
+  timeInterval?: number; // 분 단위 간격
   createdAt: string; // ISO
   updatedAt: string; // ISO
   deletedAt?: string | null; // ISO | null
-  isDeleted?: boolean; // 서버에서 내려올 수도 있다고 했음
+  isDeleted?: boolean;
 };
 
-/** ===== UI 렌더용 Row 타입(기존 테이블 그대로) ===== */
+/** ===== 삭제 토글 응답 타입 ===== */
+type ClassDeletionToggleResponseDTO = {
+  requestedCount?: number;
+  toggledToDeletedCount?: number;
+  toggledToRestoredCount?: number;
+};
+
+/** ===== UI 렌더용 Row 타입 ===== */
 type ClassRow = {
-  id: string; // classId 문자열화
+  id: string;
   imageUrl?: string;
   title: string;
-  place: string; // 주소 요약
+  place: string;
   capacity: number;
   price: number;
   period: { start: string; end: string };
-  intervalMin: number; // 시간 간격(분)
-  createdAt: string; // YYYY-MM-DD
-  updatedAt: string; // YYYY-MM-DD
-  deletedAt: string | null; // YYYY-MM-DD | null
-  _disabled: boolean; // isDeleted || deletedAt 존재 여부
+  intervalMin: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  _disabled: boolean;
 };
 
 const KRW = new Intl.NumberFormat('ko-KR');
 
-/** ===== Envelope 언래퍼(백엔드가 data로 감쌈/안감쌈 둘 다 커버) ===== */
+/** ===== Envelope 언래퍼 ===== */
 type Envelope<T> = { status: number; message?: string; data: T };
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
@@ -66,7 +72,6 @@ function unwrapData<T>(res: unknown): T {
 
 /** ===== 어댑터: SellerClassDTO → ClassRow ===== */
 function mapSellerToRow(dto: SellerClassDTO): ClassRow {
-  // period: "YYYY-MM-DD ~ YYYY-MM-DD"
   let start = '',
     end = '';
   if (dto.period?.includes('~')) {
@@ -74,13 +79,10 @@ function mapSellerToRow(dto: SellerClassDTO): ClassRow {
     start = s ?? '';
     end = e ?? '';
   }
-
-  // 장소 요약(시/구까지만)
   const placeShort = (() => {
     const parts = (dto.location || '').split(' ').filter(Boolean);
     return parts.slice(1, 3).join(' ') || dto.location || '-';
   })();
-
   const deletedAtDate = dto.deletedAt ? dto.deletedAt.slice(0, 10) : null;
   const disabled = !!deletedAtDate || !!dto.isDeleted;
 
@@ -92,7 +94,6 @@ function mapSellerToRow(dto: SellerClassDTO): ClassRow {
     capacity: dto.participant,
     price: dto.price,
     period: { start, end },
-    /** ✅ 변경: 서버의 timeInterval을 intervalMin에 반영 */
     intervalMin: dto.timeInterval ?? 0,
     createdAt: dto.createdAt?.slice(0, 10) || '',
     updatedAt: dto.updatedAt?.slice(0, 10) || '',
@@ -109,40 +110,36 @@ const ClassList: FC = () => {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isToggling, setIsToggling] = useState(false);
 
   /** ===== 데이터 패치 ===== */
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      setIsLoading(true);
-      setLoadError(null);
-      try {
-        // axios baseURL이 '/api' 라면 path는 '/seller/...' 만 넘기면 됨
-        const res = await get<SellerClassDTO[] | Envelope<SellerClassDTO[]>>(
-          `/seller/${encodeURIComponent(storeUrl)}/classes`
-        );
-        const list = unwrapData<SellerClassDTO[]>(res);
-        const mapped = (list || []).map(mapSellerToRow);
-        if (!alive) return;
-        setRows(mapped);
+  const fetchClasses = async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const res = await get<SellerClassDTO[] | Envelope<SellerClassDTO[]>>(
+        `/seller/${encodeURIComponent(storeUrl)}/classes`
+      );
+      const list = unwrapData<SellerClassDTO[]>(res);
+      const mapped = (list || []).map(mapSellerToRow);
+      setRows(mapped);
+      setSelected({});
+    } catch (e: any) {
+      if (e?.response?.data?.status === 404) {
+        setRows([]);
         setSelected({});
-      } catch (e: any) {
-        if (!alive) return;
-        if (e?.response.data?.status === 404) {
-          // 404: 클래스 없는 경우는 빈 배열 처리
-          setRows([]);
-          setSelected({});
-        } else {
-          // 기타 서버 오류의 경우
-          setLoadError(e instanceof Error ? e.message : '클래스 목록을 불러오지 못했어요.');
-        }
-      } finally {
-        if (alive) setIsLoading(false);
+      } else {
+        setLoadError(e instanceof Error ? e.message : '클래스 목록을 불러오지 못했어요.');
       }
-    })();
-    return () => {
-      alive = false;
-    };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!storeUrl) return;
+    fetchClasses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeUrl]);
 
   /** ===== 선택 관련 ===== */
@@ -161,19 +158,59 @@ const ClassList: FC = () => {
       setSelected(next);
     }
   };
-
   const toggleOne = (id: string) => {
     setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // 임시 다중 삭제(프론트 표시용만 변경)
-  const bulkDelete = () => {
-    if (checkedCount === 0) return;
-    const today = new Date().toISOString().slice(0, 10);
-    setRows((prev) =>
-      prev.map((r) => (selected[r.id] ? { ...r, deletedAt: today, _disabled: true } : r))
-    );
-    setSelected({});
+  /** ===== 동일 오리진 PATCH 유틸 (첫 시도부터 /api 사용) ===== */
+  const sameOriginPatch = async <T,>(apiPath: string, body: unknown): Promise<T> => {
+    const token = localStorage.getItem('accessToken');
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/api${apiPath}`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers,
+      body: JSON.stringify(body),
+    });
+    // 서버가 ApiResponse 래핑이면 .data, 아니면 그대로
+    const json = await res.json().catch(() => ({}));
+    const data = isObject(json) && 'data' in json ? (json as { data: T }).data : (json as T);
+    if (!res.ok) {
+      // ❗에러는 throw 하되 console.error는 찍지 않음 (사용자 알림만)
+      throw new Error(
+        (isObject(json) && (json.message as string)) || `요청 실패: ${res.status} ${res.statusText}`
+      );
+    }
+    return data;
+  };
+
+  /** ===== 논리삭제/복구 토글 =====
+   *  첫 시도부터 동일 오리진 /api 로 보내 CORS 에러가 콘솔에 안 찍히게 함.
+   */
+  const toggleDeletion = async () => {
+    if (checkedCount === 0 || isToggling) return;
+    if (!confirm('선택한 클래스를 삭제/복구 토글하시겠습니까?')) return;
+
+    const ids = Object.entries(selected)
+      .filter(([, v]) => v)
+      .map(([id]) => Number(id));
+
+    const apiPath = `/seller/${encodeURIComponent(storeUrl)}/classes/delete`;
+    const body = { classIds: ids };
+
+    setIsToggling(true);
+    try {
+      const r = await sameOriginPatch<ClassDeletionToggleResponseDTO>(apiPath, body);
+      const del = r?.toggledToDeletedCount ?? 0;
+      const restore = r?.toggledToRestoredCount ?? 0;
+      alert(`처리 완료: 삭제 ${del}건, 복구 ${restore}건`);
+      await fetchClasses();
+    } catch (err: any) {
+      alert(err?.message || '삭제/복구 처리에 실패했습니다.');
+    } finally {
+      setIsToggling(false);
+    }
   };
 
   /** ===== 이동 ===== */
@@ -247,16 +284,16 @@ const ClassList: FC = () => {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={bulkDelete}
-                    disabled={checkedCount === 0}
+                    onClick={toggleDeletion}
+                    disabled={checkedCount === 0 || isToggling}
                     className={[
                       'px-3 py-1.5 rounded-md border text-sm font-medium',
-                      checkedCount === 0
+                      checkedCount === 0 || isToggling
                         ? 'opacity-50 cursor-not-allowed bg-gray-100'
                         : 'bg-white hover:bg-gray-50 border-red-200 text-red-600 hover:text-red-700',
                     ].join(' ')}
                   >
-                    선택 삭제 ({checkedCount})
+                    {isToggling ? '처리 중...' : `선택 삭제/복구 (${checkedCount})`}
                   </button>
                 </div>
               </div>
@@ -380,7 +417,7 @@ const ClassList: FC = () => {
             </div>
           )}
 
-          {/* 테이블(데스크톱) — 기존 마크업 유지, 데이터만 rows 사용 */}
+          {/* 테이블(데스크톱) */}
           {!isLoading && !loadError && (
             <div className="hidden lg:block rounded-2xl border border-gray-200 bg-white overflow-hidden">
               <div className="overflow-x-auto">
@@ -404,7 +441,7 @@ const ClassList: FC = () => {
                       <th className="px-3 py-3 w-32">운영기간</th>
                       <th className="px-3 py-3 w-16 hidden xl:table-cell">간격</th>
                       <th className="px-3 py-3 w-24">최근 활동</th>
-                      <th className="px-3 py-3 w-20 text-right">액션</th>
+                      <th className="px-3 py-3 w-28 text-right">액션</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -495,7 +532,20 @@ const ClassList: FC = () => {
                           </div>
                         </td>
 
-                        <td className="px-3 py-4 align-top text-right w-20">
+                        <td className="px-3 py-4 align-top text-right w-28">
+                          <button
+                            type="button"
+                            onClick={toggleDeletion}
+                            disabled={checkedCount === 0 || isToggling}
+                            className={[
+                              'mr-2 inline-flex items-center px-2 py-1 rounded-md border text-xs font-medium',
+                              checkedCount === 0 || isToggling
+                                ? 'opacity-50 cursor-not-allowed bg-gray-100'
+                                : 'bg-white hover:bg-gray-50 border-red-200 text-red-600 hover:text-red-700',
+                            ].join(' ')}
+                          >
+                            {isToggling ? '처리 중...' : '선택 삭제/복구'}
+                          </button>
                           <button
                             type="button"
                             onClick={() => goEdit(r.id)}
@@ -510,7 +560,7 @@ const ClassList: FC = () => {
 
                     {rows.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="px-4 py-12 text-center">
+                        <td colSpan={10} className="px-4 py-12 text-center">
                           <div className="text-gray-400 text-2xl mb-3">📚</div>
                           <p className="text-gray-500 mb-4">등록된 클래스가 없습니다.</p>
                         </td>

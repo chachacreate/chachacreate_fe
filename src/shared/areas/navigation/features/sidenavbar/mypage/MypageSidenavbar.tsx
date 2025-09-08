@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import {
   UserCog,
   ShoppingCart,
@@ -26,7 +26,6 @@ export default function MypageSidenavbar({
 }: MypageSidenavbarProps) {
   const { store } = useParams();
   const location = useLocation();
-  const navigate = useNavigate();
 
   const storeSegment = (storeSegmentOverride ?? store ?? "main").replace(
     /^\/+|\/+$/g,
@@ -36,31 +35,47 @@ export default function MypageSidenavbar({
 
   // 아이템 정의
   const items = [
-    { label: "마이정보수정", to: `${basePath}`, icon: UserCog },
+    { label: "마이정보", to: `${basePath}`, icon: UserCog },
     { label: "장바구니", to: `${basePath}/cart`, icon: ShoppingCart },
     { label: "주문내역", to: `${basePath}/orders`, icon: Receipt },
-    { label: "문의 메시지", to: `${basePath}/message`, icon: MessageSquareText },
-    { label: "작성 리뷰 확인", to: `${basePath}/myreview`, icon: Star },
     { label: "클래스 예약 조회", to: `${basePath}/classes`, icon: CalendarCheck },
+    { label: "문의", to: `${basePath}/message`, icon: MessageSquareText },
+    { label: "내 리뷰", to: `${basePath}/myreview`, icon: Star },
   ] as const;
 
-  // 현재 경로가 루트인지 판단 (트레일링 슬래시 허용)
+  // 현재 경로가 루트인지 판단
   const path = location.pathname.replace(/\/+$/, "");
   const rootPath = basePath.replace(/\/+$/, "");
   const isRoot = path === rootPath;
 
-  // 현재 페이지 라벨 (탑바 타이틀)
+  // 현재 페이지 라벨 찾기
   const activeItem =
-    items.find((it) => path === it.to.replace(/\/+$/, "")) ??
-    // orders 상세 등 하위 경로일 때 대응(contains)
+    items.find((it) => {
+      const itemPath = it.to.replace(/\/+$/, "");
+      return path === itemPath;
+    }) ??
     items.find((it) => path.startsWith(it.to)) ??
     items[0];
 
-  const brand = "#2d4739";
-  const active = "bg-[#2d4739]/10 text-[#2d4739] border-[#2d4739]";
-  const idle = "bg-white text-gray-700 border-gray-200 hover:bg-gray-50";
+  // 정확한 active 체크 함수
+  const isActive = (itemPath: string): boolean => {
+    const cleanItemPath = itemPath.replace(/\/+$/, "");
+    const cleanCurrentPath = path.replace(/\/+$/, "");
+    
+    if (cleanItemPath === basePath.replace(/\/+$/, "")) {
+      // 마이정보수정: 정확히 루트 경로이고 다른 하위 경로가 아닐 때만
+      return cleanCurrentPath === cleanItemPath;
+    }
+    
+    // 다른 메뉴들: 해당 경로로 시작하는 경우
+    return cleanCurrentPath.startsWith(cleanItemPath);
+  };
 
-  // 공통 컨테이너 (1920 기준 좌우 240px → 1440 영역)
+  const goBack = () => {
+    window.history.back();
+  };
+
+  // 공통 컨테이너
   const Container: React.FC<React.PropsWithChildren> = ({ children }) => (
     <div className={`w-full ${marginTopClass}`}>
       <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 2xl:px-0">
@@ -71,104 +86,292 @@ export default function MypageSidenavbar({
 
   return (
     <Container>
-      {/* ===== 모바일 공통 탑바 (루트에도 노출, 루트에서는 <- 숨김) ===== */}
-      <div className="md:hidden sticky top-0 z-30 w-full bg-white/95 backdrop-blur border-b border-gray-200">
-        <div className="mx-auto max-w-[1440px] px-4 py-3">
-          <div className="flex items-center gap-3">
-            {/* 뒤로가기: 루트가 아닐 때만 */}
-            {isRoot ? (
-              <div className="w-6" />
-            ) : (
-              <button
-                onClick={() => navigate(rootPath)}
-                aria-label="뒤로가기"
-                className="p-1 -ml-1 rounded-md active:scale-95"
-              >
-                <ChevronLeft className="w-6 h-6" style={{ color: brand }} />
-              </button>
-            )}
-
-            <div className="flex-1 min-w-0">
-              {/* <div className="text-xs text-gray-500 leading-none">{storeSegment}</div> //스토어, 메인 세그먼트 테스트용 코드 */}
-              <div className="text-base font-semibold truncate" style={{ color: brand }}>
-                {activeItem.label}
-              </div>
-            </div>
-
-            <div className="w-6" />
+    {/* ✅ 레이아웃 래퍼: lg 이상에서 가로 배치 */}
+    <div className="lg:flex lg:items-start lg:gap-6">
+      {/* 좌측 사이드바: 고정폭 + sticky */}
+      <aside
+        className="font-jua w-full lg:w-60 lg:sticky lg:top-0"
+        style={{ top: stickyOffsetPx }} // ← props값 사용
+      >
+        {/* 📱 Mobile: 아이콘 그리드 */}
+        <nav className="lg:hidden bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mb-4">
+          <div className="bg-white border-b px-5 py-4">
+            <h2 className="text-lg font-bold text-brand-900">마이페이지</h2>
           </div>
-        </div>
-      </div>
 
-      {/* ===== 모바일: 루트에만 3열 아이콘 그리드 표시 ===== */}
-      {isRoot && (
-        <nav className="md:hidden mt-3">
-          <ul className="grid grid-cols-3 gap-3 px-2">
-            {items.map(({ to, label, icon: Icon }) => (
-              <li key={to}>
-                <NavLink
-                  to={to}
-                  end
-                  className={({ isActive }) =>
-                    [
-                      "flex flex-col items-center justify-center gap-2",
-                      "rounded-2xl p-4 aspect-square text-center text-xs leading-tight border transition",
-                      isActive ? active : idle,
-                    ].join(" ")
-                  }
-                >
-                  <Icon className="w-6 h-6 stroke-[1.6]" style={{ color: brand }} />
-                  <span className="mt-1">{label}</span>
-                </NavLink>
-              </li>
-            ))}
+          <ul className="grid grid-cols-3 sm:grid-cols-5 gap-2 p-4">
+            {/* 마이정보수정 */}
+            <li>
+              <a
+                href={isRoot ? "#myinfo" : `${basePath}#myinfo`}
+                className={`group flex flex-col items-center justify-center gap-2 rounded-xl border h-24 px-3 py-4 transition ${
+                  isActive(basePath)
+                    ? "border-brand-900 text-brand-900"
+                    : "border-gray-200 text-gray-700 hover:border-brand-300 hover:bg-brand-100/50"
+                }`}
+                aria-current={isActive(basePath) ? "page" : "false"}
+              >
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="8" r="3.25" stroke="currentColor" strokeWidth="1.6"/>
+                  <path d="M5 20a7 7 0 0 1 14 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                </svg>
+                <span className="text-xs w-full text-center whitespace-nowrap truncate">마이정보</span>
+              </a>
+            </li>
+
+            {/* 장바구니 */}
+            <li>
+              <a 
+                href={`${basePath}/cart`}
+                className={`group flex flex-col items-center justify-center gap-2 rounded-xl border h-24 px-3 py-4 transition ${
+                  isActive(`${basePath}/cart`)
+                    ? "border-brand-900 text-brand-900"
+                    : "border-gray-200 text-gray-700 hover:border-brand-300 hover:bg-brand-100/50"
+                }`}
+                aria-current={isActive(`${basePath}/cart`) ? "page" : "false"}
+              >
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 3h2l2 12h10l2-8H7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx="9" cy="20" r="1.5" stroke="currentColor" strokeWidth="1.6"/>
+                  <circle cx="17" cy="20" r="1.5" stroke="currentColor" strokeWidth="1.6"/>
+                </svg>
+                <span className="text-xs w-full text-center whitespace-nowrap truncate">장바구니</span>
+              </a>
+            </li>
+
+            {/* 주문내역 */}
+            <li>
+              <a 
+                href={`${basePath}/orders`}
+                className={`group flex flex-col items-center justify-center gap-2 rounded-xl border h-24 px-3 py-4 transition ${
+                  isActive(`${basePath}/orders`)
+                    ? "border-brand-900 text-brand-900"
+                    : "border-gray-200 text-gray-700 hover:border-brand-300 hover:bg-brand-100/50"
+                }`}
+              >
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                  <path d="M6 2h9l3 3v15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="1.6"/>
+                  <path d="M8 7h8M8 11h8M8 15h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                </svg>
+                <span className="text-xs w-full text-center whitespace-nowrap truncate">주문내역</span>
+              </a>
+            </li>
+
+            {/* 클래스 예약 조회 */}
+            <li>
+              <a 
+                href={`${basePath}/classes`}
+                className={`group flex flex-col items-center justify-center gap-2 rounded-xl border h-24 px-3 py-4 transition ${
+                  isActive(`${basePath}/classes`)
+                    ? "border-brand-900 text-brand-900"
+                    : "border-gray-200 text-gray-700 hover:border-brand-300 hover:bg-brand-100/50"
+                }`}
+                aria-current={isActive(`${basePath}/classes`) ? "page" : "false"}
+              >
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                  <path d="M7 3v3M17 3v3M3 9h18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                  <rect x="3" y="6" width="18" height="15" rx="2" stroke="currentColor" strokeWidth="1.6"/>
+                  <path d="M9 15l2 2 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span className="text-xs w-full text-center whitespace-nowrap truncate">클래스 예약 조회</span>
+              </a>
+            </li>
+
+            {/* 문의 메시지 */}
+            <li>
+              <a 
+                href={`${basePath}/message`}
+                className={`group flex flex-col items-center justify-center gap-2 rounded-xl border h-24 px-3 py-4 transition ${
+                  isActive(`${basePath}/message`)
+                    ? "border-brand-900 text-brand-900"
+                    : "border-gray-200 text-gray-700 hover:border-brand-300 hover:bg-brand-100/50"
+                }`}
+              >
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H10l-5 4v-4H6a3 3 0 0 1-3-3V6z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
+                </svg>
+                <span className="text-xs w-full text-center whitespace-nowrap truncate">문의</span>
+              </a>
+            </li>
+
+            {/* 작성 리뷰 확인 */}
+            <li>
+              <a 
+                href={`${basePath}/myreview`}
+                className={`group flex flex-col items-center justify-center gap-2 rounded-xl border h-24 px-3 py-4 transition ${
+                  isActive(`${basePath}/myreview`)
+                    ? "border-brand-900 text-brand-900"
+                    : "border-gray-200 text-gray-700 hover:border-brand-300 hover:bg-brand-100/50"
+                }`}
+              >
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                  <path d="m12 17 5.196 3.09-1.382-5.9L20 9.91l-6-.51L12 4l-2 5.4-6 .51 4.186 4.28-1.382 5.9z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
+                </svg>
+                <span className="text-xs w-full text-center whitespace-nowrap truncate">내 리뷰</span>
+              </a>
+            </li>
           </ul>
         </nav>
-      )}
 
-      {/* ===== 모바일: 콘텐츠 영역 (루트가 아닌 경우 또는 children이 있는 경우) ===== */}
-      {!isRoot && children && (
-        <div className="md:hidden mt-4">
-          {children}
-        </div>
-      )}
-
-      {/* ===== 모바일: 루트에서 children 표시 ===== */}
-      {isRoot && children && (
-        <div className="md:hidden mt-6">
-          {children}
-        </div>
-      )}
-
-      {/* ===== 데스크톱: 좌측 사이드바 + 우측 콘텐츠 ===== */}
-      <div className="hidden md:grid md:grid-cols-12 md:gap-8">
-        <aside
-          className="md:col-span-3 lg:col-span-2"
-          style={{ position: "sticky", top: `${stickyOffsetPx}px` }}
-        >
-          <div className="rounded-2xl border border-gray-200 bg-white p-3">
-            <ul className="space-y-1">
-              {items.map(({ to, label }) => (
-                <li key={to}>
-                  <NavLink
-                    to={to}
-                    end
-                    className={({ isActive }) =>
-                      [
-                        "block rounded-xl px-4 py-3 text-sm border transition",
-                        isActive ? active : idle,
-                      ].join(" ")
-                    }
-                  >
-                    {label}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
+        {/* 🖥️ Desktop: 세로 리스트 */}
+        <nav className="hidden lg:block bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="bg-white border-b px-6 py-4">
+            <h2 className="text-lg font-bold text-brand-900">마이페이지</h2>
           </div>
-        </aside>
-        <section className="md:col-span-9 lg:col-span-10">{children}</section>
+          <ul className="p-4 space-y-2">
+            <li>
+              <a 
+                href={basePath}
+                className={`group flex items-center justify-between w-full px-4 py-3 rounded-xl transition ${
+                  isActive(basePath)
+                    ? "bg-brand-900 text-white"
+                    : "text-gray-700 hover:bg-gray-50 hover:text-brand-900"
+                }`}
+              >
+                <span>마이정보수정</span>
+                <svg 
+                  className={`w-4 h-4 ${
+                    isActive(basePath) 
+                      ? "text-white" 
+                      : "text-gray-400 group-hover:text-brand-900"
+                  }`} 
+                  viewBox="0 0 20 20" 
+                  fill="currentColor"
+                >
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 0 1 0-1.414L10.586 10 7.293 6.707a1 1 0 0 1 1.414-1.414l4 4a1 1 0 0 1 0 1.414l-4 4a1 1 0 0 1-1.414 0z" clipRule="evenodd"/>
+                </svg>
+              </a>
+            </li>
+
+            <li>
+              <a 
+                href={`${basePath}/cart`}
+                className={`group flex items-center justify-between w-full px-4 py-3 rounded-xl transition ${
+                  isActive(`${basePath}/cart`)
+                    ? "bg-brand-900 text-white"
+                    : "text-gray-700 hover:bg-gray-50 hover:text-brand-900"
+                }`}
+              >
+                <span>장바구니</span>
+                <svg 
+                  className={`w-4 h-4 ${
+                    isActive(`${basePath}/cart`) 
+                      ? "text-white" 
+                      : "text-gray-400 group-hover:text-brand-900"
+                  }`} 
+                  viewBox="0 0 20 20" 
+                  fill="currentColor"
+                >
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 0 1 0-1.414L10.586 10 7.293 6.707a1 1 0 0 1 1.414-1.414l4 4a1 1 0 0 1 0 1.414l-4 4a1 1 0 0 1-1.414 0z" clipRule="evenodd"/>
+                </svg>
+              </a>
+            </li>
+
+            <li>
+              <a 
+                href={`${basePath}/orders`}
+                className={`group flex items-center justify-between w-full px-4 py-3 rounded-xl transition ${
+                  isActive(`${basePath}/orders`)
+                    ? "bg-brand-900 text-white"
+                    : "text-gray-700 hover:bg-gray-50 hover:text-brand-900"
+                }`}
+              >
+                <span>주문내역</span>
+                <svg 
+                  className={`w-4 h-4 ${
+                    isActive(`${basePath}/orders`) 
+                      ? "text-white" 
+                      : "text-gray-400 group-hover:text-brand-900"
+                  }`} 
+                  viewBox="0 0 20 20" 
+                  fill="currentColor"
+                >
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 0 1 0-1.414L10.586 10 7.293 6.707a1 1 0 0 1 1.414-1.414l4 4a1 1 0 0 1 0 1.414l-4 4a1 1 0 0 1-1.414 0z" clipRule="evenodd"/>
+                </svg>
+              </a>
+            </li>
+
+            {/* 클래스 예약 조회 */}
+            <li>
+              <a 
+                href={`${basePath}/classes`}
+                className={`group flex items-center justify-between w-full px-4 py-3 rounded-xl transition ${
+                  isActive(`${basePath}/classes`)
+                    ? "bg-brand-900 text-white"
+                    : "text-gray-700 hover:bg-gray-50 hover:text-brand-900"
+                }`}
+              >
+                <span>클래스 예약 조회</span>
+                <svg 
+                  className={`w-4 h-4 ${
+                    isActive(`${basePath}/classes`) 
+                      ? "text-white" 
+                      : "text-gray-400 group-hover:text-brand-900"
+                  }`}
+                  viewBox="0 0 20 20" 
+                  fill="currentColor"
+                >
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 0 1 0-1.414L10.586 10 7.293 6.707a1 1 0 0 1 1.414-1.414l4 4a1 1 0 0 1 0 1.414l-4 4a1 1 0 0 1-1.414 0z" clipRule="evenodd"/>
+                </svg>
+              </a>
+            </li>
+
+            <li>
+              <a 
+                href={`${basePath}/message`}
+                className={`group flex items-center justify-between w-full px-4 py-3 rounded-xl transition ${
+                  isActive(`${basePath}/message`)
+                    ? "bg-brand-900 text-white"
+                    : "text-gray-700 hover:bg-gray-50 hover:text-brand-900"
+                }`}
+              >
+                <span>문의 메시지</span>
+                <svg 
+                  className={`w-4 h-4 ${
+                    isActive(`${basePath}/message`) 
+                      ? "text-white" 
+                      : "text-gray-400 group-hover:text-brand-900"
+                  }`} 
+                  viewBox="0 0 20 20" 
+                  fill="currentColor"
+                >
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 0 1 0-1.414L10.586 10 7.293 6.707a1 1 0 0 1 1.414-1.414l4 4a1 1 0 0 1 0 1.414l-4 4a1 1 0 0 1-1.414 0z" clipRule="evenodd"/>
+                </svg>
+              </a>
+            </li>
+
+            <li>
+              <a 
+                href={`${basePath}/myreview`}
+                className={`group flex items-center justify-between w-full px-4 py-3 rounded-xl transition ${
+                  isActive(`${basePath}/myreview`)
+                    ? "bg-brand-900 text-white"
+                    : "text-gray-700 hover:bg-gray-50 hover:text-brand-900"
+                }`}
+              >
+                <span>작성 리뷰 확인</span>
+                <svg 
+                  className={`w-4 h-4 ${
+                    isActive(`${basePath}/myreview`) 
+                      ? "text-white" 
+                      : "text-gray-400 group-hover:text-brand-900"
+                  }`} 
+                  viewBox="0 0 20 20" 
+                  fill="currentColor"
+                >
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 0 1 0-1.414L10.586 10 7.293 6.707a1 1 0 0 1 1.414-1.414l4 4a1 1 0 0 1 0 1.414l-4 4a1 1 0 0 1-1.414 0z" clipRule="evenodd"/>
+                </svg>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </aside>
+
+      {/* 우측 콘텐츠: flex-1 + min-w-0 (줄내림/넘침 방지), 간격 보정 */}
+      <div className="flex-1 min-w-0 mt-6 lg:mt-0">
+        {children}
       </div>
-    </Container>
+    </div>
+  </Container>
   );
 }

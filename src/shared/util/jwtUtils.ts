@@ -6,7 +6,7 @@ export interface DecodedUserInfo {
   email: string;
   name: string;
   phone?: string;
-  memberId?: number;
+  id?: number;
   memberRole?: string;
   exp?: number;
   iat?: number;
@@ -82,7 +82,7 @@ export function getUserInfoFromToken(token?: string): UserInfo | null {
       email: decoded.email,
       name: decoded.name,
       phone: decoded.phone,
-      memberId: decoded.memberId,
+      memberId: decoded.id,
       role: decoded.memberRole,
     };
   } catch (error) {

@@ -66,7 +66,7 @@ const PLACEHOLDER =
   );
 
 // 예약 내역 API 엔드포인트
-const RESV_ENDPOINT = '/mypage/members/reservations';
+const RESV_ENDPOINT = '/mypage/classes';
 
 /** 날짜/시간 유틸 */
 const toDate = (iso?: string) => (iso ? iso.slice(0, 10) : '');

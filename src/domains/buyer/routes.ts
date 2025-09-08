@@ -1,15 +1,17 @@
-import React, { lazy, type ComponentType, type LazyExoticComponent } from "react";
-import type { RouteObject } from "react-router-dom";
-import { createElement, Suspense } from "react";
+import React, { lazy, type ComponentType, type LazyExoticComponent } from 'react';
+import type { RouteObject } from 'react-router-dom';
+import { createElement, Suspense } from 'react';
 
-const StoreHomePage = lazy(() =>
-  import("@src/domains/buyer/areas/main/pages/StoreMain")
+const StoreHomePage = lazy(() => import('@src/domains/buyer/areas/main/pages/StoreMain'));
+
+const StoreClassesPage = lazy(
+  () => import('@src/domains/buyer/areas/classes/pages/StoreClassesPage')
 );
 
 const suspense = (Comp: LazyExoticComponent<ComponentType<any>>) =>
   createElement(
     Suspense,
-    { fallback: createElement("div", { className: "p-6" }, "로딩…") },
+    { fallback: createElement('div', { className: 'p-6' }, '로딩…') },
     createElement(Comp)
   );
 
@@ -20,34 +22,22 @@ const suspense = (Comp: LazyExoticComponent<ComponentType<any>>) =>
  */
 export const buyerRoutes: RouteObject[] = [
   {
-    path: "/:storeUrl",
+    path: '/:store',
     children: [
       { index: true, element: suspense(StoreHomePage) },
 
       // (추후 실제 페이지 연결 시, 아래 placeholder를 lazy import로 교체하세요)
       {
-        path: "products",
-        element: createElement(
-          "div",
-          { className: "p-6" },
-          "상품 목록 페이지가 곧 준비됩니다."
-        ),
+        path: 'products',
+        element: createElement('div', { className: 'p-6' }, '상품 목록 페이지가 곧 준비됩니다.'),
       },
       {
-        path: "classes",
-        element: createElement(
-          "div",
-          { className: "p-6" },
-          "클래스 페이지가 곧 준비됩니다."
-        ),
+        path: 'classes',
+        element: suspense(StoreClassesPage),
       },
       {
-        path: "notices",
-        element: createElement(
-          "div",
-          { className: "p-6" },
-          "스토어 공지 페이지가 곧 준비됩니다."
-        ),
+        path: 'notices',
+        element: createElement('div', { className: 'p-6' }, '스토어 공지 페이지가 곧 준비됩니다.'),
       },
     ],
   },

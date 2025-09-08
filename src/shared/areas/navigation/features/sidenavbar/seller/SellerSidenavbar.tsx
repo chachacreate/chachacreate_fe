@@ -1,6 +1,6 @@
 // src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar.tsx
-import React, { useEffect, useMemo, useState } from "react";
-import { NavLink, useParams } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from 'react';
+import { NavLink, useParams } from 'react-router-dom';
 import {
   Home,
   ChevronDown,
@@ -18,7 +18,9 @@ import {
   NotebookPen,
   CalendarCheck,
   Plus,
-} from "lucide-react";
+  ExternalLink,
+} from 'lucide-react';
+import { goToStoreMain } from '@src/shared/util/LegacyNavigate';
 
 type SellerSidenavbarProps = {
   /** 헤더 높이 보정(top sticky) */
@@ -39,7 +41,7 @@ export default function SellerSidenavbar({
 }: SellerSidenavbarProps) {
   // ✅ :storeUrl(신규) 또는 :store(레거시) 모두 대응
   const { storeUrl, store } = useParams<{ storeUrl?: string; store?: string }>();
-  const storeSegment = storeSegmentOverride ?? storeUrl ?? store ?? "main";
+  const storeSegment = storeSegmentOverride ?? storeUrl ?? store ?? 'main';
   const base = `/seller/${storeSegment}`;
 
   /** 모바일 전용 확장 토글 (>> / <<) */
@@ -48,87 +50,98 @@ export default function SellerSidenavbar({
   /** 섹션(아코디언) 펼침 상태 저장 */
   const [openMap, setOpenMap] = useState<Record<string, boolean>>(() => {
     try {
-      const raw = localStorage.getItem("seller-sidenav-open");
+      const raw = localStorage.getItem('seller-sidenav-open');
       return raw ? JSON.parse(raw) : {};
     } catch {
       return {};
     }
   });
   useEffect(() => {
-    localStorage.setItem("seller-sidenav-open", JSON.stringify(openMap));
+    localStorage.setItem('seller-sidenav-open', JSON.stringify(openMap));
   }, [openMap]);
 
   /** 모바일에서 메뉴 클릭 시 자동 접힘 */
   const handleNavClick = () => {
-    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       setExpanded(false);
     }
+  };
+
+  /** 스토어 메인으로 이동 */
+  const handleGoToStoreMain = () => {
+    goToStoreMain(storeSegment);
+    handleNavClick(); // 모바일에서 사이드바 접기
   };
 
   const sections = useMemo(
     () => [
       {
-        key: "home",
+        key: 'home',
         label: `${storeSegment} 관리자 홈`,
-        type: "link" as const,
+        type: 'link' as const,
         to: `${base}/main`, // 필요에 따라 `/settlement` 등으로 변경 가능
       },
       {
-        key: "product",
-        label: "상품 관리",
+        key: 'product',
+        label: '상품 관리',
         icon: PackagePlus,
         items: [
-          { label: "상품 등록", to: `${base}/product/insert`, icon: Plus },
-          { label: "상품 리스트", to: `${base}/product/list` },
-          { label: "상품 리뷰", to: `${base}/product/review`, icon: Star },
+          { label: '상품 등록', to: `${base}/product/insert`, icon: Plus },
+          { label: '상품 리스트', to: `${base}/product/list` },
+          { label: '상품 리뷰', to: `${base}/product/review`, icon: Star },
         ],
       },
       {
-        key: "order",
-        label: "주문 · 정산 관리",
+        key: 'order',
+        label: '주문 · 정산 관리',
         icon: ShoppingCart,
         items: [
-          { label: "주문/발송 상태 확인", to: `${base}/product/order`, icon: Truck },
-          { label: "상품 & 클래스 정산", to: `${base}/settlement`, icon: Wallet },
+          { label: '주문/발송 상태 확인', to: `${base}/product/order`, icon: Truck },
+          { label: '상품 & 클래스 정산', to: `${base}/settlement`, icon: Wallet },
         ],
       },
       {
-        key: "store",
-        label: "스토어 관리",
+        key: 'store',
+        label: '스토어 관리',
         icon: Settings,
         items: [
-          { label: "스토어 정보", to: `${base}/storeinfo` },
-          { label: "나의 스토어 커스텀", to: `${base}/store/custom`, icon: Palette },
-          { label: "문의 메시지", to: `${base}/message`, icon: MessageSquareText },
-          { label: "공지사항", to: `${base}/store/notice`, icon: Megaphone },
+          { label: '스토어 정보', to: `${base}/storeinfo` },
+          { label: '나의 스토어 커스텀', to: `${base}/store/custom`, icon: Palette },
+          { label: '문의 메시지', to: `${base}/message`, icon: MessageSquareText },
+          { label: '공지사항', to: `${base}/store/notice`, icon: Megaphone },
         ],
       },
       {
-        key: "class",
-        label: "클래스 관리",
+        key: 'class',
+        label: '클래스 관리',
         icon: GraduationCap,
         items: [
-          { label: "클래스 등록", to: `${base}/class/insert`, icon: NotebookPen },
-          { label: "클래스 리스트", to: `${base}/class/list` },
-          { label: "클래스 예약 확인", to: `${base}/class/reservation`, icon: CalendarCheck },
+          { label: '클래스 등록', to: `${base}/class/insert`, icon: NotebookPen },
+          { label: '클래스 리스트', to: `${base}/class/list` },
+          { label: '클래스 예약 확인', to: `${base}/class/reservation`, icon: CalendarCheck },
         ],
+      },
+      {
+        key: 'storeMain',
+        label: '스토어 메인으로 이동',
+        type: 'external' as const,
+        onClick: handleGoToStoreMain,
       },
     ],
     [storeSegment, base]
   );
 
-  const toggleSection = (key: string) =>
-    setOpenMap((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleSection = (key: string) => setOpenMap((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const linkBase = "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors";
-  const linkInactive = "text-gray-600 hover:bg-gray-100 hover:text-gray-900";
-  const linkActive = "bg-gray-900 text-white hover:bg-gray-900";
-  const labelClass = "text-sm font-medium truncate";
+  const linkBase = 'flex items-center gap-3 rounded-lg px-3 py-2 transition-colors';
+  const linkInactive = 'text-gray-600 hover:bg-gray-100 hover:text-gray-900';
+  const linkActive = 'bg-gray-900 text-white hover:bg-gray-900';
+  const labelClass = 'text-sm font-medium truncate';
 
   // 플레이스홀더 로고 (연회색 박스에 LOGO 텍스트)
   const logoSrc =
     storeLogoUrl ||
-    "data:image/svg+xml;utf8," +
+    'data:image/svg+xml;utf8,' +
       encodeURIComponent(
         `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'>
           <rect width='100%' height='100%' rx='12' ry='12' fill='%23e5e7eb'/>
@@ -141,17 +154,17 @@ export default function SellerSidenavbar({
       {/* 1920 기준 좌우 패딩 240, 내부 max 1440, 좌측 정렬 */}
       <div className="mx-auto w-full max-w-[1920px] px-0 md:px-[24px] xl:px-[240px]">
         <div className="mx-auto w-full max-w-[1440px]">
-          <div className="grid grid-cols-[auto,1fr] gap-6" style={{ position: "relative" }}>
+          <div className="grid grid-cols-[auto,1fr] gap-6" style={{ position: 'relative' }}>
             {/* 사이드바 */}
             <aside className="sticky" style={{ top: stickyOffsetPx }}>
               <nav
                 className={[
-                  "rounded-2xl border bg-white shadow-sm",
-                  "transition-all duration-200 ease-in-out overflow-hidden",
+                  'rounded-2xl border bg-white shadow-sm',
+                  'transition-all duration-200 ease-in-out overflow-hidden',
                   // 모바일: 64 ↔ 260, 웹: 280 고정
-                  expanded ? "w-[260px]" : "w-[64px]",
-                  "lg:w-[280px]",
-                ].join(" ")}
+                  expanded ? 'w-[260px]' : 'w-[64px]',
+                  'lg:w-[280px]',
+                ].join(' ')}
                 aria-label="Seller sidenav"
               >
                 {/* ===== 헤더: 임시 로고 + 스토어명, 화살표(모바일만) ===== */}
@@ -164,7 +177,9 @@ export default function SellerSidenavbar({
                       className="h-5 w-5 lg:h-7 lg:w-7 rounded-md object-cover"
                     />
                     {/* 스토어명: 모바일에선 expanded일 때만, 웹에선 항상 보임 */}
-                    <div className={[(expanded ? "block" : "hidden"), "lg:block", "min-w-0"].join(" ")}>
+                    <div
+                      className={[expanded ? 'block' : 'hidden', 'lg:block', 'min-w-0'].join(' ')}
+                    >
                       <NavLink
                         to={`${base}/main`} // ✅ 절대경로 사용
                         className="block text-sm font-semibold text-gray-900 hover:underline truncate"
@@ -186,7 +201,7 @@ export default function SellerSidenavbar({
                       className="inline-flex items-center justify-center w-full rounded-md border px-2 py-1 text-sm"
                       title="toggle"
                     >
-                      <span className="leading-none">{expanded ? "<<" : ">>"}</span>
+                      <span className="leading-none">{expanded ? '<<' : '>>'}</span>
                     </button>
                   </div>
                 </div>
@@ -195,27 +210,50 @@ export default function SellerSidenavbar({
                 {/* 메뉴 목록 */}
                 <ul className="p-2">
                   {sections.map((sec) => {
-                    if ((sec as any).type === "link") {
+                    if ((sec as any).type === 'link') {
                       return (
                         <li key={sec.key} className="mb-1">
                           <NavLink
                             to={(sec as any).to} // ✅ 절대경로
                             onClick={handleNavClick}
                             className={({ isActive }) =>
-                              [linkBase, isActive ? linkActive : linkInactive].join(" ")
+                              [linkBase, isActive ? linkActive : linkInactive].join(' ')
                             }
                           >
                             <Home className="h-5 w-5 shrink-0" />
                             <span
                               className={[
                                 labelClass,
-                                expanded ? "block" : "hidden",
-                                "lg:block",
-                              ].join(" ")}
+                                expanded ? 'block' : 'hidden',
+                                'lg:block',
+                              ].join(' ')}
                             >
                               {sec.label}
                             </span>
                           </NavLink>
+                        </li>
+                      );
+                    }
+
+                    if ((sec as any).type === 'external') {
+                      return (
+                        <li key={sec.key} className="mb-1">
+                          <button
+                            type="button"
+                            onClick={(sec as any).onClick}
+                            className={[linkBase, 'w-full', linkInactive].join(' ')}
+                          >
+                            <ExternalLink className="h-5 w-5 shrink-0" />
+                            <span
+                              className={[
+                                labelClass,
+                                expanded ? 'block' : 'hidden',
+                                'lg:block',
+                              ].join(' ')}
+                            >
+                              {sec.label}
+                            </span>
+                          </button>
                         </li>
                       );
                     }
@@ -228,67 +266,73 @@ export default function SellerSidenavbar({
                           type="button"
                           onClick={() => toggleSection(sec.key)}
                           aria-expanded={isOpen}
-                          className={[linkBase, "w-full justify-between", "text-gray-700 hover:bg-gray-100"].join(" ")}
+                          className={[
+                            linkBase,
+                            'w-full justify-between',
+                            'text-gray-700 hover:bg-gray-100',
+                          ].join(' ')}
                         >
                           <div className="flex items-center gap-3">
                             {sec.icon && <sec.icon className="h-5 w-5 shrink-0" />}
                             <span
                               className={[
                                 labelClass,
-                                expanded ? "block" : "hidden",
-                                "lg:block",
-                              ].join(" ")}
+                                expanded ? 'block' : 'hidden',
+                                'lg:block',
+                              ].join(' ')}
                             >
                               {sec.label}
                             </span>
                           </div>
                           <ChevronDown
                             className={[
-                              "h-4 w-4 transition-transform",
-                              isOpen ? "rotate-180" : "",
-                              expanded ? "block" : "hidden",
-                              "lg:block",
-                            ].join(" ")}
+                              'h-4 w-4 transition-transform',
+                              isOpen ? 'rotate-180' : '',
+                              expanded ? 'block' : 'hidden',
+                              'lg:block',
+                            ].join(' ')}
                           />
                         </button>
 
                         {/* 드롭다운 아이템들 */}
                         <div
                           className={[
-                            "overflow-hidden transition-all",
-                            isOpen ? "max-h-[480px] opacity-100" : "max-h-0 opacity-0",
-                            expanded ? "pl-2" : "pl-0",
-                            "lg:pl-2",
-                          ].join(" ")}
+                            'overflow-hidden transition-all',
+                            isOpen ? 'max-h-[480px] opacity-100' : 'max-h-0 opacity-0',
+                            expanded ? 'pl-2' : 'pl-0',
+                            'lg:pl-2',
+                          ].join(' ')}
                           aria-hidden={!isOpen}
                         >
                           <ul className="mt-1 mb-2">
                             {sec.items?.map((item, idx) => {
                               const ItemIcon =
                                 item.icon ??
-                                (sec.key === "product"
+                                (sec.key === 'product'
                                   ? ListChecks
-                                  : sec.key === "order"
-                                  ? Wallet
-                                  : sec.key === "store"
-                                  ? Settings
-                                  : GraduationCap);
+                                  : sec.key === 'order'
+                                    ? Wallet
+                                    : sec.key === 'store'
+                                      ? Settings
+                                      : GraduationCap);
                               return (
                                 <li key={idx}>
                                   <NavLink
                                     to={item.to} // ✅ 절대경로
                                     onClick={handleNavClick}
                                     className={({ isActive }) =>
-                                      ["ml-2", linkBase, isActive ? linkActive : linkInactive].join(" ")
+                                      ['ml-2', linkBase, isActive ? linkActive : linkInactive].join(
+                                        ' '
+                                      )
                                     }
                                   >
                                     <ItemIcon className="h-4 w-4 shrink-0" />
                                     <span
                                       className={[
-                                        "text-sm",
-                                        expanded ? "block" : "hidden",
-                                        "lg:block",
-                                      ].join(" ")}
+                                        'text-sm',
+                                        expanded ? 'block' : 'hidden',
+                                        'lg:block',
+                                      ].join(' ')}
                                     >
                                       {item.label}
                                     </span>

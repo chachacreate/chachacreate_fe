@@ -1,14 +1,11 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
-import '@toast-ui/editor/dist/toastui-editor.css';
 import { Editor } from '@toast-ui/react-editor';
 import type { Editor as EditorType } from '@toast-ui/react-editor';
-
-import colorSyntax from '@toast-ui/editor-plugin-color-syntax';
+import '@toast-ui/editor/dist/toastui-editor.css';
 import 'tui-color-picker/dist/tui-color-picker.css';
 import '@toast-ui/editor-plugin-color-syntax/dist/toastui-editor-plugin-color-syntax.css';
+import colorSyntax from '@toast-ui/editor-plugin-color-syntax';
 import '@toast-ui/editor/dist/i18n/ko-kr';
-
-import api from '@src/libs/apiService';
 
 export interface EditorHandle {
   setMarkdown: (v: string) => void;
@@ -18,61 +15,53 @@ export interface EditorHandle {
 
 type Props = {
   initialValue?: string;
-  onImageUploaded?: (url: string, desc?: string) => void;
+  /** 에디터에 로컬 이미지가 추가될 때: blobURL과 File을 부모에게 넘겨줌 */
+  onLocalImageAdded?: (url: string, file: File) => void;
 };
 
-const EditorAPI = forwardRef<EditorHandle, Props>((props, ref) => {
-  // ✅ 내부 ref는 1개만
-  const editorRef = useRef<EditorType | null>(null);
-  const { initialValue = '', onImageUploaded } = props;
+const EditorAPI = forwardRef<EditorHandle, Props>(
+  ({ initialValue = '', onLocalImageAdded }, ref) => {
+    const editorRef = useRef<EditorType | null>(null);
 
-  // ✅ 외부로 내보낼 메서드
-  useImperativeHandle(ref, () => ({
-    setMarkdown: (v: string) => editorRef.current?.getInstance().setMarkdown(v || ''),
-    getMarkdown: () => editorRef.current?.getInstance().getMarkdown() || '',
-    getHTML: () => editorRef.current?.getInstance().getHTML() || '',
-  }));
+    useImperativeHandle(ref, () => ({
+      setMarkdown: (v: string) => editorRef.current?.getInstance().setMarkdown(v || ''),
+      getMarkdown: () => editorRef.current?.getInstance().getMarkdown() || '',
+      getHTML: () => editorRef.current?.getInstance().getHTML() || '',
+    }));
 
-  return (
-    <Editor
-      ref={editorRef}
-      height="500px"
-      initialEditType="wysiwyg"
-      hideModeSwitch
-      plugins={[colorSyntax]}
-      language="ko-kr"
-      initialValue={initialValue}
-      toolbarItems={[
-        // 원하는 툴바만 지정
-        ['heading', 'bold', 'italic', 'strike'],
-        ['hr', 'quote'],
-        ['ul', 'ol', 'task'],
-        ['table', 'image', 'link'],
-        ['code', 'codeblock'],
-      ]}
-      hooks={{
-        // 타입 안정: Blob | File, alt는 선택값
-        addImageBlobHook: async (
-          blob: Blob | File,
-          callback: (url: string, alt?: string) => void
-        ) => {
-          try {
-            const fd = new FormData();
-            fd.append('file', blob);
+    return (
+      <Editor
+        ref={editorRef}
+        height="500px"
+        initialEditType="wysiwyg"
+        hideModeSwitch
+        plugins={[colorSyntax]}
+        language="ko-KR"
+        initialValue={initialValue}
+        toolbarItems={[
+          ['heading', 'bold', 'italic', 'strike'],
+          ['hr', 'quote'],
+          ['ul', 'ol', 'task'],
+          ['table', 'image', 'link'],
+          ['code', 'codeblock'],
+        ]}
+        hooks={{
+          // TOAST UI가 요구하는 콜백 시그니처 그대로 명시
+          addImageBlobHook: async (
+            blob: Blob | File,
+            callback: (url: string, altText?: string) => void
+          ) => {
+            // 1) 에디터에는 즉시 blob URL로 미리보기
+            const objectUrl = URL.createObjectURL(blob);
+            callback(objectUrl, '');
 
-            const resp = await api.post('/files/upload', fd);
-            const url = resp.data?.url;
-            if (!url) throw new Error('업로드 URL 없음');
-
-            callback(url, '');
-            onImageUploaded?.(url);
-          } catch (e: any) {
-            alert(e?.response?.data?.message || e?.message || '이미지 업로드 실패');
-          }
-        },
-      }}
-    />
-  );
-});
+            // 2) 부모에게 파일 전달(저장 시 업로드 용)
+            if (blob instanceof File) onLocalImageAdded?.(objectUrl, blob);
+          },
+        }}
+      />
+    );
+  }
+);
 
 export default EditorAPI;

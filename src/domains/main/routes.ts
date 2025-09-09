@@ -13,6 +13,7 @@ import MainMypageClassesPage from '@src/domains/main/areas/mypage/pages/MainMypa
 // ✅ products 라우트 추가
 import { productsRoutes } from '@src/domains/main/areas/home/features/products/routes';
 import { storesRoutes } from './areas/home/features/stores/routes';
+import { sellRoutes } from './areas/home/features/sell/routes';
 
 const mainRoutes: RouteObject[] = [
   {
@@ -35,6 +36,7 @@ const mainRoutes: RouteObject[] = [
       // ✅ products (스프레드로 합침)
       ...productsRoutes,
       ...storesRoutes,
+      ...sellRoutes,
     ],
   },
 ];

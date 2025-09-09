@@ -1,5 +1,6 @@
 // src/domains/seller/settlement/SellerSettlementMain.tsx
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "@src/shared/areas/layout/features/header/Header";
 import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
@@ -14,168 +15,123 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
+import { get } from "@src/libs/request";
+
 
 // ------------------ Types ------------------
-type ProductOrderStatus = "신규주문" | "배송 완료" | "취소" | "환불";
-type ProductSale = {
-  id: string;
-  date: string;           // YYYY-MM-DD
-  productId: string;
-  title: string;
-  quantity: number;
-  amount: number;         // 환불/취소는 제외할 때 필터로 거름
-  status: ProductOrderStatus;
-};
-
-type ClassSale = {
-  id: string;
-  date: string;           // YYYY-MM-DD
-  classId: string;
-  title: string;
-  attendees: number;
-  amount: number;
-  refunded?: boolean;
-};
-
 type SettlementRow = {
-  date: string;
+  settlementDate: string; // e.g. "2025-05-01T00:00:00"
   amount: number;
   account: string;
   bank: string;
-  holder: string;
-  status: "정산 완료" | "정산 예정" | "보류";
-  updatedAt: string;
+  name?: string;   // API 표준
+  holder?: string; // 혹시 다른 키로 올 경우 대비
+  status: number;  // 0=정산 예정, 1=정산 완료
+  updateAt: string; // e.g. "2025-05-30T12:00:00"
 };
 
-// ------------------ MOCK DATA ------------------
-// 상품 TX (상태 포함)
-const TX_PRODUCT: ProductSale[] = [
-  { id: "tp1", date: "2025-08-17", productId: "P-1001", title: "핸드메이드 머그컵", quantity: 2, amount: 36000, status: "신규주문" },
-  { id: "tp2", date: "2025-08-17", productId: "P-1002", title: "드라이플라워 소품", quantity: 1, amount: 18000, status: "배송 완료" },
-  { id: "tp3", date: "2025-08-18", productId: "P-1003", title: "수채화 엽서 세트", quantity: 5, amount: 25000, status: "배송 완료" },
-  { id: "tp4", date: "2025-08-19", productId: "P-1001", title: "핸드메이드 머그컵", quantity: 1, amount: 18000, status: "신규주문" },
-  { id: "tp5", date: "2025-08-21", productId: "P-1001", title: "핸드메이드 머그컵", quantity: 3, amount: 54000, status: "배송 완료" },
-  { id: "tp6", date: "2025-08-21", productId: "P-1002", title: "드라이플라워 소품", quantity: 1, amount: 18000, status: "환불" }, // 제외
-];
-
-// 클래스 TX (환불 여부)
-const TX_CLASS: ClassSale[] = [
-  { id: "tc1", date: "2025-08-17", classId: "C-3001", title: "도자기 원데이", attendees: 6, amount: 330000 },
-  { id: "tc2", date: "2025-08-17", classId: "C-3002", title: "플라워 클래스", attendees: 4, amount: 240000 },
-  { id: "tc3", date: "2025-08-18", classId: "C-3003", title: "수채화 입문", attendees: 8, amount: 560000 },
-  { id: "tc4", date: "2025-08-19", classId: "C-3001", title: "도자기 원데이", attendees: 5, amount: 275000 },
-  { id: "tc5", date: "2025-08-21", classId: "C-3001", title: "도자기 원데이", attendees: 6, amount: 330000 },
-  // { id: "tc6", date: "2025-05-20", classId: "C-3004", title: "천연 비누 공방", attendees: 5, amount: 225000, refunded: true },
-];
-
-// 정산 테이블(상품+클래스 합쳐서 보여줌)
-const SETTLEMENT_CLASS: Record<string, SettlementRow[]> = {
-  "C-3001": [
-    { date: "2025-08-17", amount: 1000000, account: "1002-858-069-478", bank: "우리은행", holder: "최윤정", status: "정산 완료", updatedAt: "2025-05-17" },
-    { date: "2025-08-17", amount: 700000,  account: "3333-28-1047479", bank: "카카오뱅크", holder: "최윤정", status: "정산 예정", updatedAt: "2025-05-20" },
-  ],
-  "C-3002": [
-    { date: "2025-08-17", amount: 240000,  account: "1002-111-222333", bank: "우리은행", holder: "홍길동", status: "정산 완료", updatedAt: "2025-05-18" },
-  ],
-  "C-3003": [
-    { date: "2025-08-19", amount: 560000,  account: "455-66-777777",   bank: "국민은행", holder: "김영희", status: "정산 예정", updatedAt: "2025-05-20" },
-  ],
-};
-
-const SETTLEMENT_PRODUCT: Record<string, SettlementRow[]> = {
-  "P-1001": [
-    { date: "2025-05-17", amount: 120000, account: "1002-858-000000", bank: "우리은행", holder: "이상민", status: "정산 완료", updatedAt: "2025-05-17" },
-    { date: "2025-06-17", amount: 90000,  account: "3333-28-0000000", bank: "카카오뱅크", holder: "이상민", status: "정산 예정", updatedAt: "2025-05-20" },
-  ],
-  "P-1002": [
-    { date: "2025-05-17", amount: 18000, account: "1002-111-222333", bank: "우리은행", holder: "홍길동", status: "정산 완료", updatedAt: "2025-05-18" },
-  ],
-  "P-1003": [
-    { date: "2025-05-19", amount: 25000, account: "455-66-777777", bank: "국민은행", holder: "김영희", status: "정산 예정", updatedAt: "2025-05-20" },
-  ],
-};
-
-// ------------------ Utils ------------------
+// ------------------ Utils (로컬 기준) ------------------
 const brand = "#2d4739";
 const KRW = new Intl.NumberFormat("ko-KR");
-const fmtYMD = (d: Date) => d.toISOString().slice(0, 10);
-const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+
+// 로컬 기준 YYYY-MM-DD
+const fmtLocalYMD = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+};
+
+const addDays = (d: Date, n: number) =>
+  new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+
 const startOfWeekMon = (d: Date) => {
   const day = d.getDay(); // 0:Sun..6:Sat
-  const diff = (day === 0 ? -6 : 1 - day);
+  const diff = day === 0 ? -6 : 1 - day;
   return addDays(d, diff);
 };
 
+const onlyDate = (iso?: string) => (iso ? iso.slice(0, 10) : "");
+
+// 각 행의 settlementDate 기준 "다음 달 1일"
+const nextMonthFirstYMDFromISO = (iso: string) => {
+  const base = new Date(iso);
+  const nextFirst = new Date(base.getFullYear(), base.getMonth() + 1, 1);
+  return fmtLocalYMD(nextFirst);
+};
+
 // ------------------ Component ------------------
-type TabKey = "all" | "product_new" | "product_delivered" | "class";
+type TabKey = "all";
 
 export default function SellerSettlementMain() {
   const { storeUrl = "store" } = useParams();
-  // const navigate = useNavigate();
-
-  // 탭(버튼)
   const [active, setActive] = useState<TabKey>("all");
 
   // 주간 anchor (월요일)
-  const [weekAnchor, setWeekAnchor] = useState<Date>(() => startOfWeekMon(new Date()));
+  const [weekAnchor, setWeekAnchor] = useState<Date>(() =>
+    startOfWeekMon(new Date())
+  );
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekAnchor, i)),
     [weekAnchor]
   );
 
-  const basePath = `/seller/${storeUrl}/settlement`;
+  // 정산 데이터 상태
+  const [settlementRows, setSettlementRows] = useState<SettlementRow[]>([]);
 
-  // 필터링된 TX
-  const filteredTx = useMemo(() => {
-    const productBase = TX_PRODUCT.filter((p) => p.status !== "환불" && p.status !== "취소");
-    const classBase = TX_CLASS.filter((c) => !c.refunded);
+  // API 호출 (axios -> get)
+  useEffect(() => {
+    get(`/api/seller/settlements/main/${storeUrl}/all`)
+      .then((res: any) => {
+        // request 래퍼 대응: res.data?.data || res.data || res
+        const payload = res?.data ?? res;
+        const list = payload?.data ?? payload;
+        if (Array.isArray(list)) {
+          setSettlementRows(list as SettlementRow[]);
+        }
+      })
+      .catch((err: any) => {
+        console.error("정산 내역 조회 실패:", err);
+      });
+  }, [storeUrl]);
 
-    switch (active) {
-      case "product_new":
-        return productBase.filter((p) => p.status === "신규주문").map((p) => ({ date: p.date, amount: p.amount }));
-      case "product_delivered":
-        return productBase.filter((p) => p.status === "배송 완료").map((p) => ({ date: p.date, amount: p.amount }));
-      case "class":
-        return classBase.map((c) => ({ date: c.date, amount: c.amount }));
-      case "all":
-      default:
-        return [
-          ...productBase.map((p) => ({ date: p.date, amount: p.amount })),
-          ...classBase.map((c) => ({ date: c.date, amount: c.amount })),
-        ];
-    }
-  }, [active]);
-
-  // 주간 일자별 합계 (표/차트 공통)
+  // 주간 데이터 계산(차트/표)
+  // 표시 기준과 동일하게, 각 행을 "다음 달 1일" 날짜로 그룹핑
   const weeklyData = useMemo(() => {
     const map = new Map<string, number>();
-    weekDays.forEach((d) => map.set(fmtYMD(d), 0));
-    filteredTx.forEach((tx) => {
-      if (map.has(tx.date)) map.set(tx.date, (map.get(tx.date) ?? 0) + tx.amount);
+    weekDays.forEach((d) => map.set(fmtLocalYMD(d), 0));
+    settlementRows.forEach((row) => {
+      const displayYMD = nextMonthFirstYMDFromISO(row.settlementDate);
+      if (map.has(displayYMD)) {
+        map.set(displayYMD, (map.get(displayYMD) ?? 0) + row.amount);
+      }
     });
     return weekDays.map((d) => {
-      const date = fmtYMD(d);
+      const date = fmtLocalYMD(d);
       return {
         date,
-        label: `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+        label: `${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+          d.getDate()
+        ).padStart(2, "0")}`,
         amount: map.get(date) ?? 0,
       };
     });
-  }, [filteredTx, weekDays]);
+  }, [settlementRows, weekDays]);
 
-  const weeklyTotal = useMemo(() => weeklyData.reduce((s, r) => s + r.amount, 0), [weeklyData]);
-
-  // 정산 테이블(상품+클래스 합침, 왼쪽 정렬)
-  const settlementRows = useMemo<SettlementRow[]>(
-    () => [...Object.values(SETTLEMENT_PRODUCT).flat(), ...Object.values(SETTLEMENT_CLASS).flat()],
-    []
+  const weeklyTotal = useMemo(
+    () => weeklyData.reduce((s, r) => s + r.amount, 0),
+    [weeklyData]
   );
 
+  // 최근일자순(= updateAt 내림차순) 정렬
+  const sortedRows = useMemo(() => {
+    return [...settlementRows].sort(
+      (a, b) => new Date(b.updateAt).getTime() - new Date(a.updateAt).getTime()
+    );
+  }, [settlementRows]);
+
   const tabs: { key: TabKey; label: string }[] = [
-    { key: "all",              label: "총수익(상품+클래스)" },
-    { key: "product_new",      label: "신규주문 총수익" },
-    { key: "product_delivered",label: "배송 완료 총수익" },
-    { key: "class",            label: "클래스 총수익" },
+    { key: "all", label: "총수익(상품+클래스)" },
   ];
 
   return (
@@ -188,34 +144,21 @@ export default function SellerSettlementMain() {
           {/* Title */}
           <div className="flex flex-col gap-1">
             <h1 className="text-xl sm:text-2xl font-bold">정산 대시보드</h1>
-            <p className="text-gray-600">주간 기준으로 전체 매출 합계를 확인하세요. (환불/취소 제외)</p>
+            <p className="text-gray-600">
+              주간 기준으로 전체 매출 합계를 확인하세요.
+            </p>
           </div>
 
-          {/* 탭 */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {tabs.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setActive(t.key)}
-                className={[
-                  "h-10 rounded-xl border px-4 text-sm",
-                  active === t.key ? "bg-[#2d4739] text-white border-[#2d4739]" : "bg-white hover:bg-gray-50",
-                ].join(" ")}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          
 
           {/* 차트 + 표 + 주간 합계 */}
           <div className="mt-4 grid grid-cols-1 xl:grid-cols-5 gap-4">
             {/* 차트 */}
             <div className="xl:col-span-3 rounded-2xl border border-gray-200 p-4 sm:p-6">
-              {/* 👉 여기로 주간 이동 UI 이동 */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold">주간 결제 금액</h3>
-                  <span className="text-sm text-gray-500">{tabs.find((t) => t.key === active)?.label}</span>
+                  <h3 className="text-lg font-semibold">주간 정산 금액</h3>
+                  
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -226,8 +169,10 @@ export default function SellerSettlementMain() {
                   </button>
                   <input
                     type="date"
-                    value={fmtYMD(weekAnchor)}
-                    onChange={(e) => setWeekAnchor(startOfWeekMon(new Date(e.target.value)))}
+                    value={fmtLocalYMD(weekAnchor)}
+                    onChange={(e) =>
+                      setWeekAnchor(startOfWeekMon(new Date(e.target.value)))
+                    }
                     className="h-9 rounded-lg border px-3 text-sm"
                     aria-label="주 시작일 선택(월요일 기준)"
                     title="주 시작일(월요일)"
@@ -243,29 +188,38 @@ export default function SellerSettlementMain() {
 
               <div className="mt-3 h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+                  <BarChart
+                    data={weeklyData}
+                    margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="label" fontSize={12} />
-                    <YAxis tickFormatter={(v) => KRW.format(v)} fontSize={12} />
+                    <YAxis
+                      tickFormatter={(v) => KRW.format(v)}
+                      fontSize={12}
+                    />
                     <Tooltip
                       formatter={(v: number) => `₩ ${KRW.format(v)}`}
-                      labelFormatter={(_, payload ) => `날짜: ${payload?.[0]?.payload?.date ?? ""}`}
+                      labelFormatter={(_, payload) =>
+                        `날짜: ${payload?.[0]?.payload?.date ?? ""}`
+                      }
                     />
-                    <Bar dataKey="amount" fill={brand} radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="amount" radius={[6, 6, 0, 0]} fill={brand} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
               <div className="mt-3 text-sm text-gray-700">
-                주간 합계: <span className="font-semibold">₩ {KRW.format(weeklyTotal)}</span>
+                주간 합계:{" "}
+                <span className="font-semibold">₩ {KRW.format(weeklyTotal)}</span>
               </div>
             </div>
 
             {/* 표(일별 합계) */}
             <div className="xl:col-span-2 rounded-2xl border border-gray-200 bg-white overflow-hidden">
               <div className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-betw-een">
                   <h3 className="text-lg font-semibold">일별 합계 표</h3>
-                  <span className="text-sm text-gray-500">{tabs.find((t) => t.key === active)?.label}</span>
+                  
                 </div>
                 <table className="mt-4 w-full text-sm">
                   <thead>
@@ -290,25 +244,27 @@ export default function SellerSettlementMain() {
           {/* 빠른 이동 */}
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <QuickLink
-              to={`${basePath}/product`}
+              to={`/seller/${storeUrl}/settlement/product`}
               label="상품별 정산"
               desc="상품ID로 검색하여 상세 매출/정산 내역을 확인합니다."
               icon={<Package className="w-5 h-5" />}
             />
             <QuickLink
-              to={`${basePath}/class`}
+              to={`/seller/${storeUrl}/settlement/class`}
               label="클래스별 정산"
               desc="클래스ID로 검색하여 상세 매출/정산 내역을 확인합니다."
               icon={<Receipt className="w-5 h-5" />}
             />
           </div>
 
-          {/* 정산 테이블(왼쪽 정렬) */}
+          {/* 정산 테이블(최근일자순 정렬 + 날짜 포맷) */}
           <div className="mt-6 rounded-2xl border border-gray-200 bg-white overflow-x-auto">
             <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">정산 내역</h2>
-                <span className="text-sm text-gray-500">{settlementRows.length}건</span>
+                <span className="text-sm text-gray-500">
+                  {sortedRows.length}건
+                </span>
               </div>
 
               <table className="mt-4 w-full text-sm">
@@ -324,28 +280,34 @@ export default function SellerSettlementMain() {
                   </tr>
                 </thead>
                 <tbody>
-                  {settlementRows.map((s, idx) => (
-                    <tr key={`${s.date}-${idx}`} className="border-t border-gray-100">
-                      <td className="py-3 pr-4">{s.date}</td>
+                  {sortedRows.map((s, idx) => (
+                    <tr
+                      key={`${s.settlementDate}-${idx}`}
+                      className="border-t border-gray-100"
+                    >
+                      {/* 각 건의 settlementDate 기준 "다음 달 1일" 표시 */}
+                      <td className="py-3 pr-4">
+                        {nextMonthFirstYMDFromISO(s.settlementDate)}
+                      </td>
                       <td className="py-3 pr-4">₩ {KRW.format(s.amount)}</td>
                       <td className="py-3 pr-4">{s.account}</td>
                       <td className="py-3 pr-4">{s.bank}</td>
-                      <td className="py-3 pr-4">{s.holder}</td>
+                      {/* name → holder fallback */}
+                      <td className="py-3 pr-4">{s.name ?? s.holder ?? ""}</td>
                       <td className="py-3 pr-4">
                         <span
                           className={[
                             "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border",
-                            s.status === "정산 완료"
+                            s.status === 1
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : s.status === "정산 예정"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : "bg-rose-50 text-rose-700 border-rose-200",
+                              : "bg-amber-50 text-amber-700 border-amber-200",
                           ].join(" ")}
                         >
-                          {s.status}
+                          {s.status === 1 ? "정산 완료" : "정산 예정"}
                         </span>
                       </td>
-                      <td className="py-3 pr-4">{s.updatedAt}</td>
+                      {/* 최근 수정일: YYYY-MM-DD만 표시 */}
+                      <td className="py-3 pr-4">{onlyDate(s.updateAt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -358,8 +320,7 @@ export default function SellerSettlementMain() {
   );
 }
 
-
-// ------------------ QuickLink (Hover 효과 적용 버전) ------------------
+// ------------------ QuickLink ------------------
 function QuickLink({
   to,
   label,
@@ -379,23 +340,20 @@ function QuickLink({
         "group relative w-full overflow-hidden rounded-2xl",
         "border border-gray-300 bg-transparent text-left outline-none cursor-pointer",
         "transition-all duration-300 ease-out",
-        "text-gray-900 hover:text-white", // hover 시 흰색 텍스트
-        "hover:shadow-lg", // 띄움 효과
+        "text-gray-900 hover:text-white",
+        "hover:shadow-lg",
       ].join(" ")}
     >
-      {/* ::before — 왼쪽 → 오른쪽 채워짐 효과 */}
       <span
         aria-hidden
         className={[
           "pointer-events-none absolute inset-0 z-0",
-         "before:content-[''] before:absolute before:inset-0",
+          "before:content-[''] before:absolute before:inset-0",
           "before:bg-[#5b7d6a] before:origin-left before:scale-x-0 before:transform",
           "before:transition-transform before:duration-500 before:ease-out",
-        "group-hover:before:scale-x-100",
+          "group-hover:before:scale-x-100",
         ].join(" ")}
       />
-
-      {/* 내용 */}
       <div className="relative z-10 p-4 sm:p-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div
@@ -406,7 +364,7 @@ function QuickLink({
           >
             {icon}
           </div>
-          <div className="font-[Arial,Helvetica,sans-serif]">
+          <div>
             <div className="font-semibold uppercase">
               <span className="inline-block transition-all duration-300 group-hover:translate-x-2">
                 {label}

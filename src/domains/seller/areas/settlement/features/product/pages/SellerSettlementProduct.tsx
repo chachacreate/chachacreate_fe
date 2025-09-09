@@ -1,10 +1,9 @@
-// src/domains/seller/settlement/SellerSettlementProduct.tsx
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import SellerSidenavbar from "@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar";
-import { CalendarDays, BarChart3, Image as ImageIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
+import { CalendarDays, Image as ImageIcon } from 'lucide-react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -13,223 +12,289 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-} from "recharts";
+} from 'recharts';
+import { get, legacyGet } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
 
-// ------------------ Types ------------------
-type ProductSale = {
-  id: string;            // tx id
-  date: string;          // YYYY-MM-DD (결제일)
-  time: string;          // HH:MM–HH:MM (옵션)
-  productId: string;
-  title: string;
-  quantity: number;
-  amount: number;        // 결제금액(원) = 단가*수량
-  refunded?: boolean;    // 환불 여부
+// ---------- Types ----------
+type Params = { storeUrl: string };
+
+type ProductOption = {
+  productId: number;
+  productName: string;
+  pimgUrl?: string | null;
 };
 
-type ProductMeta = {
-  productId: string;
-  title: string;
-  hero: string;          // 대표 이미지
-  createdAt: string;     // 등록일
-  deleted?: boolean;     // 논리삭제
+type ProductDailySettlementResponse = {
+  productId: number;
+  daily: Array<{ date: string; amount: number }>;
 };
 
-type SettlementRow = {
-  date: string; amount: number; account: string; bank: string;
-  holder: string; status: "정산 완료" | "정산 예정" | "보류"; updatedAt: string;
+type LegacyMonthlySettlementItem = {
+  settlementDate: string; // "YYYY-MM-DD"
+  amount: number;
+  account: string;
+  accountBank: string;
+  updateAt: string; // "YYYY-MM-DD HH:mm:ss" (조인 키)
 };
 
-// ------------------ MOCK DATA ------------------
-const PRODUCT_META: ProductMeta[] = [
-  {
-    productId: "P-1001",
-    title: "핸드메이드 머그컵",
-    hero: "https://images.unsplash.com/photo-1517705008128-361805f42e86?q=80&w=1200&auto=format&fit=crop",
-    createdAt: "2025-05-08",
-  },
-  {
-    productId: "P-1002",
-    title: "드라이플라워 소품",
-    hero: "https://images.unsplash.com/photo-1470058869958-2a77ade41c02?q=80&w=1200&auto=format&fit=crop",
-    createdAt: "2025-05-12",
-  },
-  {
-    productId: "P-1003",
-    title: "수채화 엽서 세트",
-    hero: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1200&auto=format&fit=crop",
-    createdAt: "2025-05-18",
-  },
-];
-
-const TX_PRODUCT: ProductSale[] = [
-  { id: "tp1", date: "2025-05-17", time: "10:10", productId: "P-1001", title: "핸드메이드 머그컵", quantity: 2, amount: 36000 },
-  { id: "tp2", date: "2025-05-17", time: "14:32", productId: "P-1002", title: "드라이플라워 소품", quantity: 1, amount: 18000 },
-  { id: "tp3", date: "2025-05-18", time: "11:20", productId: "P-1003", title: "수채화 엽서 세트", quantity: 5, amount: 25000 },
-  { id: "tp4", date: "2025-05-19", time: "09:40", productId: "P-1001", title: "핸드메이드 머그컵", quantity: 1, amount: 18000 },
-  { id: "tp5", date: "2025-05-21", time: "16:45", productId: "P-1001", title: "핸드메이드 머그컵", quantity: 3, amount: 54000 },
-  // 환불 예시(차트/합계에서 제외)
-  { id: "tp6", date: "2025-05-21", time: "18:05", productId: "P-1002", title: "드라이플라워 소품", quantity: 1, amount: 18000, refunded: true },
-];
-
-const SETTLEMENT_PRODUCT: Record<string, SettlementRow[]> = {
-  "P-1001": [
-    { date: "2025-05-17", amount: 120000, account: "1002-858-000000", bank: "우리은행", holder: "이상민", status: "정산 완료", updatedAt: "2025-05-17" },
-    { date: "2025-06-17", amount: 90000,  account: "3333-28-0000000", bank: "카카오뱅크", holder: "이상민", status: "정산 예정", updatedAt: "2025-05-20" },
-  ],
-  "P-1002": [
-    { date: "2025-05-17", amount: 18000, account: "1002-111-222333", bank: "우리은행", holder: "홍길동", status: "정산 완료", updatedAt: "2025-05-18" },
-  ],
-  "P-1003": [
-    { date: "2025-04-19", amount: 25000, account: "455-66-777777", bank: "국민은행", holder: "김영희", status: "정산 예정", updatedAt: "2025-05-20" },
-  ],
+type BootMonthlyMetaItem = {
+  updatedAtKey: string | null;   // "YYYY-MM-DD HH:mm:ss" | null
+  name: string | null;           // 예금주
+  settlementStatus: number | null;
+  updateAt: string | null;       // (부트 updated_at, 화면에서는 사용 안 함)
 };
 
-// ------------------ Utils ------------------
-const brand = "#2d4739";
-const KRW = new Intl.NumberFormat("ko-KR");
+type MergedMonthlySettlementItem = LegacyMonthlySettlementItem & {
+  name: string | null;             // 부트 예금주 (없으면 fallbackName)
+  settlementStatus: number | null; // 부트 정산상태
+  legacyUpdatedDate: string;       // 레거시 updateAt의 "YYYY-MM-DD"만
+};
 
-function useQuery() {
-  const { search } = useLocation();
-  return new URLSearchParams(search);
-}
+// ---------- Utils ----------
+const BRAND = '#2d4739';
+const KRW = new Intl.NumberFormat('ko-KR');
+
 const parseDate = (s: string) => new Date(`${s}T00:00:00`);
-const fmtYMD = (d: Date) => d.toISOString().slice(0, 10);
-const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-const addMonths = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth() + n, d.getDate());
+const fmtYMD = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
+const addDays = (d: Date, n: number) =>
+  new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const startOfWeekMon = (d: Date) => {
-  const day = d.getDay(); // 0=Sun..6=Sat
-  const diff = (day === 0 ? -6 : 1 - day);
+  const day = d.getDay(); // 0=일 ~ 6=토
+  const diff = day === 0 ? -6 : 1 - day;
   return addDays(d, diff);
 };
+const takeDatePart = (s: string | null | undefined) => (s ? s.slice(0, 10) : '—');
+const statusLabel = (n: number | null | undefined) =>
+  n === 1 ? '정산완료' : n === 0 ? '미정산' : '—';
 
-// ------------------ Component ------------------
+// ---------- Component ----------
 export default function SellerSettlementProduct() {
-  const { storeUrl = "store" } = useParams();
-  const query = useQuery();
+  const { storeUrl } = useParams<Params>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // (1) 상품 목록(논리삭제 제외)
-  const aliveProducts = useMemo(
-    () => PRODUCT_META.filter((p) => !p.deleted).sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
-    []
-  );
-  const hasProducts = aliveProducts.length > 0;
+  // 드롭다운(레거시)
+  const [options, setOptions] = useState<ProductOption[]>([]);
+  const [optLoading, setOptLoading] = useState(false);
+  const [optError, setOptError] = useState<string | null>(null);
 
-  // (2) 선택 상품
-  const defaultProductId = hasProducts ? aliveProducts[0].productId : "";
-  const queryId = query.get("productId") ?? "";
-  const [selectedId, setSelectedId] = useState<string>(queryId || defaultProductId);
+  // 선택 상품 ID (쿼리와 동기화)
+  const productIdParam = searchParams.get('productId');
+  const selectedId = productIdParam ? Number(productIdParam) : null;
 
+  // 일별 정산(레거시)
+  const [daily, setDaily] = useState<ProductDailySettlementResponse | null>(null);
+  const [dailyLoading, setDailyLoading] = useState(false);
+
+  // 월별 정산(레거시 + 부트 메타)
+  const [legacyMonthly, setLegacyMonthly] = useState<LegacyMonthlySettlementItem[]>([]);
+  const [bootMonthly, setBootMonthly] = useState<BootMonthlyMetaItem[]>([]);
+  const [mergedMonthly, setMergedMonthly] = useState<MergedMonthlySettlementItem[]>([]);
+  const [monthlyLoading, setMonthlyLoading] = useState(false);
+  const [monthlyError, setMonthlyError] = useState<string | null>(null);
+
+  // 상품 리스트 불러오기
   useEffect(() => {
-    if (hasProducts && !queryId && defaultProductId) {
-      navigate(`/seller/${storeUrl}/settlement/product?productId=${encodeURIComponent(defaultProductId)}`, { replace: true });
+    if (!storeUrl) return;
+    let alive = true;
+    (async () => {
+      setOptLoading(true);
+      setOptError(null);
+      try {
+        const res = await legacyGet<ApiResponse<any[]>>(
+          `/seller/settlements/products/${encodeURIComponent(storeUrl)}/list`,
+        );
+        if (!alive) return;
+        if (res.status === 200) {
+          const raw = Array.isArray(res.data) ? res.data : [];
+          const list: ProductOption[] = raw
+            .map((it) => ({
+              productId: it.productId ?? it.id ?? it.product_id,
+              productName: it.productName ?? it.name ?? it.product_name,
+              pimgUrl:
+                it.pimgUrl ??
+                it.pimg_url ??
+                it.thumbnailUrl ??
+                it.thumbnail_url ??
+                it.img ??
+                it.image ??
+                null,
+            }))
+            .filter((v) => v.productId && v.productName);
+          setOptions(list);
+          if (!productIdParam && list.length) {
+            setSearchParams({ productId: String(list[0].productId) }, { replace: true });
+          }
+        } else {
+          setOptError(res.message || '상품 목록 조회 실패');
+        }
+      } catch {
+        if (alive) setOptError('상품 목록을 불러오지 못했습니다.');
+      } finally {
+        if (alive) setOptLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [storeUrl]);
+
+  // 선택 상품 일별 정산 조회
+  useEffect(() => {
+    if (!storeUrl) return;
+    if (selectedId == null) {
+      setDaily(null);
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultProductId, hasProducts]);
+    let alive = true;
+    (async () => {
+      setDailyLoading(true);
+      try {
+        const res = await legacyGet<ApiResponse<ProductDailySettlementResponse>>(
+          `/seller/settlements/products/${encodeURIComponent(storeUrl)}/${encodeURIComponent(
+            String(selectedId),
+          )}`,
+        );
+        if (!alive) return;
+        if (res.status === 200 && res.data) {
+          setDaily(res.data);
+        } else {
+          setDaily({ productId: selectedId, daily: [] });
+        }
+      } catch {
+        if (alive) setDaily({ productId: selectedId, daily: [] });
+      } finally {
+        if (alive) setDailyLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [storeUrl, selectedId]);
 
-  const selectedMeta = useMemo(
-    () => aliveProducts.find((p) => p.productId === selectedId) ?? null,
-    [aliveProducts, selectedId]
-  );
+  // 월별 정산(레거시 + 부트 메타) 조회/머지
+  useEffect(() => {
+    if (!storeUrl) return;
+    let alive = true;
+    (async () => {
+      setMonthlyLoading(true);
+      setMonthlyError(null);
+      try {
+        const [legacyRes, bootRes] = await Promise.all([
+          legacyGet<ApiResponse<LegacyMonthlySettlementItem[]>>(
+            `/seller/settlements/products/${encodeURIComponent(storeUrl)}/all`,
+          ),
+          get<ApiResponse<BootMonthlyMetaItem[]>>(
+            `/api/seller/settlements/products/${encodeURIComponent(storeUrl)}/all`,
+          ),
+        ]);
+        if (!alive) return;
 
-  const onSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value;
-    setSelectedId(id);
-    navigate(`/seller/${storeUrl}/settlement/product?productId=${encodeURIComponent(id)}`, { replace: false });
-  };
+        const legacyList = legacyRes.status === 200 ? legacyRes.data ?? [] : [];
+        const bootList = bootRes.status === 200 ? bootRes.data ?? [] : [];
 
-  // (3) 선택 상품 데이터 (환불 제외)
-  const tx = useMemo(() => {
-    if (!selectedMeta) return [];
-    return TX_PRODUCT.filter((t) => t.productId === selectedMeta.productId && !t.refunded);
-  }, [selectedMeta]);
+        setLegacyMonthly(legacyList);
+        setBootMonthly(bootList);
 
-  const settlements = useMemo(() => {
-    if (!selectedMeta) return [];
-    return (SETTLEMENT_PRODUCT[selectedMeta.productId] ?? []);
-  }, [selectedMeta]);
+        const fallbackName = bootList.find((m) => m?.name)?.name ?? null;
+        const byKey = new Map(
+          bootList
+            .filter((m) => m && m.updatedAtKey)
+            .map((m) => [m.updatedAtKey as string, m]),
+        );
 
-  // ------------------ 주간 차트 (월~일 7일) ------------------
+        const merged = legacyList.map<MergedMonthlySettlementItem>((l) => {
+          const m = byKey.get(l.updateAt);
+          return {
+            ...l,
+            name: m?.name ?? fallbackName,
+            settlementStatus: m?.settlementStatus ?? null,
+            legacyUpdatedDate: takeDatePart(l.updateAt),
+          };
+        });
+
+        setMergedMonthly(merged);
+      } catch {
+        if (alive) {
+          setMonthlyError('월별 정산 데이터를 합치는 데 실패했습니다.');
+          setLegacyMonthly([]);
+          setBootMonthly([]);
+          setMergedMonthly([]);
+        }
+      } finally {
+        if (alive) setMonthlyLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [storeUrl]);
+
+  // 주간 차트 데이터
   const [weekAnchor, setWeekAnchor] = useState<Date>(() => startOfWeekMon(new Date()));
-  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekAnchor, i)), [weekAnchor]);
+  const weekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDays(weekAnchor, i)),
+    [weekAnchor],
+  );
 
   const weeklyChartData = useMemo(() => {
     const sumByDay: Record<string, number> = {};
     weekDays.forEach((d) => (sumByDay[fmtYMD(d)] = 0));
-    tx.forEach((r) => {
-      const key = r.date;
-      if (key in sumByDay) sumByDay[key] += r.amount;
-    });
+    if (daily?.daily?.length) {
+      for (const r of daily.daily) {
+        const key = r.date.length > 10 ? r.date.slice(0, 10) : r.date;
+        if (key in sumByDay) sumByDay[key] += r.amount;
+      }
+    }
     return weekDays.map((d) => ({
       date: fmtYMD(d),
-      label: `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+      label: `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
       amount: sumByDay[fmtYMD(d)] || 0,
     }));
-  }, [tx, weekDays]);
+  }, [daily?.daily, weekDays]);
 
-  const weeklyTotal = useMemo(
-    () => weeklyChartData.reduce((acc, cur) => acc + cur.amount, 0),
-    [weeklyChartData]
-  );
-
-  // ------------------ 요약 카드 ------------------
-  // 총 매출: "정산일 기준 다음 정산일까지 한달 기준"
-  const cycleTotal = useMemo(() => {
-    if (!selectedMeta) return 0;
-    const list = (SETTLEMENT_PRODUCT[selectedMeta.productId] ?? []).slice().sort((a, b) => a.date.localeCompare(b.date));
-    // 마지막 정산일 => 그 날부터 +1개월
-    const lastSettleStart = list.length ? parseDate(list[list.length - 1].date) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const nextSettle = addMonths(lastSettleStart, 1);
-    return tx
-      .filter((t) => {
-        const d = parseDate(t.date);
-        return d >= lastSettleStart && d < nextSettle;
-      })
-      .reduce((sum, t) => sum + t.amount, 0);
-  }, [tx, selectedMeta]);
-
-  // ------------------ Render ------------------
   return (
     <>
       <Header />
       <Mainnavbar />
-
       <SellerSidenavbar>
         <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
           <div className="flex flex-col gap-1">
             <h1 className="text-xl sm:text-2xl font-bold">상품별 정산</h1>
-            <p className="text-gray-600">상품을 선택하면 대표 이미지 · 주간 매출 차트 · 정산 내역을 확인할 수 있어요.</p>
+            <p className="text-gray-600">
+              상품을 선택하면 대표 이미지와 일별 매출 차트를 확인할 수 있어요.
+            </p>
           </div>
 
-          {/* 선택영역 / 빈 상태 */}
+          {/* 상품 선택 */}
           <div className="mt-4">
             <label htmlFor="product-select" className="block text-sm font-medium text-gray-700 mb-2">
               상품 선택
             </label>
-
-            {!hasProducts ? (
+            {optLoading ? (
+              <div className="h-11 flex items-center px-3 rounded-xl border border-gray-300 text-gray-500">
+                상품 목록 로딩 중…
+              </div>
+            ) : optError ? (
+              <div className="h-11 flex items-center px-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700">
+                {optError}
+              </div>
+            ) : options.length === 0 ? (
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 rounded-xl border border-dashed border-gray-300 p-4">
                 <p className="text-gray-600">등록된 상품이 없습니다.</p>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/seller/${storeUrl}/products/new`)} // 필요 시 경로 수정
-                  className="h-10 rounded-xl bg-[#2d4739] px-4 text-white text-sm hover:opacity-95"
-                >
-                  상품 등록하러 가기
-                </button>
               </div>
             ) : (
               <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                 <select
                   id="product-select"
-                  value={selectedMeta?.productId ?? ""}
-                  onChange={onSelectChange}
+                  value={selectedId ?? ''}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setSearchParams({ productId: String(val) }, { replace: true });
+                  }}
                   className="h-11 w-full sm:w-[360px] rounded-xl border border-gray-300 px-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2d4739]/25 focus:border-[#2d4739]"
                 >
-                  {aliveProducts.map((opt) => (
+                  {options.map((opt) => (
                     <option key={opt.productId} value={opt.productId}>
-                      [{opt.productId}] {opt.title}
+                      {opt.productName} 
                     </option>
                   ))}
                 </select>
@@ -238,39 +303,43 @@ export default function SellerSettlementProduct() {
           </div>
 
           {/* 대표 이미지 + 주간 차트 */}
-          {selectedMeta && (
+          {!!selectedId && (
             <div className="mt-6 grid grid-cols-1 xl:grid-cols-5 gap-4">
               {/* 대표 이미지 카드 */}
               <div className="xl:col-span-2 rounded-2xl border border-gray-200 overflow-hidden">
                 <div className="aspect-[4/3] relative bg-gray-50">
-                  {selectedMeta.hero ? (
-                    <img
-                      src={selectedMeta.hero}
-                      alt={selectedMeta.title}
-                      className="absolute inset-0 h-full w-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-                      <ImageIcon className="w-10 h-10" />
-                    </div>
-                  )}
+                  {(() => {
+                    const thumb = options.find((o) => o.productId === selectedId)?.pimgUrl;
+                    return thumb ? (
+                      <img
+                        src={thumb}
+                        alt="대표 이미지"
+                        className="absolute inset-0 h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                        <ImageIcon className="w-10 h-10" />
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="p-4 flex items-center justify-between">
                   <div>
-                    <div className="text-sm text-gray-600">[{selectedMeta.productId}]</div>
-                    <div className="text-lg font-semibold">{selectedMeta.title}</div>
+                    <div className="text-lg font-semibold">
+                      {options.find((o) => o.productId === selectedId)?.productName}
+                    </div>
                   </div>
-                  <div className="rounded-xl border p-2" style={{ borderColor: "#e5e7eb", color: brand }}>
+                  <div className="rounded-xl border p-2" style={{ borderColor: '#e5e7eb', color: BRAND }}>
                     <CalendarDays className="w-5 h-5" />
                   </div>
                 </div>
               </div>
 
-              {/* 주간 결제금액 차트 (환불 제외) */}
+              {/* 주간 차트 */}
               <div className="xl:col-span-3 rounded-2xl border border-gray-200 p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <h3 className="text-lg font-semibold">주간 결제 금액</h3>
+                  <h3 className="text-lg font-semibold">일별 결제 금액</h3>
                   <div className="flex items-center gap-2">
                     <button
                       className="h-9 rounded-lg border px-3 text-sm hover:bg-gray-50"
@@ -296,108 +365,94 @@ export default function SellerSettlementProduct() {
                 </div>
 
                 <div className="mt-3 h-[260px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={weeklyChartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="label" fontSize={12} />
-                      <YAxis tickFormatter={(v) => KRW.format(v)} fontSize={12} />
-                      <Tooltip
-                        formatter={(v: number) => `₩ ${KRW.format(v)}`}
-                        labelFormatter={(l, p: any) => `날짜: ${p?.payload?.date ?? ""}`}
-                      />
-                      <Bar dataKey="amount" fill={brand} radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {dailyLoading ? (
+                    <div className="h-full flex items-center justify-center text-gray-500">
+                      차트 로딩 중…
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={weeklyChartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="label" fontSize={12} />
+                        <YAxis tickFormatter={(v) => KRW.format(v)} fontSize={12} />
+                        <Tooltip
+                          formatter={(v: number) => `₩ ${KRW.format(v)}`}
+                          labelFormatter={(_, p: any) => `날짜: ${p?.payload?.date ?? ''}`}
+                        />
+                        <Bar dataKey="amount" fill={BRAND} radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
-          {/* 요약 카드: 총 매출(정산주기) / 이번주 매출 */}
-          {selectedMeta && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-6">
-              <SummaryCard title="총 매출(정산 주기 한 달)" value={`₩ ${KRW.format(cycleTotal)}`} icon={<BarChart3 className="w-5 h-5" />} />
-              <SummaryCard title="이번주 매출" value={`₩ ${KRW.format(weeklyTotal)}`} icon={<BarChart3 className="w-5 h-5" />} />
-            </div>
-          )}
-
-          {/* 정산 내역 (왼쪽 정렬) */}
-          {selectedMeta && (
-            <div className="mt-6 rounded-2xl border border-gray-200 bg-white overflow-x-auto">
-              <div className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">정산 내역</h2>
-                  <span className="text-sm text-gray-500">
-                    {settlements.length ? `${settlements.length}건` : "데이터 없음"}
-                  </span>
+          {/* 월별 상품 정산(레거시+부트 메타 머지) */}
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">월별 상품 정산</h3>
+              {!monthlyLoading && (
+                <div className="text-sm text-gray-500">
+                  {legacyMonthly.length}건
                 </div>
+              )}
+            </div>
 
-                <table className="mt-4 w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-gray-500">
-                      <th className="py-2 pr-4 font-medium">정산 일자</th>
-                      <th className="py-2 pr-4 font-medium">정산 금액</th>
-                      <th className="py-2 pr-4 font-medium">계좌번호</th>
-                      <th className="py-2 pr-4 font-medium">은행명</th>
-                      <th className="py-2 pr-4 font-medium">예금주명</th>
-                      <th className="py-2 pr-4 font-medium">정산상태</th>
-                      <th className="py-2 pr-4 font-medium">최근 수정일</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {settlements.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="py-8 text-center text-gray-500">정산 데이터가 없습니다</td>
+            <div className="rounded-2xl border border-gray-200 overflow-hidden">
+              {monthlyLoading ? (
+                <div className="p-6 text-center text-gray-500">월별 정산 데이터를 불러오는 중…</div>
+              ) : monthlyError ? (
+                <div className="p-6 text-center text-rose-700 bg-rose-50">{monthlyError}</div>
+              ) : mergedMonthly.length === 0 ? (
+                <div className="p-6 text-center text-gray-500">표시할 월별 정산 데이터가 없습니다.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full whitespace-nowrap text-sm">
+                    <thead className="bg-gray-50">
+                      <tr className="text-left text-gray-600">
+                        <th className="px-4 py-3">정산일자</th>
+                        <th className="px-4 py-3">정산금액</th>
+                        <th className="px-4 py-3">계좌번호</th>
+                        <th className="px-4 py-3">은행</th>
+                        <th className="px-4 py-3">예금주</th>
+                        <th className="px-4 py-3">정산상태</th>
+                        <th className="px-4 py-3">최근수정일</th>
                       </tr>
-                    ) : (
-                      settlements.map((s, idx) => (
-                        <tr key={`${s.date}-${idx}`} className="border-t border-gray-100">
-                          <td className="py-3 pr-4">{s.date}</td>
-                          <td className="py-3 pr-4">₩ {KRW.format(s.amount)}</td>
-                          <td className="py-3 pr-4">{s.account}</td>
-                          <td className="py-3 pr-4">{s.bank}</td>
-                          <td className="py-3 pr-4">{s.holder}</td>
-                          <td className="py-3 pr-4">
+                    </thead>
+                    <tbody>
+                      {mergedMonthly.map((row, idx) => (
+                        <tr key={`${row.settlementDate}-${row.updateAt}-${idx}`} className="border-t">
+                          <td className="px-4 py-3">{row.settlementDate}</td>
+                          <td className="px-4 py-3 font-medium">₩ {KRW.format(row.amount)}</td>
+                          <td className="px-4 py-3">{row.account}</td>
+                          <td className="px-4 py-3">{row.accountBank}</td>
+                          <td className="px-4 py-3">{row.name ?? '—'}</td>
+                          <td className="px-4 py-3">
                             <span
                               className={[
-                                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border",
-                                s.status === "정산 완료"
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                  : s.status === "정산 예정"
-                                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                                  : "bg-rose-50 text-rose-700 border-rose-200",
-                              ].join(" ")}
+                                'inline-flex items-center rounded-md px-2 py-1 text-xs font-medium',
+                                row.settlementStatus === 1
+                                  ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20'
+                                  : row.settlementStatus === 0
+                                  ? 'bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-600/20'
+                                  : 'bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-500/20',
+                              ].join(' ')}
                             >
-                              {s.status}
+                              {statusLabel(row.settlementStatus)}
                             </span>
                           </td>
-                          <td className="py-3 pr-4">{s.updatedAt}</td>
+                          <td className="px-4 py-3">{takeDatePart(row.updateAt)}</td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </SellerSidenavbar>
     </>
-  );
-}
-
-function SummaryCard({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-sm text-gray-600">{title}</div>
-          <div className="mt-1 text-xl font-bold">{value}</div>
-        </div>
-        <div className="rounded-xl border p-2" style={{ borderColor: "#e5e7eb", color: "#2d4739" }}>
-          {icon}
-        </div>
-      </div>
-    </div>
   );
 }

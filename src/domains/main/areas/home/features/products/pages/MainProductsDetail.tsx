@@ -1,23 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
-import { 
-  Star, 
-  ShoppingCart, 
-  CreditCard, 
-  Flag, 
-  Edit, 
-  Minus, 
-  Plus, 
+import {
+  Star,
+  ShoppingCart,
+  CreditCard,
+  Flag,
+  Edit,
+  Minus,
+  Plus,
   ThumbsUp,
   X,
-  MoreHorizontal
+  MoreHorizontal,
 } from 'lucide-react';
+import { get, legacyGet } from '@src/libs/request';
+import { useParams } from 'react-router-dom';
 
 interface Product {
   id: string;
   name: string;
   price: number;
+  thumbnailUrl: string;
   images: string[];
   storeName: string;
   storeId: string;
@@ -54,93 +57,98 @@ const MainProductsDetail = () => {
   const [editReviewData, setEditReviewData] = useState({ rating: 5, content: '' });
   const [loading, setLoading] = useState(true);
 
-  // 더미 데이터 생성
+  // 컴포넌트 안에서
+  // const { storeUrl, productId } = useParams<{ storeUrl: string; productId: string }>();
+  const { productId } = useParams<{ productId: string }>();
+
+  const storeUrl = 'hihiyaho';
+
   useEffect(() => {
-    const generateDummyData = () => {
-      const dummyProduct: Product = {
-        id: 'product-1',
-        name: '프리미엄 무선 블루투스 이어폰 - 노이즈 캔슬링 기능',
-        price: 129000,
-        images: [
-          'https://picsum.photos/600/600?random=1',
-          'https://picsum.photos/600/600?random=2',
-          'https://picsum.photos/600/600?random=3'
-        ],
-        storeName: '테크스토어',
-        storeId: 'store-1',
-        categories: ['전자제품', '오디오'],
-        description: `
-          <h3>상품 소개</h3>
-          <p>최신 노이즈 캔슬링 기술을 적용한 프리미엄 무선 이어폰입니다.</p>
-          
-          <h4>주요 특징</h4>
-          <ul>
-            <li>액티브 노이즈 캔슬링 (ANC) 기술</li>
-            <li>최대 30시간 재생 시간</li>
-            <li>고품질 사운드</li>
-            <li>편안한 착용감</li>
-            <li>IPX5 방수 등급</li>
-          </ul>
-          
-          <h4>제품 사양</h4>
-          <ul>
-            <li>드라이버: 40mm 다이나믹 드라이버</li>
-            <li>주파수 응답: 20Hz - 20kHz</li>
-            <li>블루투스: 5.2</li>
-            <li>충전 시간: 2시간</li>
-            <li>무게: 250g</li>
-          </ul>
-        `,
-        rating: 4.5,
-        reviewCount: 128,
-        isOwner: false
-      };
+    const fetchProductDetail = async () => {
+      try {
+        if (!storeUrl || !productId) return;
 
-      const dummyReviews: Review[] = [
-        {
-          id: 'review-1',
-          userName: '김철수',
-          createdAt: '2024-03-15T10:30:00Z',
-          rating: 5,
-          content: '음질이 정말 좋습니다! 노이즈 캔슬링 기능도 훌륭해요. 강력 추천합니다.',
-          likes: 12,
-          isOwner: true,
-          isLiked: false,
-          isEdited: false
-        },
-        {
-          id: 'review-2',
-          userName: '이영희',
-          createdAt: '2024-03-14T15:20:00Z',
-          updatedAt: '2024-03-14T16:00:00Z',
-          rating: 4,
-          content: '전반적으로 만족스럽습니다. 배터리 지속시간이 길어서 좋아요. (수정: 며칠 사용해보니 더욱 만족스럽네요!)',
-          likes: 8,
-          isOwner: false,
-          isLiked: true,
-          isEdited: true
-        },
-        {
-          id: 'review-3',
-          userName: '박민수',
-          createdAt: '2024-03-13T09:15:00Z',
-          rating: 4.5,
-          content: '가성비가 좋은 제품입니다. 디자인도 깔끔하고 착용감이 편해요.',
-          likes: 5,
-          isOwner: false,
-          isLiked: false,
-          isEdited: false
+        interface ProductDetailResponse {
+          status: number;
+          message: string;
+          data: {
+            productDetail: any;
+            thumbnailImageUrls: string[];
+            descriptionImageUrls: string[];
+            mainThumbnailUrl: string;
+          };
         }
-      ];
 
-      setProduct(dummyProduct);
-      setReviews(dummyReviews);
-      setCanWriteReview(true); // 구매 이력이 있다고 가정
-      setLoading(false);
+        const response = await legacyGet<ProductDetailResponse>(
+          `/${storeUrl}/productdetail/${productId}`
+        );
+
+        const productDetail = response.data.productDetail;
+
+        // 메인 썸네일 중복 제거
+        const uniqueImages = [
+          response.data.mainThumbnailUrl,
+          ...(response.data.thumbnailImageUrls?.filter(
+            (url) => url !== response.data.mainThumbnailUrl
+          ) || []),
+        ];
+
+        const mappedProduct: Product = {
+          id: productDetail.productId.toString(),
+          name: productDetail.productName,
+          price: productDetail.price,
+          thumbnailUrl: response.data.mainThumbnailUrl,
+          images: uniqueImages,
+          storeName: productDetail.storeName,
+          storeId: productDetail.storeId.toString(),
+          categories: [
+            productDetail.typeCategoryName,
+            productDetail.ucategoryName,
+            productDetail.dcategoryName,
+          ].filter(Boolean),
+          description: productDetail.productDetail,
+          rating: 0, // 기본값
+          reviewCount: 0, // 기본값
+          isOwner: false, // 필요 시 별도 API 체크
+        };
+
+        setProduct(mappedProduct);
+
+        const reviewResponse = await get<
+          {
+            id: number;
+            memberId: number;
+            productId: number;
+            productName: string;
+            rating: number;
+            content: string;
+          }[]
+        >(`/products/${productId}/reviews`);
+
+        const mappedReviews: Review[] = reviewResponse.data.map((r) => ({
+          id: r.id.toString(),
+          userName: `회원 ${r.memberId}`, // 닉네임 없으면 임시
+          createdAt: new Date().toISOString(), // 실제 API에 날짜 없으면 현재 시간
+          rating: r.rating,
+          content: r.content,
+          likes: 0,
+          isOwner: false,
+          isLiked: false,
+          isEdited: false,
+        }));
+
+        setReviews(mappedReviews);
+
+        setCanWriteReview(false);
+        setLoading(false);
+      } catch (err) {
+        console.error(err);
+        setLoading(false);
+      }
     };
 
-    generateDummyData();
-  }, []);
+    fetchProductDetail();
+  }, [storeUrl, productId]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ko-KR').format(price);
@@ -150,7 +158,7 @@ const MainProductsDetail = () => {
     return new Intl.DateTimeFormat('ko-KR', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     }).format(new Date(dateString));
   };
 
@@ -163,7 +171,7 @@ const MainProductsDetail = () => {
     for (let i = 0; i < fullStars; i++) {
       stars.push(<Star key={i} className={`${starSize} fill-yellow-400 text-yellow-400`} />);
     }
-    
+
     if (hasHalfStar) {
       stars.push(
         <div key="half" className={`relative ${starSize}`}>
@@ -204,7 +212,7 @@ const MainProductsDetail = () => {
   };
 
   const handleAddToCart = () => {
-    alert(`장바구니에 ${quantity}개 추가되었습니다.`);
+    alert(`장바구니에 ${quantity}개가 추가되었습니다.`);
   };
 
   const handleBuyNow = () => {
@@ -222,15 +230,15 @@ const MainProductsDetail = () => {
         likes: 0,
         isOwner: true,
         isLiked: false,
-        isEdited: false
+        isEdited: false,
       };
-      setReviews(prev => [review, ...prev]);
+      setReviews((prev) => [review, ...prev]);
       setNewReview({ rating: 5, content: '' });
     }
   };
 
   const handleEditReview = (reviewId: string) => {
-    const review = reviews.find(r => r.id === reviewId);
+    const review = reviews.find((r) => r.id === reviewId);
     if (review) {
       setEditReviewData({ rating: review.rating, content: review.content });
       setEditingReview(reviewId);
@@ -239,17 +247,19 @@ const MainProductsDetail = () => {
 
   const handleUpdateReview = () => {
     if (editingReview && editReviewData.content.trim()) {
-      setReviews(prev => prev.map(review => 
-        review.id === editingReview 
-          ? { 
-              ...review, 
-              rating: editReviewData.rating, 
-              content: editReviewData.content,
-              updatedAt: new Date().toISOString(),
-              isEdited: true
-            }
-          : review
-      ));
+      setReviews((prev) =>
+        prev.map((review) =>
+          review.id === editingReview
+            ? {
+                ...review,
+                rating: editReviewData.rating,
+                content: editReviewData.content,
+                updatedAt: new Date().toISOString(),
+                isEdited: true,
+              }
+            : review
+        )
+      );
       setEditingReview(null);
       setEditReviewData({ rating: 5, content: '' });
     }
@@ -257,76 +267,75 @@ const MainProductsDetail = () => {
 
   const handleDeleteReview = (reviewId: string) => {
     if (confirm('리뷰를 삭제하시겠습니까?')) {
-      setReviews(prev => prev.filter(review => review.id !== reviewId));
+      setReviews((prev) => prev.filter((review) => review.id !== reviewId));
     }
   };
 
   const handleLikeReview = (reviewId: string) => {
-    setReviews(prev => prev.map(review => 
-      review.id === reviewId 
-        ? { 
-            ...review, 
-            likes: review.isLiked ? review.likes - 1 : review.likes + 1,
-            isLiked: !review.isLiked
-          }
-        : review
-    ));
+    setReviews((prev) =>
+      prev.map((review) =>
+        review.id === reviewId
+          ? {
+              ...review,
+              likes: review.isLiked ? review.likes - 1 : review.likes + 1,
+              isLiked: !review.isLiked,
+            }
+          : review
+      )
+    );
   };
 
-// ⭐ 0.5 단위 별점 입력 컴포넌트
-const StarRatingInput = ({
-  value,
-  onChange,
-  size = 'md',
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  size?: 'sm' | 'md' | 'lg';
-}) => {
-  const sizeClass =
-    size === 'lg' ? 'w-6 h-6' : size === 'sm' ? 'w-4 h-4' : 'w-5 h-5';
+  // ⭐ 0.5 단위 별점 입력 컴포넌트
+  const StarRatingInput = ({
+    value,
+    onChange,
+    size = 'md',
+  }: {
+    value: number;
+    onChange: (v: number) => void;
+    size?: 'sm' | 'md' | 'lg';
+  }) => {
+    const sizeClass = size === 'lg' ? 'w-6 h-6' : size === 'sm' ? 'w-4 h-4' : 'w-5 h-5';
 
-  return (
-    <div className="flex gap-1 select-none">
-      {Array.from({ length: 5 }).map((_, idx) => {
-        const i = idx + 1;
-        // 현재 별(i)에 채워질 비율(0~1)
-        const fillPct = Math.max(0, Math.min(1, value - (i - 1)));
+    return (
+      <div className="flex gap-1 select-none">
+        {Array.from({ length: 5 }).map((_, idx) => {
+          const i = idx + 1;
+          // 현재 별(i)에 채워질 비율(0~1)
+          const fillPct = Math.max(0, Math.min(1, value - (i - 1)));
 
-        return (
-          <span key={i} className={`relative inline-block ${sizeClass}`}>
-            {/* 회색 바탕 별 */}
-            <Star className={`${sizeClass} text-gray-300`} />
+          return (
+            <span key={i} className={`relative inline-block ${sizeClass}`}>
+              {/* 회색 바탕 별 */}
+              <Star className={`${sizeClass} text-gray-300`} />
 
-            {/* 채워진 부분(오버레이) */}
-            <span
+              {/* 채워진 부분(오버레이) */}
+              <span
                 className="absolute top-0 left-0 overflow-hidden pointer-events-none"
                 style={{ width: `${fillPct * 100}%` }}
-            >
+              >
                 <Star className={`${sizeClass} text-yellow-400 fill-yellow-400`} />
+              </span>
+
+              {/* 클릭 영역: 왼쪽(0.5), 오른쪽(1.0) */}
+              <button
+                type="button"
+                aria-label={`${i - 0.5}점`}
+                onClick={() => onChange(i - 0.5)}
+                className="absolute left-0 top-0 h-full w-1/2"
+              />
+              <button
+                type="button"
+                aria-label={`${i}점`}
+                onClick={() => onChange(i)}
+                className="absolute right-0 top-0 h-full w-1/2"
+              />
             </span>
-
-            {/* 클릭 영역: 왼쪽(0.5), 오른쪽(1.0) */}
-            <button
-              type="button"
-              aria-label={`${i - 0.5}점`}
-              onClick={() => onChange(i - 0.5)}
-              className="absolute left-0 top-0 h-full w-1/2"
-            />
-            <button
-              type="button"
-              aria-label={`${i}점`}
-              onClick={() => onChange(i)}
-              className="absolute right-0 top-0 h-full w-1/2"
-            />
-          </span>
-        );
-      })}
-    </div>
-  );
-};
-
-  
+          );
+        })}
+      </div>
+    );
+  };
 
   if (loading || !product) {
     return (
@@ -338,17 +347,17 @@ const StarRatingInput = ({
 
   return (
     <div className="min-h-screen bg-white">
-        <Header />
-        <Mainnavbar />
+      <Header />
+      <Mainnavbar />
       {/* 컨테이너 */}
       <div className="max-w-screen-2xl mx-auto px-4 ">
         <div className="max-w-[1440px] mx-auto py-0 sm:py-8">
-          
           {/* 상품 정보 섹션 */}
-          <div className="bg-white rounded-lg shadow-sm hover:shadow-[0_6px_10px_rgba(0,0,0,0.15)]
-                transition-shadow p-4 md:p-8 mb-8 ">
+          <div
+            className="bg-white rounded-lg shadow-sm hover:shadow-[0_6px_10px_rgba(0,0,0,0.15)]
+                transition-shadow p-4 md:p-8 mb-8 "
+          >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 ">
-              
               {/* 이미지 섹션 */}
               <div className="space-y-4">
                 {/* 메인 이미지 - 크기 줄임 */}
@@ -359,7 +368,7 @@ const StarRatingInput = ({
                     className="w-full h-full object-cover"
                   />
                 </div>
-                
+
                 {/* 썸네일 이미지들 */}
                 {product.images.length > 1 && (
                   <div className="flex gap-2 justify-center">
@@ -368,9 +377,7 @@ const StarRatingInput = ({
                         key={index}
                         onClick={() => setSelectedImageIndex(index)}
                         className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${
-                          selectedImageIndex === index 
-                            ? 'border-[#2d4739]' 
-                            : 'border-gray-200'
+                          selectedImageIndex === index ? 'border-[#2d4739]' : 'border-gray-200'
                         }`}
                       >
                         <img
@@ -474,7 +481,10 @@ const StarRatingInput = ({
 
                   {/* 총 가격 */}
                   <div className="text-lg font-semibold text-gray-900">
-                    총 가격: <span className="text-[#2d4739]">{formatPrice(product.price * quantity)}원</span>
+                    총 가격:{' '}
+                    <span className="text-[#2d4739]">
+                      {formatPrice(product.price * quantity)}원
+                    </span>
                   </div>
                 </div>
 
@@ -502,7 +512,7 @@ const StarRatingInput = ({
           {/* 상품 상세 설명 */}
           <div className="bg-white rounded-lg shadow-sm p-4 md:p-8 mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">상품 상세정보</h2>
-            <div 
+            <div
               className="prose prose-gray max-w-none"
               dangerouslySetInnerHTML={{ __html: product.description }}
             />
@@ -511,13 +521,9 @@ const StarRatingInput = ({
           {/* 리뷰 섹션 */}
           <div className="bg-white rounded-lg shadow-sm p-4 md:p-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                상품 리뷰 ({reviews.length})
-              </h2>
+              <h2 className="text-2xl font-bold text-gray-900">상품 리뷰 ({reviews.length})</h2>
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
-                  {renderStars(product.rating)}
-                </div>
+                <div className="flex items-center gap-1">{renderStars(product.rating)}</div>
                 <span className="font-semibold">{product.rating}</span>
               </div>
             </div>
@@ -528,22 +534,22 @@ const StarRatingInput = ({
                 <h3 className="font-semibold text-gray-900 mb-4">리뷰 작성</h3>
                 <div className="space-y-4">
                   {/* 별점 선택 - 0.5 단위 */}
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-gray-700">평점:</span>
                     <StarRatingInput
-                        value={newReview.rating}
-                        onChange={(v) => setNewReview((prev) => ({ ...prev, rating: v }))}
-                        size="lg"
+                      value={newReview.rating}
+                      onChange={(v) => setNewReview((prev) => ({ ...prev, rating: v }))}
+                      size="lg"
                     />
                     <span className="text-sm text-gray-600 ml-2">
-                        {newReview.rating.toFixed(1)}점
+                      {newReview.rating.toFixed(1)}점
                     </span>
-                    </div>
+                  </div>
 
                   {/* 리뷰 내용 */}
                   <textarea
                     value={newReview.content}
-                    onChange={(e) => setNewReview(prev => ({ ...prev, content: e.target.value }))}
+                    onChange={(e) => setNewReview((prev) => ({ ...prev, content: e.target.value }))}
                     placeholder="상품에 대한 솔직한 리뷰를 작성해주세요."
                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2d4739] resize-none"
                     rows={4}
@@ -565,79 +571,82 @@ const StarRatingInput = ({
 
             {/* 리뷰 목록 */}
             <div className="space-y-6">
-              {reviews.map(review => (
+              {reviews.map((review) => (
                 <div key={review.id} className="border-b border-gray-200 pb-6 last:border-b-0">
                   {editingReview === review.id ? (
                     /* 리뷰 수정 폼 */
                     <div className="space-y-4">
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-700">평점:</span>
                         <div className="flex gap-1 select-none">
-                            {Array.from({ length: 5 }).map((_, idx) => {
+                          {Array.from({ length: 5 }).map((_, idx) => {
                             const i = idx + 1;
-                            const fillPct = Math.max(0, Math.min(1, editReviewData.rating - (i - 1)));
+                            const fillPct = Math.max(
+                              0,
+                              Math.min(1, editReviewData.rating - (i - 1))
+                            );
                             return (
-                                <span key={i} className="relative inline-block w-5 h-5">
+                              <span key={i} className="relative inline-block w-5 h-5">
                                 {/* 회색 바탕 별 */}
                                 <Star className="w-5 h-5 text-gray-300" />
                                 {/* 채워진 오버레이 (0~100%) */}
                                 <span
-                                    className="absolute top-0 left-0 overflow-hidden pointer-events-none"
-                                    style={{ width: `${fillPct * 100}%` }}
+                                  className="absolute top-0 left-0 overflow-hidden pointer-events-none"
+                                  style={{ width: `${fillPct * 100}%` }}
                                 >
-                                    <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                                  <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                                 </span>
                                 {/* 클릭 영역: 왼쪽(0.5), 오른쪽(1.0) */}
                                 <button
-                                    type="button"
-                                    aria-label={`${i - 0.5}점`}
-                                    onClick={() =>
-                                    setEditReviewData(prev => ({ ...prev, rating: i - 0.5 }))
-                                    }
-                                    className="absolute left-0 top-0 h-full w-1/2"
+                                  type="button"
+                                  aria-label={`${i - 0.5}점`}
+                                  onClick={() =>
+                                    setEditReviewData((prev) => ({ ...prev, rating: i - 0.5 }))
+                                  }
+                                  className="absolute left-0 top-0 h-full w-1/2"
                                 />
                                 <button
-                                    type="button"
-                                    aria-label={`${i}점`}
-                                    onClick={() =>
-                                    setEditReviewData(prev => ({ ...prev, rating: i }))
-                                    }
-                                    className="absolute right-0 top-0 h-full w-1/2"
+                                  type="button"
+                                  aria-label={`${i}점`}
+                                  onClick={() =>
+                                    setEditReviewData((prev) => ({ ...prev, rating: i }))
+                                  }
+                                  className="absolute right-0 top-0 h-full w-1/2"
                                 />
-                                </span>
+                              </span>
                             );
-                            })}
+                          })}
                         </div>
                         <span className="text-sm text-gray-600 ml-2">
-                            {editReviewData.rating.toFixed(1)}점
+                          {editReviewData.rating.toFixed(1)}점
                         </span>
-                        </div>
-                        {/* 기존 내용이 그대로 보이는 입력창 */}
-    <textarea
-      value={editReviewData.content}
-      onChange={(e) =>
-        setEditReviewData(prev => ({ ...prev, content: e.target.value }))
-      }
-      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2d4739] resize-none"
-      rows={3}
-      placeholder="리뷰 내용을 입력하세요."
-    />
+                      </div>
+                      {/* 기존 내용이 그대로 보이는 입력창 */}
+                      <textarea
+                        value={editReviewData.content}
+                        onChange={(e) =>
+                          setEditReviewData((prev) => ({ ...prev, content: e.target.value }))
+                        }
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2d4739] resize-none"
+                        rows={3}
+                        placeholder="리뷰 내용을 입력하세요."
+                      />
 
-    <div className="flex gap-2">
-      <button
-        onClick={handleUpdateReview}
-        className="bg-[#2d4739] hover:bg-[#1a2e20] text-white font-medium py-2 px-4 rounded-lg transition-colors"
-      >
-        수정 완료
-      </button>
-      <button
-        onClick={() => setEditingReview(null)}
-        className="bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
-      >
-        취소
-      </button>
-    </div>
-  </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleUpdateReview}
+                          className="bg-[#2d4739] hover:bg-[#1a2e20] text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                        >
+                          수정 완료
+                        </button>
+                        <button
+                          onClick={() => setEditingReview(null)}
+                          className="bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
+                        >
+                          취소
+                        </button>
+                      </div>
+                    </div>
                   ) : (
                     /* 일반 리뷰 표시 */
                     <div>
@@ -652,7 +661,7 @@ const StarRatingInput = ({
                             {review.isEdited && <span className="ml-1">(수정됨)</span>}
                           </span>
                         </div>
-                        
+
                         {/* 리뷰 액션 버튼들 */}
                         <div className="flex items-center gap-2">
                           {review.isOwner && (
@@ -685,9 +694,7 @@ const StarRatingInput = ({
                         <button
                           onClick={() => handleLikeReview(review.id)}
                           className={`flex items-center gap-1 text-sm ${
-                            review.isLiked 
-                              ? 'text-[#2d4739]' 
-                              : 'text-gray-600 hover:text-[#2d4739]'
+                            review.isLiked ? 'text-[#2d4739]' : 'text-gray-600 hover:text-[#2d4739]'
                           }`}
                         >
                           <ThumbsUp className={`w-4 h-4 ${review.isLiked ? 'fill-current' : ''}`} />
@@ -709,7 +716,6 @@ const StarRatingInput = ({
               )}
             </div>
           </div>
-
         </div>
       </div>
 
@@ -729,18 +735,12 @@ const StarRatingInput = ({
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  상품명
-                </label>
-                <p className="text-gray-900 bg-gray-50 p-2 rounded border">
-                  {product.name}
-                </p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">상품명</label>
+                <p className="text-gray-900 bg-gray-50 p-2 rounded border">{product.name}</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  신고 사유
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">신고 사유</label>
                 <textarea
                   value={reportReason}
                   onChange={(e) => setReportReason(e.target.value)}
@@ -764,7 +764,7 @@ const StarRatingInput = ({
                 >
                   신고하기
                 </button>
-                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -24,7 +24,7 @@ interface FilterOption {
 interface CategoryOption {
   value: string;
   label: string;
-  subCategories: { value: string; label: string; }[];
+  subCategories: { value: string; label: string }[];
 }
 
 const PAGE_SIZE = 12;
@@ -33,65 +33,71 @@ const TOTAL_COUNT = 96;
 const categoryOptions: CategoryOption[] = [
   { value: 'all', label: '전체', subCategories: [{ value: 'all', label: '전체' }] },
   {
-    value: 'electronics', label: '전자제품',
+    value: 'electronics',
+    label: '전자제품',
     subCategories: [
       { value: 'all', label: '전체' },
       { value: 'phone', label: '스마트폰' },
       { value: 'computer', label: '컴퓨터' },
       { value: 'audio', label: '오디오' },
-      { value: 'camera', label: '카메라' }
-    ]
+      { value: 'camera', label: '카메라' },
+    ],
   },
   {
-    value: 'fashion', label: '패션/의류',
+    value: 'fashion',
+    label: '패션/의류',
     subCategories: [
       { value: 'all', label: '전체' },
       { value: 'men', label: '남성의류' },
       { value: 'women', label: '여성의류' },
       { value: 'shoes', label: '신발' },
-      { value: 'accessories', label: '액세서리' }
-    ]
+      { value: 'accessories', label: '액세서리' },
+    ],
   },
   {
-    value: 'home', label: '생활/홈',
+    value: 'home',
+    label: '생활/홈',
     subCategories: [
       { value: 'all', label: '전체' },
       { value: 'furniture', label: '가구' },
       { value: 'kitchen', label: '주방용품' },
       { value: 'bedding', label: '침구' },
-      { value: 'decor', label: '인테리어' }
-    ]
+      { value: 'decor', label: '인테리어' },
+    ],
   },
   {
-    value: 'beauty', label: '뷰티',
+    value: 'beauty',
+    label: '뷰티',
     subCategories: [
       { value: 'all', label: '전체' },
       { value: 'skincare', label: '스킨케어' },
       { value: 'makeup', label: '메이크업' },
       { value: 'fragrance', label: '향수' },
-      { value: 'hair', label: '헤어케어' }
-    ]
+      { value: 'hair', label: '헤어케어' },
+    ],
   },
   {
-    value: 'sports', label: '스포츠/레저',
+    value: 'sports',
+    label: '스포츠/레저',
     subCategories: [
       { value: 'all', label: '전체' },
       { value: 'fitness', label: '헬스/요가' },
       { value: 'outdoor', label: '아웃도어' },
       { value: 'ball', label: '구기용품' },
-      { value: 'water', label: '수상스포츠' }
-    ]
+      { value: 'water', label: '수상스포츠' },
+    ],
   },
   {
-    value: 'books', label: '도서/문구',
+    value: 'books',
+    label: '도서/문구',
     subCategories: [
       { value: 'all', label: '전체' },
       { value: 'novel', label: '소설' },
       { value: 'study', label: '학습서' },
       { value: 'hobby', label: '취미' },
-      { value: 'stationery', label: '문구' }
-    ]
-  }
+      { value: 'stationery', label: '문구' },
+    ],
+  },
 ];
 
 const sortOptions: FilterOption[] = [
@@ -100,15 +106,15 @@ const sortOptions: FilterOption[] = [
   { value: 'views', label: '조회순' },
   { value: 'rating', label: '평점순' },
   { value: 'price_low', label: '낮은가격순' },
-  { value: 'price_high', label: '높은가격순' }
+  { value: 'price_high', label: '높은가격순' },
 ];
 
 /** value -> label 변환용 빠른 룩업 */
 const VALUE_TO_LABEL: Record<string, string> = (() => {
   const m: Record<string, string> = {};
-  categoryOptions.forEach(cat => {
+  categoryOptions.forEach((cat) => {
     m[cat.value] = cat.label;
-    cat.subCategories.forEach(sub => (m[sub.value] = sub.label));
+    cat.subCategories.forEach((sub) => (m[sub.value] = sub.label));
   });
   return m;
 })();
@@ -126,16 +132,24 @@ const MainProductsPage = () => {
 
   /** 더미 상품 생성 (총개수, 시작 id) */
   const generateDummyProducts = useCallback((count: number, startId: number = 1): Product[] => {
-    const MAIN_VALUES = categoryOptions.filter(c => c.value !== 'all').map(c => c.value);
+    const MAIN_VALUES = categoryOptions.filter((c) => c.value !== 'all').map((c) => c.value);
     const NAME_BANK = [
-      '무선 블루투스 이어폰', '캐시미어 니트', '프리미엄 향수', '스마트 워치',
-      '요가 매트', '베스트셀러 소설', '핸드 크림 세트', '런닝화'
+      '무선 블루투스 이어폰',
+      '캐시미어 니트',
+      '프리미엄 향수',
+      '스마트 워치',
+      '요가 매트',
+      '베스트셀러 소설',
+      '핸드 크림 세트',
+      '런닝화',
     ];
     const arr: Product[] = [];
     for (let i = 0; i < count; i++) {
       const idNum = startId + i;
       const main = MAIN_VALUES[idNum % MAIN_VALUES.length];
-      const subList = categoryOptions.find(c => c.value === main)!.subCategories.filter(s => s.value !== 'all');
+      const subList = categoryOptions
+        .find((c) => c.value === main)!
+        .subCategories.filter((s) => s.value !== 'all');
       const sub = subList.length ? subList[idNum % subList.length].value : 'all';
       arr.push({
         id: `product-${idNum}`,
@@ -147,7 +161,7 @@ const MainProductsPage = () => {
         rating: Math.round((Math.random() * 4 + 1) * 2) / 2, // 1.0~5.0, 0.5 step
         orderCount: Math.floor(Math.random() * 1000),
         viewCount: Math.floor(Math.random() * 5000),
-        storeName: `스토어${idNum}`
+        storeName: `스토어${idNum}`,
       });
     }
     return arr;
@@ -172,16 +186,12 @@ const MainProductsPage = () => {
 
   /** 필터 + 정렬 + 페이지 반영 */
   const filteredAll = useMemo(() => {
-    let data = allProducts.filter(p => {
+    let data = allProducts.filter((p) => {
       const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const mainOk =
-        selectedMainCategory === 'all' ||
-        p.categories[0] === selectedMainCategory;
+      const mainOk = selectedMainCategory === 'all' || p.categories[0] === selectedMainCategory;
 
-      const subOk =
-        selectedSubCategory === 'all' ||
-        p.categories[1] === selectedSubCategory;
+      const subOk = selectedSubCategory === 'all' || p.categories[1] === selectedSubCategory;
 
       return matchesSearch && mainOk && subOk;
     });
@@ -226,7 +236,7 @@ const MainProductsPage = () => {
     if (loading || !hasMore) return;
     setLoading(true);
     setTimeout(() => {
-      setPage(prev => prev + 1);
+      setPage((prev) => prev + 1);
       setLoading(false);
     }, 500);
   }, [loading, hasMore]);
@@ -248,7 +258,7 @@ const MainProductsPage = () => {
   /** 총 카운트(필터 반영) */
   const totalFilteredCount = filteredAll.length;
 
-  const currentCategory = categoryOptions.find(c => c.value === selectedMainCategory);
+  const currentCategory = categoryOptions.find((c) => c.value === selectedMainCategory);
   const subCategories = currentCategory?.subCategories ?? [];
 
   const formatPrice = (price: number) => new Intl.NumberFormat('ko-KR').format(price);
@@ -278,8 +288,10 @@ const MainProductsPage = () => {
     return stars;
   };
 
+  // 임시
+  const storeUrl = 'hihiyaho';
   const handleProductClick = (productId: string) => {
-    window.location.href = `/main/products/${productId}`;
+    window.location.href = `/${storeUrl}/productdetail/${productId}`;
   };
 
   return (
@@ -290,7 +302,6 @@ const MainProductsPage = () => {
       {/* 🔶 바깥 240px 패딩 + 내부 1440 영역 */}
       <div className="px-4 sm:px-6 xl:px-[240px]">
         <div className="w-full max-w-[1440px] mx-auto py-8">
-
           {/* 헤더 */}
           <div className="mb-8">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">상품 둘러보기</h1>
@@ -314,7 +325,7 @@ const MainProductsPage = () => {
           {/* 카테고리 탭 */}
           <div className="mb-6">
             <div className="flex flex-wrap gap-2 mb-4">
-              {categoryOptions.map(category => (
+              {categoryOptions.map((category) => (
                 <button
                   key={category.value}
                   onClick={() => setSelectedMainCategory(category.value)}
@@ -332,7 +343,7 @@ const MainProductsPage = () => {
             {/* 서브카테고리 */}
             {selectedMainCategory !== 'all' && subCategories.length > 1 && (
               <div className="flex flex-wrap gap-2">
-                {subCategories.map(sub => (
+                {subCategories.map((sub) => (
                   <button
                     key={sub.value}
                     onClick={() => setSelectedSubCategory(sub.value)}
@@ -352,35 +363,35 @@ const MainProductsPage = () => {
           {/* 필터 바 */}
           <div className="flex flex-col md:flex-row gap-4 mb-8">
             {/* 정렬 */}
-                <div className="relative w-full max-w-[220px]">
-                <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="
+            <div className="relative w-full max-w-[220px]">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="
                     w-full appearance-none bg-white border border-gray-300 rounded-lg
                     px-4 md:pr-10 pr-9  /* 아이콘 자리 확보 (모바일은 살짝 줄임) */
                     py-2 md:py-2.5
                     focus:outline-none focus:ring-2 focus:ring-[#2d4739]
                     "
-                >
-                    {sortOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                        {option.label}
-                    </option>
-                    ))}
-                </select>
+              >
+                {sortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
 
-                {/* ▼ 아이콘: 항상 select '안'쪽에 중앙 정렬 */}
-                <span
-                    className="
+              {/* ▼ 아이콘: 항상 select '안'쪽에 중앙 정렬 */}
+              <span
+                className="
                     pointer-events-none absolute inset-y-0
                     right-2 md:right-3
                     flex items-center
                     "
-                >
-                    <ChevronDown className="w-4 h-4 text-gray-400" />
-                </span>
-                </div>
+              >
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </span>
+            </div>
           </div>
 
           {/* 총 개수 */}
@@ -391,9 +402,9 @@ const MainProductsPage = () => {
           </div>
 
           {/* 상품 그리드 */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {filteredProducts.map((product) => (
-                <div
+              <div
                 key={product.id}
                 onClick={() => handleProductClick(product.id)}
                 // 더 눈에 띄게: 테두리 + hover 강조 + 살짝 상승
@@ -402,56 +413,58 @@ const MainProductsPage = () => {
                             transition-all duration-200 cursor-pointer overflow-hidden focus:outline-none
                             focus-visible:ring-2 focus-visible:ring-[#2d4739]/40"
                 tabIndex={0}
-                >
+              >
                 {/* 이미지 영역: 호버 시 확대, 좌상단 레이팅 배지 */}
                 <div className="relative aspect-square overflow-hidden">
-                    <img
+                  <img
                     src={product.image}
                     alt={product.name}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     loading="lazy"
-                    />
-                    {/* 레이팅 배지 */}
-                    <div className="absolute top-3 left-3 flex items-center gap-1 rounded-full
-                                    bg-black/60 text-white text-xs px-2 py-1 backdrop-blur-sm">
+                  />
+                  {/* 레이팅 배지 */}
+                  <div
+                    className="absolute top-3 left-3 flex items-center gap-1 rounded-full
+                                    bg-black/60 text-white text-xs px-2 py-1 backdrop-blur-sm"
+                  >
                     <span className="flex">{renderStars(product.rating)}</span>
                     <span className="opacity-90">({product.rating})</span>
-                    </div>
+                  </div>
                 </div>
 
                 {/* 카드 본문 */}
                 <div className="p-4">
-                    {/* 카테고리 칩 */}
-                    <div className="flex flex-wrap gap-1 mb-2">
+                  {/* 카테고리 칩 */}
+                  <div className="flex flex-wrap gap-1 mb-2">
                     <span className="text-xs bg-[#2d4739]/10 text-[#2d4739] px-2 py-1 rounded-full">
-                        {labelOf(product.categories[0])}
+                      {labelOf(product.categories[0])}
                     </span>
                     <span className="text-xs bg-[#2d4739]/10 text-[#2d4739] px-2 py-1 rounded-full">
-                        {labelOf(product.categories[1])}
+                      {labelOf(product.categories[1])}
                     </span>
-                    </div>
+                  </div>
 
-                    {/* 상품명 */}
-                    <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2 mb-2">
+                  {/* 상품명 */}
+                  <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2 mb-2">
                     {product.name}
-                    </h3>
+                  </h3>
 
-                    {/* 메타 정보 */}
-                    <p className="text-xs text-gray-500 mb-3">
+                  {/* 메타 정보 */}
+                  <p className="text-xs text-gray-500 mb-3">
                     주문 {product.orderCount}회 · 조회 {product.viewCount}회
-                    </p>
+                  </p>
 
-                    {/* 가격 & 스토어 */}
-                    <div className="flex items-center justify-between">
+                  {/* 가격 & 스토어 */}
+                  <div className="flex items-center justify-between">
                     <p className="text-lg font-extrabold text-[#2d4739]">
-                        {formatPrice(product.price)}원
+                      {formatPrice(product.price)}원
                     </p>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-2">{product.storeName}</p>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-2">{product.storeName}</p>
                 </div>
-                </div>
+              </div>
             ))}
-            </div>
+          </div>
 
           {/* 로딩 */}
           {loading && (
@@ -474,15 +487,10 @@ const MainProductsPage = () => {
               <div className="text-gray-400 mb-4">
                 <Search className="w-16 h-16 mx-auto mb-4" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                검색 결과가 없습니다
-              </h3>
-              <p className="text-gray-600">
-                다른 검색어나 필터를 시도해보세요
-              </p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">검색 결과가 없습니다</h3>
+              <p className="text-gray-600">다른 검색어나 필터를 시도해보세요</p>
             </div>
           )}
-
         </div>
       </div>
     </div>

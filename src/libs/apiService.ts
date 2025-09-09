@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import type { JWTPayload } from './apiResponse';
+import { logOut } from '@src/shared/util/LegacyNavigate';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''; // 예: '/api'
 const API_LEGACY_URL = import.meta.env.VITE_API_LEGACY_URL ?? 'http://localhost:9999/legacy'; // Legacy URL
@@ -39,6 +40,7 @@ const getAccessToken = () => {
   if (token && isTokenExpired(token)) {
     console.warn('Access Token이 만료되었습니다.');
     localStorage.removeItem('accessToken');
+    logOut();
     return null;
   }
   return token;
@@ -123,6 +125,7 @@ api.interceptors.response.use(
           refreshRes?.data?.data?.accessToken ?? refreshRes?.data?.accessToken;
 
         if (!newAccessToken) {
+          logOut();
           throw new Error('새로운 Access Token을 받지 못했습니다.');
         }
 
@@ -151,6 +154,7 @@ api.interceptors.response.use(
         // 인스턴스로 재시도
         return api(original);
       } catch (e) {
+        logOut();
         console.error('토큰 갱신 실패:', e);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('email');

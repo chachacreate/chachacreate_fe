@@ -22,9 +22,6 @@ FROM nginx:alpine
 # 빌드된 React 앱을 nginx로 복사 (정적 파일 복사)
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 수정된 nginx 설정 복사
-COPY prod-nginx.conf /etc/nginx/nginx.conf
-
-EXPOSE 80, 443
+EXPOSE 80 443
 
 CMD ["nginx", "-g", "daemon off;"]

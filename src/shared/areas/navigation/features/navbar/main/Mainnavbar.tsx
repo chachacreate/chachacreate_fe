@@ -6,7 +6,7 @@ type MenuItem = { label: string; href: string };
 
 const DESKTOP_MENU: MenuItem[] = [
   { label: "전체상품", href: "/main/products" },
-  { label: "스토어", href: "/main/store/stores" },
+  { label: "스토어", href: "/main/stores" },
   { label: "개인판매", href: "/main/sell/sellguide" },
   { label: "클래스", href: "/main/classes" },
   { label: "마이페이지", href: "/main/mypage" },
@@ -15,7 +15,7 @@ const DESKTOP_MENU: MenuItem[] = [
 
 const MOBILE_TOP_MENU: MenuItem[] = [
   { label: "전체상품", href: "/main/products" },
-  { label: "스토어", href: "/main/store/stores" },
+  { label: "스토어", href: "/main/stores" },
   { label: "개인판매", href: "/main/sell/sellguide" },
   { label: "클래스", href: "/main/classes" },
 ];

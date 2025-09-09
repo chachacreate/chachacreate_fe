@@ -5,7 +5,6 @@ import type { RouteObject } from 'react-router-dom';
 import MainLandingPage from '@src/domains/main/areas/home/features/main-landing/pages/MainLandingPage';
 import MainClassesPage from '@src/domains/main/areas/home/features/main-landing/pages/MainClassesPage';
 import ClassesDetailPage from '@src/domains/main/areas/home/features/class-detail/pages/ClassesDetailPage';
-import MainStorePage from '@src/domains/main/areas/home/features/main-landing/pages/MainStorePage';
 import MainClassOrderPage from '@src/domains/main/areas/home/features/class-order/pages/MainClassOrderPage';
 import MainClassOrderResultPage from '@src/domains/main/areas/home/features/class-order/pages/MainClassOrderResultPage';
 import MainMypagePage from '@src/domains/main/areas/mypage/pages/MainMypagePage';
@@ -13,6 +12,7 @@ import MainMypageClassesPage from '@src/domains/main/areas/mypage/pages/MainMypa
 
 // ✅ products 라우트 추가
 import { productsRoutes } from '@src/domains/main/areas/home/features/products/routes';
+import { storesRoutes } from './areas/home/features/stores/routes';
 
 const mainRoutes: RouteObject[] = [
   {
@@ -26,8 +26,7 @@ const mainRoutes: RouteObject[] = [
       { path: 'classes/order', element: React.createElement(MainClassOrderPage) },
       { path: 'classes/order/result', element: React.createElement(MainClassOrderResultPage) },
 
-      // stores
-      { path: 'stores', element: React.createElement(MainStorePage) },
+
 
       // mypage
       { path: 'mypage', element: React.createElement(MainMypagePage) },
@@ -35,6 +34,7 @@ const mainRoutes: RouteObject[] = [
 
       // ✅ products (스프레드로 합침)
       ...productsRoutes,
+      ...storesRoutes,
     ],
   },
 ];

@@ -337,7 +337,7 @@ const StarRatingInput = ({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
         <Header />
         <Mainnavbar />
       {/* 컨테이너 */}
@@ -345,8 +345,9 @@ const StarRatingInput = ({
         <div className="max-w-[1440px] mx-auto py-0 sm:py-8">
           
           {/* 상품 정보 섹션 */}
-          <div className="bg-white rounded-lg shadow-sm p-4 md:p-8 mb-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="bg-white rounded-lg shadow-sm hover:shadow-[0_6px_10px_rgba(0,0,0,0.15)]
+                transition-shadow p-4 md:p-8 mb-8 ">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 ">
               
               {/* 이미지 섹션 */}
               <div className="space-y-4">

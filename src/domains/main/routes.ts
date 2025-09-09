@@ -33,9 +33,14 @@ const mainRoutes: RouteObject[] = [
       { path: 'mypage', element: React.createElement(MainMypagePage) },
       { path: 'mypage/classes', element: React.createElement(MainMypageClassesPage) },
 
-      // ✅ products (스프레드로 합침)
-      ...productsRoutes,
+      // products
+      { path: 'products', children: productsRoutes },
     ],
+  },
+
+  {
+    path: ':storeUrl',
+    children: [{ path: 'products', children: productsRoutes }],
   },
 ];
 

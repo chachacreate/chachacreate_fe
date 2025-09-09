@@ -283,7 +283,7 @@ const MainProductsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Header />
       <Mainnavbar />
 
@@ -391,63 +391,67 @@ const MainProductsPage = () => {
           </div>
 
           {/* 상품 그리드 */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {filteredProducts.map(product => (
-              <div
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {filteredProducts.map((product) => (
+                <div
                 key={product.id}
                 onClick={() => handleProductClick(product.id)}
-                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden"
-              >
-                <div className="aspect-square overflow-hidden">
-                  <img
+                // 더 눈에 띄게: 테두리 + hover 강조 + 살짝 상승
+                className="group bg-white rounded-xl border border-gray-200 shadow-sm
+                            hover:shadow-lg hover:border-[#2d4739]/40 hover:-translate-y-1
+                            transition-all duration-200 cursor-pointer overflow-hidden focus:outline-none
+                            focus-visible:ring-2 focus-visible:ring-[#2d4739]/40"
+                tabIndex={0}
+                >
+                {/* 이미지 영역: 호버 시 확대, 좌상단 레이팅 배지 */}
+                <div className="relative aspect-square overflow-hidden">
+                    <img
                     src={product.image}
                     alt={product.name}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     loading="lazy"
-                  />
+                    />
+                    {/* 레이팅 배지 */}
+                    <div className="absolute top-3 left-3 flex items-center gap-1 rounded-full
+                                    bg-black/60 text-white text-xs px-2 py-1 backdrop-blur-sm">
+                    <span className="flex">{renderStars(product.rating)}</span>
+                    <span className="opacity-90">({product.rating})</span>
+                    </div>
                 </div>
 
+                {/* 카드 본문 */}
                 <div className="p-4">
-                  <div className="mb-2">
+                    {/* 카테고리 칩 */}
                     <div className="flex flex-wrap gap-1 mb-2">
-                      {/* value -> label 변환해서 표시 */}
-                      <span className="text-xs bg-[#2d4739]/10 text-[#2d4739] px-2 py-1 rounded-full">
+                    <span className="text-xs bg-[#2d4739]/10 text-[#2d4739] px-2 py-1 rounded-full">
                         {labelOf(product.categories[0])}
-                      </span>
-                      <span className="text-xs bg-[#2d4739]/10 text-[#2d4739] px-2 py-1 rounded-full">
+                    </span>
+                    <span className="text-xs bg-[#2d4739]/10 text-[#2d4739] px-2 py-1 rounded-full">
                         {labelOf(product.categories[1])}
-                      </span>
+                    </span>
                     </div>
+
+                    {/* 상품명 */}
                     <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2 mb-2">
-                      {product.name}
+                    {product.name}
                     </h3>
-                  </div>
 
-                  <div className="mb-3">
-                    <div className="flex items-center gap-1 mb-1">
-                      {renderStars(product.rating)}
-                      <span className="text-sm text-gray-600 ml-1">
-                        ({product.rating})
-                      </span>
+                    {/* 메타 정보 */}
+                    <p className="text-xs text-gray-500 mb-3">
+                    주문 {product.orderCount}회 · 조회 {product.viewCount}회
+                    </p>
+
+                    {/* 가격 & 스토어 */}
+                    <div className="flex items-center justify-between">
+                    <p className="text-lg font-extrabold text-[#2d4739]">
+                        {formatPrice(product.price)}원
+                    </p>
                     </div>
-                    <p className="text-xs text-gray-500">
-                      주문 {product.orderCount}회 · 조회 {product.viewCount}회
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <p className="text-lg font-bold text-[#2d4739]">
-                      {formatPrice(product.price)}원
-                    </p>
-                  </div>
-
-                  <p className="text-sm text-gray-500 mt-2">
-                    {product.storeName}
-                  </p>
+                    <p className="text-sm text-gray-500 mt-2">{product.storeName}</p>
                 </div>
-              </div>
+                </div>
             ))}
-          </div>
+            </div>
 
           {/* 로딩 */}
           {loading && (

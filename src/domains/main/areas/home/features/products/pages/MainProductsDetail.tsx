@@ -1,20 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, type JSX } from 'react';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
-import {
-  Star,
-  ShoppingCart,
-  CreditCard,
-  Flag,
-  Edit,
-  Minus,
-  Plus,
-  ThumbsUp,
-  X,
-  MoreHorizontal,
-} from 'lucide-react';
+import { Star, ShoppingCart, CreditCard, Flag, Edit, Minus, Plus, ThumbsUp, X } from 'lucide-react';
 import { get, legacyGet } from '@src/libs/request';
 import { useParams } from 'react-router-dom';
+import axios from 'axios';
 
 interface Product {
   id: string;
@@ -44,6 +34,50 @@ interface Review {
   isEdited: boolean;
 }
 
+// Product 매핑: 안전하게 mainThumbnailUrl 확인
+const mapProduct = (api: any): Product => {
+  const productDetail = api.productDetail || {};
+  const main = api.mainThumbnailUrl ?? (api.thumbnailImageUrls && api.thumbnailImageUrls[0]) ?? '';
+  const uniqueImages = [
+    ...(main ? [main] : []),
+    ...(Array.isArray(api.thumbnailImageUrls)
+      ? api.thumbnailImageUrls.filter((url: string) => url && url !== main)
+      : []),
+  ];
+
+  return {
+    id: (productDetail.productId ?? '').toString(),
+    name: productDetail.productName ?? '',
+    price: productDetail.price ?? 0,
+    thumbnailUrl: main,
+    images: uniqueImages.length ? uniqueImages : main ? [main] : [],
+    storeName: productDetail.storeName ?? '',
+    storeId: (productDetail.storeId ?? '').toString(),
+    categories: [
+      productDetail.typeCategoryName,
+      productDetail.ucategoryName,
+      productDetail.dcategoryName,
+    ].filter(Boolean),
+    description: productDetail.productDetail ?? '',
+    rating: 0,
+    reviewCount: 0,
+    isOwner: false,
+  };
+};
+
+const mapReview = (r: any): Review => ({
+  id: r.id.toString(),
+  userName: r.memberName,
+  createdAt: r.createdAt ?? new Date().toISOString(), // API에 없으면 현재 시간 사용
+  updatedAt: r.updatedAt,
+  rating: r.rating,
+  content: r.content,
+  likes: 0, // 초기값
+  isOwner: false, // 실제 로그인 사용자 확인 후 변경 가능
+  isLiked: false,
+  isEdited: !!r.updatedAt,
+});
+
 const MainProductsDetail = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -55,115 +89,90 @@ const MainProductsDetail = () => {
   const [newReview, setNewReview] = useState({ rating: 5, content: '' });
   const [editingReview, setEditingReview] = useState<string | null>(null);
   const [editReviewData, setEditReviewData] = useState({ rating: 5, content: '' });
-  const [loading, setLoading] = useState(true);
 
-  // 컴포넌트 안에서
-  // const { storeUrl, productId } = useParams<{ storeUrl: string; productId: string }>();
   const { productId } = useParams<{ productId: string }>();
-
   const storeUrl = 'hihiyaho';
 
+  const [loadingProduct, setLoadingProduct] = useState(true);
+  const [loadingReviews, setLoadingReviews] = useState(true);
+
+  // 상품 상세 불러오기
   useEffect(() => {
+    if (!storeUrl || !productId) return;
+
     const fetchProductDetail = async () => {
       try {
-        if (!storeUrl || !productId) return;
+        const response = await legacyGet<any>(`/${storeUrl}/productdetail/${productId}`);
 
-        interface ProductDetailResponse {
-          status: number;
-          message: string;
-          data: {
-            productDetail: any;
-            thumbnailImageUrls: string[];
-            descriptionImageUrls: string[];
-            mainThumbnailUrl: string;
-          };
+        if (response.status === 200) {
+          const apiData = response?.data ?? response;
+          const mappedProduct = mapProduct(apiData);
+          setProduct(mappedProduct);
+        } else {
+          console.error('상품 불러오기 실패:', response.message);
         }
-
-        const response = await legacyGet<ProductDetailResponse>(
-          `/${storeUrl}/productdetail/${productId}`
-        );
-
-        const productDetail = response.data.productDetail;
-
-        // 메인 썸네일 중복 제거
-        const uniqueImages = [
-          response.data.mainThumbnailUrl,
-          ...(response.data.thumbnailImageUrls?.filter(
-            (url) => url !== response.data.mainThumbnailUrl
-          ) || []),
-        ];
-
-        const mappedProduct: Product = {
-          id: productDetail.productId.toString(),
-          name: productDetail.productName,
-          price: productDetail.price,
-          thumbnailUrl: response.data.mainThumbnailUrl,
-          images: uniqueImages,
-          storeName: productDetail.storeName,
-          storeId: productDetail.storeId.toString(),
-          categories: [
-            productDetail.typeCategoryName,
-            productDetail.ucategoryName,
-            productDetail.dcategoryName,
-          ].filter(Boolean),
-          description: productDetail.productDetail,
-          rating: 0, // 기본값
-          reviewCount: 0, // 기본값
-          isOwner: false, // 필요 시 별도 API 체크
-        };
-
-        setProduct(mappedProduct);
-
-        const reviewResponse = await get<
-          {
-            id: number;
-            memberId: number;
-            productId: number;
-            productName: string;
-            rating: number;
-            content: string;
-          }[]
-        >(`/products/${productId}/reviews`);
-
-        const mappedReviews: Review[] = reviewResponse.data.map((r) => ({
-          id: r.id.toString(),
-          userName: `회원 ${r.memberId}`, // 닉네임 없으면 임시
-          createdAt: new Date().toISOString(), // 실제 API에 날짜 없으면 현재 시간
-          rating: r.rating,
-          content: r.content,
-          likes: 0,
-          isOwner: false,
-          isLiked: false,
-          isEdited: false,
-        }));
-
-        setReviews(mappedReviews);
-
-        setCanWriteReview(false);
-        setLoading(false);
-      } catch (err) {
-        console.error(err);
-        setLoading(false);
+      } catch (error) {
+        console.error('상품 API 요청 실패:', error);
+      } finally {
+        setLoadingProduct(false);
       }
     };
 
     fetchProductDetail();
   }, [storeUrl, productId]);
 
+  // 리뷰 불러오기
+  useEffect(() => {
+    if (!productId) return;
+
+    const fetchReviews = async () => {
+      try {
+        // const response = await get<any[]>(`/products/${productId}/reviews`);
+        const response = await axios.get(`http://localhost:8888/api/products/${productId}/reviews`);
+
+        if (response.status === 200) {
+          console.log('배열:', Array.isArray(response.data.data));
+          setReviews(response.data.data.map(mapReview));
+          console.log(response);
+        } else {
+          console.log('리뷰 API 응답:', response);
+          // console.error('리뷰 불러오기 실패:', response.message);
+          setReviews([]);
+        }
+      } catch (error: any) {
+        console.error('리뷰 API 요청 실패:', error);
+        setReviews([]);
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+
+    fetchReviews();
+  }, [productId]);
+
+  // product.images 변경 시 selected index 리셋 (안전)
+  useEffect(() => {
+    setSelectedImageIndex(0);
+  }, [product?.images.length]);
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ko-KR').format(price);
   };
 
-  const formatDate = (dateString: string) => {
+  // 안전한 날짜 포맷터: 빈값/invalid 처리
+  const formatDate = (dateInput?: string | number) => {
+    if (!dateInput) return '';
+    const d = typeof dateInput === 'number' ? new Date(dateInput) : new Date(String(dateInput));
+    if (isNaN(d.getTime())) return '';
     return new Intl.DateTimeFormat('ko-KR', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-    }).format(new Date(dateString));
+    }).format(d);
   };
 
   const renderStars = (rating: number, size: 'small' | 'large' = 'small') => {
-    const stars = [];
+    const stars: JSX.Element[] = [];
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 !== 0;
     const starSize = size === 'large' ? 'w-6 h-6' : 'w-4 h-4';
@@ -204,7 +213,6 @@ const MainProductsDetail = () => {
 
   const handleReport = () => {
     if (reportReason.trim()) {
-      // 신고 처리 로직
       alert('신고가 접수되었습니다.');
       setIsReportModalOpen(false);
       setReportReason('');
@@ -212,7 +220,7 @@ const MainProductsDetail = () => {
   };
 
   const handleAddToCart = () => {
-    alert(`장바구니에 ${quantity}개가 추가되었습니다.`);
+    alert(`장바구니에 ${quantity}개 추가되었습니다.`);
   };
 
   const handleBuyNow = () => {
@@ -337,13 +345,17 @@ const MainProductsDetail = () => {
     );
   };
 
-  if (loading || !product) {
+  // 렌더 가드: 상품 정보가 준비될 때까지 로딩 스피너
+  if (loadingProduct || !product) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2d4739]"></div>
       </div>
     );
   }
+
+  // 이미지 안전 접근: images가 비어있으면 thumbnailUrl 사용
+  const mainImage = product.images?.[selectedImageIndex] ?? product.thumbnailUrl ?? '';
 
   return (
     <div className="min-h-screen bg-white">

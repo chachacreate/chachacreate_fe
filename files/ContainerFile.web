@@ -12,7 +12,7 @@ COPY package*.json ./
 RUN npm i --force
 
 # .env.front를 .env로 복사
-COPY ../git_submodule_chacha/.env.front .env
+COPY .env.front .env
 
 # 소스코드 복사
 COPY . .

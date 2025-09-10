@@ -22,53 +22,47 @@ import ClassStatsCard, {
   type ClassStatsDatum,
 } from '@src/shared/components/analytics/ClassStatsCard';
 import { get } from '@src/libs/request';
+import React from 'react';
 
 export default function SellerMain() {
   // --------------------- 유틸/상수 ---------------------
   type Params = { storeUrl: string };
+  interface SalesItem {
+    ymd: string; // "2025-09-01"
+    amt: number; // 매출액
+  }
+
   const BRAND = '#2D4739';
   const KRW = new Intl.NumberFormat('ko-KR');
   const fmtKRW = (v: number) => `₩ ${KRW.format(v)}`;
 
-  // const diffDaysInclusive = (start: Date, end: Date) => {
-  //   const a = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
-  //   const b = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
-  //   return Math.floor((b - a) / (24 * 60 * 60 * 1000)) + 1;
-  // };
+  // 로컬 기준 YYYY-MM-DD 생성
+  const ymdLocal = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-  // --------------------- 더미 데이터 생성기들 ---------------------
-  const makeDailySales = (days = 14) =>
-    Array.from({ length: days }).map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (days - 1 - i));
-      const key = d.toISOString().slice(5, 10); // MM-DD
-      const amount = 200000 + Math.floor(Math.random() * 800000);
-      const orders = 5 + Math.floor(Math.random() * 20);
-      return { key, amount, orders, date: d.toISOString().slice(0, 10) };
-    });
+  /** ISO 주차(YYYY-Www) 구하기 */
+  const getISOWeekId = (date: Date) => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7; // 1..7
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+    return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+  };
 
+  const enumerateDays = (from: string, to: string) => {
+    const res: string[] = [];
+    const s = new Date(from + 'T00:00:00');
+    const e = new Date(to + 'T00:00:00');
+    if (isNaN(s.getTime()) || isNaN(e.getTime())) return res;
+    for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      res.push(ymdLocal(d));
+    }
+    return res;
+  };
+
+  // --------------------- 더미(리뷰용) 등 기존 그대로 ---------------------
   const [responseData, setResponseData] = useState<any>(null);
-  const storeUrl = useParams<Params>().storeUrl;
-  useEffect(() => {
-    if (!storeUrl) return;
-
-    const fetchOrderSummary = async () => {
-      try {
-        const response = await get(`/seller/${storeUrl}/main/status`);
-        if (response.status === 200) {
-          setResponseData(response.data);
-        } else {
-          console.error('주문 처리 상태 조회 실패:', response.message);
-        }
-      } catch (error: any) {
-        console.error('API 요청 실패:', error);
-      }
-    };
-
-    fetchOrderSummary();
-  }, [storeUrl]);
-
-  // 리뷰/평점 더미
   type ReviewRow = {
     id: string;
     productId: string;
@@ -155,8 +149,9 @@ export default function SellerMain() {
   // --------------------- 컴포넌트 ---------------------
 
   const navigate = useNavigate();
+  const storeUrl = useParams<Params>().storeUrl;
 
-  // 1) 주문 상태: 카드로 가로 나열
+  // 1) 주문 상태: 카드로 가로 나열 
   const orderCards = useMemo(() => {
     const data = responseData || { newOrders: 0, delivered: 0, cancelRequests: 0, refunds: 0 };
     return [
@@ -191,101 +186,133 @@ export default function SellerMain() {
     ];
   }, [responseData]);
 
-  // ====== 기존 "2) 매출 그래프 + 날짜 선택" 블록을 아래로 교체 ======
+  // 주문 상태 API 
+  useEffect(() => {
+    if (!storeUrl) return;
+    const fetchOrderSummary = async () => {
+      try {
+        const response = await get(`/seller/${storeUrl}/main/status`);
+        if (response.status === 200) {
+          setResponseData(response.data);
+        } else {
+          console.error('주문 처리 상태 조회 실패:', response.message);
+        }
+      } catch (error: any) {
+        console.error('API 요청 실패:', error);
+      }
+    };
+    fetchOrderSummary();
+  }, [storeUrl]);
 
-  /** ISO 주차(YYYY-Www) 구하기 */
-  const getISOWeekId = (date: Date) => {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7; // 1..7
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-    return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-  };
-
-  /** 주차 타임라인 더미 (최근 N주) */
-  const makeWeeklySalesTimeline = (weeks = 60) =>
-    Array.from({ length: weeks }).map((_, idx) => {
-      const base = new Date();
-      base.setDate(base.getDate() - (weeks - 1 - idx) * 7);
-      const weekId = getISOWeekId(base);
-      const amount = 1_500_000 + Math.floor(Math.random() * 4_000_000);
-      const orders = 40 + Math.floor(Math.random() * 120);
-      return { key: weekId, weekId, amount, orders };
-    });
-
-  /** 월 타임라인 더미 (최근 N개월) */
-  const makeMonthlySalesTimeline = (months = 18) =>
-    Array.from({ length: months }).map((_, idx) => {
-      const d = new Date();
-      d.setMonth(d.getMonth() - (months - 1 - idx));
-      const monthId = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const amount = 6_000_000 + Math.floor(Math.random() * 12_000_000);
-      const orders = 200 + Math.floor(Math.random() * 600);
-      return { key: monthId, monthId, amount, orders };
-    });
-
-  /** 2) 매출 그래프 + 날짜/주/월 선택 */
+  // ====== 2) 매출 그래프: 시작/종료일 기준으로 일/주/월 모두 필터 & 집계 ======
   const [salesMode, setSalesMode] = useState<'day' | 'week' | 'month'>('day');
 
-  /* --- 일별: 날짜 범위 --- */
+  // 날짜 범위 상태 
   const [startDate, setStartDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(d.getDate() - 13);
-    return d.toISOString().slice(0, 10);
+    return ymdLocal(d);
   });
-  const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
-  const dailyRaw = useMemo(() => makeDailySales(120), []); // 넉넉히 만들어두고 범위로 필터
-  const dailyFiltered = useMemo(() => {
-    const s = new Date(startDate);
-    const e = new Date(endDate);
-    if (isNaN(s.getTime()) || isNaN(e.getTime()) || s > e) return makeDailySales(14);
-    const days = dailyRaw.filter((x) => x.date >= startDate && x.date <= endDate);
-    if (days.length === 0) return makeDailySales(14);
-    return days.map((d) => ({ key: d.date.slice(5, 10), amount: d.amount, orders: d.orders }));
-  }, [startDate, endDate, dailyRaw]);
+  const [endDate, setEndDate] = useState<string>(() => ymdLocal(new Date()));
 
-  /* --- 주별: week 범위 (YYYY-Www) --- */
-  const weeklyRaw = useMemo(() => makeWeeklySalesTimeline(60), []);
-  const [startWeek, setStartWeek] = useState<string>(
-    () => weeklyRaw[Math.max(0, weeklyRaw.length - 10)].weekId
-  );
-  const [endWeek, setEndWeek] = useState<string>(() => weeklyRaw[weeklyRaw.length - 1].weekId);
-  const weeklyFiltered = useMemo(() => {
-    // 잘못된 범위면 최근 10주로
-    if (startWeek > endWeek) {
-      return weeklyRaw.slice(-10);
-    }
-    return weeklyRaw.filter((w) => w.weekId >= startWeek && w.weekId <= endWeek);
-  }, [startWeek, endWeek, weeklyRaw]);
+  // 매출 API 호출
+  const [classSales, setClassSales] = useState<SalesItem[]>([]);
+  const [productSales, setProductSales] = useState<SalesItem[]>([]);
+  useEffect(() => {
+    if (!storeUrl) return;
+    const fetchSales = async () => {
+      try {
+        const [classRes, productRes] = await Promise.all([
+          get(`/seller/sales/${storeUrl}/classes`),                 // 부트(클래스)
+          get(`/seller/settlements/products/${storeUrl}/sales`),    // 레거시(상품)
+        ]);
+        if (classRes.status === 200) setClassSales(classRes.data ?? []);
+        if (productRes.status === 200) setProductSales(productRes.data ?? []);
+      } catch (error: any) {
+        console.error('매출 데이터 조회 실패:', error);
+      }
+    };
+    fetchSales();
+  }, [storeUrl]);
 
-  /* --- 월별: month 범위 (YYYY-MM) --- */
-  const monthlyRaw = useMemo(() => makeMonthlySalesTimeline(18), []);
-  const [startMonth, setStartMonth] = useState<string>(
-    () => monthlyRaw[Math.max(0, monthlyRaw.length - 6)].monthId
-  );
-  const [endMonth, setEndMonth] = useState<string>(() => monthlyRaw[monthlyRaw.length - 1].monthId);
-  const monthlyFiltered = useMemo(() => {
-    if (startMonth > endMonth) {
-      return monthlyRaw.slice(-6);
-    }
-    return monthlyRaw.filter((m) => m.monthId >= startMonth && m.monthId <= endMonth);
-  }, [startMonth, endMonth, monthlyRaw]);
+  // 날짜별 합산 맵(amt 합계 + cnt=row 개수)
+  const dailyAggMap = useMemo(() => {
+    type Agg = { amt: number; cnt: number };
+    const map = new Map<string, Agg>();
+    const add = (row: SalesItem) => {
+      const prev = map.get(row.ymd) ?? { amt: 0, cnt: 0 };
+      prev.amt += row.amt;
+      prev.cnt += 1;
+      map.set(row.ymd, prev);
+    };
+    classSales.forEach(add);
+    productSales.forEach(add);
+    return map;
+  }, [classSales, productSales]);
 
-  /* --- 차트에 바인딩할 데이터 --- */
+  // 일별 데이터: 시작/종료일 범위에 맞춰 "빈 날 0값" 포함해 생성
+  const dailyData = useMemo(() => {
+    const days = enumerateDays(startDate, endDate);
+    // 범위가 이상하면 최근 14일
+    const safeDays = days.length ? days : enumerateDays(ymdLocal(new Date(Date.now() - 13 * 86400000)), ymdLocal(new Date()));
+    return safeDays.map((ymd) => {
+      const agg = dailyAggMap.get(ymd);
+      return {
+        key: ymd.slice(5, 10),     // MM-DD
+        amount: agg?.amt ?? 0,
+        orders: agg?.cnt ?? 0,
+        date: ymd,
+      };
+    });
+  }, [startDate, endDate, dailyAggMap]);
+
+  // 주별 데이터: 위 일자 배열 기준으로 동일 범위 집계
+  const weeklyData = useMemo(() => {
+    const weekAmt = new Map<string, number>();
+    const weekCnt = new Map<string, number>();
+    dailyData.forEach((d) => {
+      // date는 YYYY-MM-DD
+      const weekId = getISOWeekId(new Date(d.date));
+      weekAmt.set(weekId, (weekAmt.get(weekId) ?? 0) + d.amount);
+      weekCnt.set(weekId, (weekCnt.get(weekId) ?? 0) + d.orders);
+    });
+    return Array.from(weekAmt.keys())
+      .sort((a, b) => a.localeCompare(b))
+      .map((weekId) => ({
+        key: weekId,
+        amount: weekAmt.get(weekId) ?? 0,
+        orders: weekCnt.get(weekId) ?? 0,
+      }));
+  }, [dailyData]);
+
+  // 월별 데이터: 위 일자 배열 기준으로 동일 범위 집계
+  const monthlyData = useMemo(() => {
+    const monthAmt = new Map<string, number>();
+    const monthCnt = new Map<string, number>();
+    dailyData.forEach((d) => {
+      const monthId = d.date.slice(0, 7); // YYYY-MM
+      monthAmt.set(monthId, (monthAmt.get(monthId) ?? 0) + d.amount);
+      monthCnt.set(monthId, (monthCnt.get(monthId) ?? 0) + d.orders);
+    });
+    return Array.from(monthAmt.keys())
+      .sort((a, b) => a.localeCompare(b))
+      .map((monthId) => ({
+        key: monthId,
+        amount: monthAmt.get(monthId) ?? 0,
+        orders: monthCnt.get(monthId) ?? 0,
+      }));
+  }, [dailyData]);
+
+  // 차트에 바인딩할 데이터
   const salesData = useMemo(() => {
-    if (salesMode === 'day') return dailyFiltered;
-    if (salesMode === 'week')
-      return weeklyFiltered.map((w) => ({ key: w.weekId, amount: w.amount, orders: w.orders }));
-    return monthlyFiltered.map((m) => ({ key: m.monthId, amount: m.amount, orders: m.orders }));
-  }, [salesMode, dailyFiltered, weeklyFiltered, monthlyFiltered]);
+    if (salesMode === 'day') return dailyData;
+    if (salesMode === 'week') return weeklyData;
+    return monthlyData;
+  }, [salesMode, dailyData, weeklyData, monthlyData]);
 
-  // 3) 전체 클래스 예약 통계 (공용 컴포넌트 사용)
-
-  // 클래스 예약 통계 상태 관리
+  // 3) 전체 클래스 예약 통계 (공용 컴포넌트 사용) 
   const [classMode, setClassMode] = useState<ClassStatsMode>('hour');
   const [classStatsData, setClassStatsData] = useState<ClassStatsDatum[]>([]);
-
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -305,9 +332,7 @@ export default function SellerMain() {
           month: month.toString(),
         });
 
-        // weekday 모드일 때 월 선택 기준으로 range 계산
         if (classMode !== 'hour') {
-          // weekday든 month든
           const [yearStr, monthStr] = selectedMonth.split('-');
           const year = Number(yearStr);
           const month = Number(monthStr) - 1;
@@ -350,12 +375,10 @@ export default function SellerMain() {
   }, [storeUrl, classMode, selectedMonth]);
 
   const classStats: ClassStatsDatum[] = useMemo(() => {
-    // API 데이터가 있으면 그대로 반환
     if (classStatsData.length > 0) {
       return classStatsData;
     }
 
-    // 데이터가 없는 경우 기본 구조(0) 반환
     if (classMode === 'hour') {
       return Array.from({ length: 24 }).map((_, i) => ({
         key: `${String(i).padStart(2, '0')}:00`,
@@ -419,28 +442,23 @@ export default function SellerMain() {
                     className="group relative overflow-hidden min-w-[180px] flex-1 rounded-xl border hover:shadow transition"
                     title="클릭하여 주문 관리로 이동"
                   >
-                    {/* 🔵 호버 배경 레이어: 왼→오른쪽으로 width 확장 */}
+                    {/* 🔵 호버 배경 레이어 */}
                     <span
                       className={[
-                        'absolute inset-0 w-0', // 시작은 0
-                        'group-hover:w-full', // 호버 시 꽉 채움
-                        hoverBg, // 상태별 연한 배경색
-                        'transition-[width] duration-300 ease-out', // 부드러운 확장
+                        'absolute inset-0 w-0',
+                        'group-hover:w-full',
+                        hoverBg,
+                        'transition-[width] duration-300 ease-out',
                       ].join(' ')}
                       aria-hidden
                     />
 
-                    {/* 실제 내용은 위로 올리기 */}
                     <div className="relative z-10 grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3 text-left">
                       <div className="p-2 rounded-lg bg-gray-50">
                         <Icon className="w-6 h-6 text-gray-700" />
                       </div>
                       <div className="flex flex-col">
-                        <span
-                          className={`inline-flex w-fit px-2 py-0.5 rounded-full text-[11px] ${badgeCls}`}
-                        >
-                          {key}
-                        </span>
+                        <span className={`inline-flex w-fit px-2 py-0.5 rounded-full text-[11px] ${badgeCls}`}>{key}</span>
                         <span className="text-xs text-gray-500 mt-1">상태 건수</span>
                       </div>
                       <div className="text-xl font-bold tabular-nums">{count}</div>
@@ -451,120 +469,51 @@ export default function SellerMain() {
             </div>
           </section>
 
-          {/* 2) 매출 그래프 + 캘린더 */}
+          {/* 2) 매출 그래프 */}
           <section className="rounded-2xl border bg-white">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b">
               <h2 className="text-base sm:text-lg font-semibold">매출 그래프</h2>
               <div className="flex items-center gap-4">
-                {/* 일별: 날짜 범위 */}
-                {salesMode === 'day' && (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs sm:text-sm text-gray-600">시작일</label>
-                      <input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs sm:text-sm text-gray-600">종료일</label>
-                      <input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {/* 주별: week 범위 */}
-                {salesMode === 'week' && (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs sm:text-sm text-gray-600">시작 주</label>
-                      <input
-                        type="week"
-                        value={startWeek}
-                        onChange={(e) => setStartWeek(e.target.value)}
-                        min={weeklyRaw?.[0]?.weekId}
-                        max={weeklyRaw?.[weeklyRaw.length - 1]?.weekId}
-                        className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs sm:text-sm text-gray-600">종료 주</label>
-                      <input
-                        type="week"
-                        value={endWeek}
-                        onChange={(e) => setEndWeek(e.target.value)}
-                        min={weeklyRaw?.[0]?.weekId}
-                        max={weeklyRaw?.[weeklyRaw.length - 1]?.weekId}
-                        className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {/* 월별: month 범위 */}
-                {salesMode === 'month' && (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs sm:text-sm text-gray-600">시작 월</label>
-                      <input
-                        type="month"
-                        value={startMonth}
-                        onChange={(e) => setStartMonth(e.target.value)}
-                        min={monthlyRaw?.[0]?.monthId}
-                        max={monthlyRaw?.[monthlyRaw.length - 1]?.monthId}
-                        className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs sm:text-sm text-gray-600">종료 월</label>
-                      <input
-                        type="month"
-                        value={endMonth}
-                        onChange={(e) => setEndMonth(e.target.value)}
-                        min={monthlyRaw?.[0]?.monthId}
-                        max={monthlyRaw?.[monthlyRaw.length - 1]?.monthId}
-                        className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
-                      />
-                    </div>
-                  </>
-                )}
+                {/* 시작/종료일은 모든 모드 공통으로 사용 */}
+                <div className="flex items-center gap-2">
+                  <label className="text-xs sm:text-sm text-gray-600">시작일</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs sm:text-sm text-gray-600">종료일</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
+                  />
+                </div>
 
                 {/* 모드 토글 */}
                 <div className="bg-gray-100 rounded-md p-1 inline-flex">
                   <button
                     type="button"
                     onClick={() => setSalesMode('day')}
-                    className={[
-                      'px-3 py-1.5 rounded text-xs sm:text-sm',
-                      salesMode === 'day' ? 'bg-white shadow' : 'text-gray-600',
-                    ].join(' ')}
+                    className={['px-3 py-1.5 rounded text-xs sm:text-sm', salesMode === 'day' ? 'bg-white shadow' : 'text-gray-600'].join(' ')}
                   >
                     일별
                   </button>
                   <button
                     type="button"
                     onClick={() => setSalesMode('week')}
-                    className={[
-                      'px-3 py-1.5 rounded text-xs sm:text-sm',
-                      salesMode === 'week' ? 'bg-white shadow' : 'text-gray-600',
-                    ].join(' ')}
+                    className={['px-3 py-1.5 rounded text-xs sm:text-sm', salesMode === 'week' ? 'bg-white shadow' : 'text-gray-600'].join(' ')}
                   >
                     주별
                   </button>
                   <button
                     type="button"
                     onClick={() => setSalesMode('month')}
-                    className={[
-                      'px-3 py-1.5 rounded text-xs sm:text-sm',
-                      salesMode === 'month' ? 'bg-white shadow' : 'text-gray-600',
-                    ].join(' ')}
+                    className={['px-3 py-1.5 rounded text-xs sm:text-sm', salesMode === 'month' ? 'bg-white shadow' : 'text-gray-600'].join(' ')}
                   >
                     월별
                   </button>
@@ -583,35 +532,16 @@ export default function SellerMain() {
                   <LineChart data={salesData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="key" tick={{ fontSize: 12 }} />
-                    <YAxis
-                      yAxisId="amount"
-                      orientation="right"
-                      tickFormatter={(v) => KRW.format(v)}
-                    />
+                    {/* 우측: 매출액 축 */}
+                    <YAxis yAxisId="amount" orientation="right" tickFormatter={(v) => KRW.format(v)} />
+                    {/* 좌측: 주문수 축 */}
+                    <YAxis yAxisId="orders" orientation="left" width={48} />
                     <Tooltip
-                      formatter={(v: number, name) =>
-                        name === '매출액' ? [fmtKRW(v), name] : [`${v} 건`, name]
-                      }
+                      formatter={(v: number, name) => (name === '매출액' ? [fmtKRW(v), name] : [`${v} 건`, name])}
                     />
                     <Legend />
-                    <Line
-                      yAxisId="amount"
-                      type="monotone"
-                      dataKey="amount"
-                      name="매출액"
-                      stroke={BRAND}
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                    <Line
-                      yAxisId="amount"
-                      type="monotone"
-                      dataKey="orders"
-                      name="주문수"
-                      stroke="#8884d8"
-                      strokeWidth={2}
-                      dot={false}
-                    />
+                    <Line yAxisId="amount" type="monotone" dataKey="amount" name="매출액" stroke={BRAND} strokeWidth={2} dot={false} />
+                    <Line yAxisId="orders" type="monotone" dataKey="orders" name="주문수" stroke="#8884d8" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -619,7 +549,6 @@ export default function SellerMain() {
           </section>
 
           {/* 3) 전체 클래스 예약 통계 (공용 컴포넌트 사용) */}
-
           <ClassStatsCard
             title="전체 클래스 예약 통계"
             mode={classMode}

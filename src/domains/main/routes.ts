@@ -20,17 +20,24 @@ const mainRoutes: RouteObject[] = [
       { index: true, element: React.createElement(MainLandingPage) },
 
       // classes
+
       { path: "classes", element: React.createElement(MainClassesPage) },
       { path: "classes/:classId", element: React.createElement(ClassesDetailPage) },
       { path: "classes/order", element: React.createElement(MainClassOrderPage) },
       { path: "classes/order/result", element: React.createElement(MainClassOrderResultPage) },
 
-      // ✅ products (스프레드로 합침)
-      ...productsRoutes,
+
+      // products
+      { path: 'products', children: productsRoutes },
       ...storesRoutes,
       ...sellRoutes,
       ...mypageRoutes, // 🟢 여기서 스프레드로 합치면 자동으로 /main/mypage 연결됨
     ],
+  },
+
+  {
+    path: ':storeUrl',
+    children: [{ path: 'products', children: productsRoutes }],
   },
 ];
 

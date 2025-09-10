@@ -1,13 +1,23 @@
 // src/domains/seller/order/SellerOrderManagementMain.tsx
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
-import { Package, Truck, CheckCircle, XCircle, RefreshCw, AlertCircle, X } from 'lucide-react';
-import { legacyGet } from '@src/libs/request';
+import {
+  Package,
+  Truck,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  AlertCircle,
+  X,
+  ChevronDown,
+  Check,
+} from 'lucide-react';
+import { legacyGet, legacyPatch } from '@src/libs/request';
 
-// ------------------ Types ------------------
+/* ------------------ Types ------------------ */
 type OrderStatus =
   | '주문완료'
   | '발송완료'
@@ -45,7 +55,49 @@ type FilterKey =
   | 'refund_request'
   | 'refunded';
 
-// ------------------ Utils ------------------
+/* ------------------ 상수/매핑 ------------------ */
+// 서버 Enum 코드 ↔ 한글 라벨
+type StatusCode =
+  | 'ORDER_OK'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCEL_RQ'
+  | 'CANCEL_OK'
+  | 'REFUND_RQ'
+  | 'REFUND_OK';
+
+const CODE_TO_LABEL: Record<StatusCode, OrderStatus> = {
+  ORDER_OK: '주문완료',
+  SHIPPED: '발송완료',
+  DELIVERED: '배송완료',
+  CANCEL_RQ: '취소요청',
+  CANCEL_OK: '취소완료',
+  REFUND_RQ: '환불요청',
+  REFUND_OK: '환불완료',
+};
+
+const LABEL_TO_CODE: Record<OrderStatus, StatusCode> = {
+  주문완료: 'ORDER_OK',
+  발송완료: 'SHIPPED',
+  배송완료: 'DELIVERED',
+  취소요청: 'CANCEL_RQ',
+  취소완료: 'CANCEL_OK',
+  환불요청: 'REFUND_RQ',
+  환불완료: 'REFUND_OK',
+};
+
+// 모든 상태를 언제나 선택 가능
+const ALL_STATUS_LABELS: OrderStatus[] = [
+  '주문완료',
+  '발송완료',
+  '배송완료',
+  '취소요청',
+  '취소완료',
+  '환불요청',
+  '환불완료',
+];
+
+/* ------------------ Utils ------------------ */
 const KRW = new Intl.NumberFormat('ko-KR');
 
 const getStatusIcon = (status: OrderStatus) => {
@@ -90,64 +142,71 @@ const getStatusColor = (status: OrderStatus) => {
   }
 };
 
-// ------------------ Component ------------------
+/* ------------------ Component ------------------ */
 export default function SellerOrderManagementMain() {
   const { storeUrl = 'store' } = useParams();
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [showAll, setShowAll] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<OrderItem | null>(null);
-
-  // 컴포넌트 내부
   const [orders, setOrders] = useState<OrderItem[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<OrderStatus | null>(null);
+  const [openMenuOrderId, setOpenMenuOrderId] = useState<string | null>(null);
 
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (openMenuOrderId && menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuOrderId(null);
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [openMenuOrderId]);
+
+  // 초기/스토어 변경 시 조회
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const params: any = {};
-        if (selectedStatus) {
-          params.status = selectedStatus;
-        }
-
         const response = await legacyGet<{
           status: number;
           message: string;
           data: any[];
-        }>(`/${storeUrl}/seller/management/orders`, params);
+        }>(`/${storeUrl}/seller/management/orders`);
 
         if (response?.data) {
-          const mappedOrders: OrderItem[] = response.data.map((item) => ({
+          const mapped: OrderItem[] = response.data.map((item) => ({
             id: String(item.orderId),
             orderNumber: `ORD-${String(item.orderDetailId).padStart(5, '0')}`,
             customerName: item.orderName,
-            deliveryAddress: `${item.addressRoad || ''} ${item.addressDetail || ''} ${item.addressExtra || ''}`,
+            deliveryAddress:
+              `${item.addressRoad || ''} ${item.addressDetail || ''} ${item.addressExtra || ''}`.trim(),
             productName: item.productName,
             quantity: item.orderCnt,
             amount: item.orderPrice,
             orderDate: new Date(item.orderDate).toISOString().split('T')[0],
             updatedAt: new Date(item.orderDate).toISOString().split('T')[0],
-            status: item.orderStatus as OrderStatus,
+            status: item.orderStatus as OrderStatus, // 서버가 한글 라벨로 내려줌
             productId: String(item.productId),
             cancelReason: item.cancelReason,
             refundReason: item.refundReason,
             refundAmount: item.refundAmount,
             refundDate: item.refundDate,
           }));
-          setOrders(mappedOrders);
+          setOrders(mapped);
         } else {
           setOrders([]);
-          console.error('주문/발송 관리 조회 실패:', response.message);
+          console.error('주문/발송 관리 조회 실패:', response?.message);
         }
-      } catch (error) {
-        console.error('API 요청 실패:', error);
+      } catch (err) {
+        console.error('API 요청 실패:', err);
         setOrders([]);
       }
     };
 
-    fetchOrders();
-  }, [storeUrl, selectedStatus]); // selectedStatus도 의존성에 추가
+    void fetchOrders();
+  }, [storeUrl]);
 
-  // 필터링된 주문 목록
+  // 필터링
   const filteredOrders = useMemo(() => {
     switch (activeFilter) {
       case 'ordered':
@@ -170,14 +229,13 @@ export default function SellerOrderManagementMain() {
     }
   }, [activeFilter, orders]);
 
-  // 표시할 주문 목록 (10개 제한 또는 전체)
-  const displayedOrders = useMemo(() => {
-    return showAll ? filteredOrders : filteredOrders.slice(0, 10);
-  }, [filteredOrders, showAll]);
+  const displayedOrders = useMemo(
+    () => (showAll ? filteredOrders : filteredOrders.slice(0, 10)),
+    [filteredOrders, showAll]
+  );
 
-  // 상태 통계
   const statusCounts = useMemo(() => {
-    const counts = {
+    return {
       all: orders.length,
       ordered: orders.filter((o) => o.status === '주문완료').length,
       shipped: orders.filter((o) => o.status === '발송완료').length,
@@ -187,7 +245,6 @@ export default function SellerOrderManagementMain() {
       refund_request: orders.filter((o) => o.status === '환불요청').length,
       refunded: orders.filter((o) => o.status === '환불완료').length,
     };
-    return counts;
   }, [orders]);
 
   const filterOptions: { key: FilterKey; label: string }[] = [
@@ -201,15 +258,35 @@ export default function SellerOrderManagementMain() {
     { key: 'refunded', label: `환불완료 (${statusCounts.refunded})` },
   ];
 
-  // 취소/환불 처리 함수
-  const handleProcessRequest = (order: OrderItem) => {
-    // 실제로는 API 호출
-    console.log(`Processing ${order.status} for order:`, order.orderNumber);
-    setSelectedRequest(null);
-    // 상태 업데이트 로직...
+  // 상태 변경 호출
+  const patchOrderStatus = async (orderId: string, nextLabel: OrderStatus) => {
+    const code: StatusCode = LABEL_TO_CODE[nextLabel];
+    try {
+      await legacyPatch<{
+        status: number;
+        message: string;
+        data: null;
+      }>(`/${storeUrl}/seller/management/orders/${orderId}/status`, {
+        toStatus: code,
+      });
+
+      // 낙관적 업데이트
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? { ...o, status: nextLabel, updatedAt: new Date().toISOString().slice(0, 10) }
+            : o
+        )
+      );
+    } catch (err) {
+      console.error('상태 변경 실패:', err);
+      // 필요 시 토스트/알럿 처리
+    } finally {
+      setOpenMenuOrderId(null);
+    }
   };
 
-  const isCompletedStatus = (status: OrderStatus) => status === '취소완료' || status === '환불완료';
+  const isCompletedStatus = (s: OrderStatus) => s === '취소완료' || s === '환불완료';
 
   return (
     <>
@@ -224,7 +301,7 @@ export default function SellerOrderManagementMain() {
             <p className="text-gray-600">주문과 주문 처리 상태를 확인하고 관리하세요.</p>
           </div>
 
-          {/* 필터 라디오 버튼 */}
+          {/* 필터 라디오 */}
           <div className="mt-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
               {filterOptions.map((option) => (
@@ -268,33 +345,15 @@ export default function SellerOrderManagementMain() {
                 <table className="w-full text-sm min-w-max">
                   <thead>
                     <tr className="text-left text-gray-500 whitespace-nowrap">
-                      <th className="py-3 pr-6 font-medium min-w-[120px]">처리상태</th>
-                      {isCompletedStatus(filteredOrders[0]?.status) ? (
-                        <>
-                          <th className="py-3 pr-6 font-medium min-w-[100px]">상품번호</th>
-                          <th className="py-3 pr-6 font-medium min-w-[180px]">상품이름</th>
-                          <th className="py-3 pr-6 font-medium min-w-[80px]">상품수량</th>
-                          <th className="py-3 pr-6 font-medium min-w-[150px]">취소/환불 사유</th>
-                          <th className="py-3 pr-6 font-medium min-w-[100px]">환불금액</th>
-                          <th className="py-3 pr-6 font-medium min-w-[100px]">환불일</th>
-                          <th className="py-3 pr-6 font-medium min-w-[100px]">수정일</th>
-                        </>
-                      ) : (
-                        <>
-                          <th className="py-3 pr-6 font-medium min-w-[140px]">주문번호</th>
-                          <th className="py-3 pr-6 font-medium min-w-[100px]">주문자명</th>
-                          <th className="py-3 pr-6 font-medium min-w-[200px]">배송지</th>
-                          <th className="py-3 pr-6 font-medium min-w-[180px]">주문상품</th>
-                          <th className="py-3 pr-6 font-medium min-w-[80px]">상품수량</th>
-                          <th className="py-3 pr-6 font-medium min-w-[100px]">주문금액</th>
-                          <th className="py-3 pr-6 font-medium min-w-[100px]">주문일</th>
-                          <th className="py-3 pr-6 font-medium min-w-[100px]">수정일</th>
-                          {(activeFilter === 'cancel_request' ||
-                            activeFilter === 'refund_request') && (
-                            <th className="py-3 pr-6 font-medium min-w-[80px]">처리</th>
-                          )}
-                        </>
-                      )}
+                      <th className="py-3 pr-6 font-medium min-w-[160px]">처리상태</th>
+                      <th className="py-3 pr-6 font-medium min-w-[140px]">주문번호</th>
+                      <th className="py-3 pr-6 font-medium min-w-[100px]">주문자명</th>
+                      <th className="py-3 pr-6 font-medium min-w-[200px]">배송지</th>
+                      <th className="py-3 pr-6 font-medium min-w-[180px]">주문상품</th>
+                      <th className="py-3 pr-6 font-medium min-w-[80px]">상품수량</th>
+                      <th className="py-3 pr-6 font-medium min-w-[100px]">주문금액</th>
+                      <th className="py-3 pr-6 font-medium min-w-[100px]">주문일</th>
+                      <th className="py-3 pr-6 font-medium min-w-[100px]">수정일</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -305,88 +364,78 @@ export default function SellerOrderManagementMain() {
                         </td>
                       </tr>
                     ) : (
-                      displayedOrders.map((order) => (
-                        <tr key={order.id} className="border-t border-gray-100">
-                          <td className="py-4 pr-6 whitespace-nowrap">
-                            <span
-                              className={[
-                                'inline-flex items-center rounded-full px-2 py-1 text-xs font-medium border gap-1',
-                                getStatusColor(order.status),
-                              ].join(' ')}
-                            >
-                              {getStatusIcon(order.status)}
-                              {order.status}
-                            </span>
-                          </td>
-                          {isCompletedStatus(order.status) ? (
-                            <>
-                              <td className="py-4 pr-6 whitespace-nowrap">{order.productId}</td>
-                              <td className="py-4 pr-6">
-                                <div className="max-w-[180px] truncate" title={order.productName}>
-                                  {order.productName}
-                                </div>
-                              </td>
-                              <td className="py-4 pr-6 whitespace-nowrap">{order.quantity}개</td>
-                              <td className="py-4 pr-6">
+                      displayedOrders.map((order) => {
+                        const open = openMenuOrderId === order.id;
+                        return (
+                          <tr key={order.id} className="border-t border-gray-100 relative">
+                            <td className="py-4 pr-6 whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => setOpenMenuOrderId(open ? null : order.id)}
+                                className={[
+                                  'inline-flex items-center rounded-full px-2 py-1 text-xs font-medium border gap-1',
+                                  getStatusColor(order.status),
+                                  'hover:opacity-90 transition',
+                                ].join(' ')}
+                              >
+                                {getStatusIcon(order.status)}
+                                {order.status}
+                                <ChevronDown className="w-4 h-4 ml-1 opacity-70" />
+                              </button>
+
+                              {/* 드롭다운 */}
+                              {open && (
                                 <div
-                                  className="max-w-[150px] truncate"
-                                  title={order.cancelReason || order.refundReason || '-'}
+                                  ref={menuRef}
+                                  className="absolute z-20 mt-2 w-44 rounded-lg border bg-white shadow-lg p-1"
                                 >
-                                  {order.cancelReason || order.refundReason || '-'}
+                                  {ALL_STATUS_LABELS.map((label) => {
+                                    const selected = label === order.status;
+                                    return (
+                                      <button
+                                        key={label}
+                                        type="button"
+                                        onClick={() => patchOrderStatus(order.id, label)}
+                                        className={[
+                                          'w-full text-left px-3 py-2 rounded-md text-sm hover:bg-gray-50 flex items-center justify-between',
+                                          selected ? 'bg-gray-50' : '',
+                                        ].join(' ')}
+                                      >
+                                        <span>{label}</span>
+                                        {selected && <Check className="w-4 h-4" />}
+                                      </button>
+                                    );
+                                  })}
                                 </div>
-                              </td>
-                              <td className="py-4 pr-6 whitespace-nowrap">
-                                ₩ {KRW.format(order.refundAmount || 0)}
-                              </td>
-                              <td className="py-4 pr-6 whitespace-nowrap">
-                                {order.refundDate || '-'}
-                              </td>
-                              <td className="py-4 pr-6 whitespace-nowrap">{order.updatedAt}</td>
-                            </>
-                          ) : (
-                            <>
-                              <td className="py-4 pr-6 whitespace-nowrap">{order.orderNumber}</td>
-                              <td className="py-4 pr-6 whitespace-nowrap">{order.customerName}</td>
-                              <td className="py-4 pr-6">
-                                <div
-                                  className="max-w-[200px] truncate"
-                                  title={order.deliveryAddress}
-                                >
-                                  {order.deliveryAddress}
-                                </div>
-                              </td>
-                              <td className="py-4 pr-6">
-                                <div className="max-w-[180px] truncate" title={order.productName}>
-                                  {order.productName}
-                                </div>
-                              </td>
-                              <td className="py-4 pr-6 whitespace-nowrap">{order.quantity}개</td>
-                              <td className="py-4 pr-6 whitespace-nowrap">
-                                ₩ {KRW.format(order.amount)}
-                              </td>
-                              <td className="py-4 pr-6 whitespace-nowrap">{order.orderDate}</td>
-                              <td className="py-4 pr-6 whitespace-nowrap">{order.updatedAt}</td>
-                              {(activeFilter === 'cancel_request' ||
-                                activeFilter === 'refund_request') && (
-                                <td className="py-4 pr-6 whitespace-nowrap">
-                                  <button
-                                    onClick={() => setSelectedRequest(order)}
-                                    className="px-3 py-1.5 bg-[#2d4739] text-white text-xs rounded-lg hover:bg-[#1f3027] transition-colors whitespace-nowrap"
-                                  >
-                                    처리
-                                  </button>
-                                </td>
                               )}
-                            </>
-                          )}
-                        </tr>
-                      ))
+                            </td>
+
+                            <td className="py-4 pr-6 whitespace-nowrap">{order.orderNumber}</td>
+                            <td className="py-4 pr-6 whitespace-nowrap">{order.customerName}</td>
+                            <td className="py-4 pr-6">
+                              <div className="max-w-[220px] truncate" title={order.deliveryAddress}>
+                                {order.deliveryAddress}
+                              </div>
+                            </td>
+                            <td className="py-4 pr-6">
+                              <div className="max-w-[220px] truncate" title={order.productName}>
+                                {order.productName}
+                              </div>
+                            </td>
+                            <td className="py-4 pr-6 whitespace-nowrap">{order.quantity}개</td>
+                            <td className="py-4 pr-6 whitespace-nowrap">
+                              ₩ {KRW.format(order.amount)}
+                            </td>
+                            <td className="py-4 pr-6 whitespace-nowrap">{order.orderDate}</td>
+                            <td className="py-4 pr-6 whitespace-nowrap">{order.updatedAt}</td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
               </div>
 
-              {/* 전체 보기 버튼 */}
               {!showAll && filteredOrders.length > 10 && (
                 <div className="mt-4 flex justify-center">
                   <button
@@ -401,81 +450,6 @@ export default function SellerOrderManagementMain() {
           </div>
         </div>
       </SellerSidenavbar>
-
-      {/* 취소/환불 처리 모달 */}
-      {selectedRequest && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">
-                {selectedRequest.status === '취소요청' ? '취소' : '환불'} 처리
-              </h3>
-              <button
-                onClick={() => setSelectedRequest(null)}
-                className="p-1 hover:bg-gray-100 rounded-full"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">주문자명</label>
-                <div className="p-3 bg-gray-50 rounded-lg text-sm">
-                  {selectedRequest.customerName}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">상품 이름</label>
-                <div className="p-3 bg-gray-50 rounded-lg text-sm">
-                  {selectedRequest.productName}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">상품 수량</label>
-                <div className="p-3 bg-gray-50 rounded-lg text-sm">
-                  {selectedRequest.quantity}개
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {selectedRequest.status === '취소요청' ? '취소' : '환불'} 금액
-                </label>
-                <div className="p-3 bg-gray-50 rounded-lg text-sm">
-                  ₩ {KRW.format(selectedRequest.amount)}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {selectedRequest.status === '취소요청' ? '취소' : '환불'} 사유
-                </label>
-                <div className="p-3 bg-gray-50 rounded-lg text-sm">
-                  {selectedRequest.cancelReason || selectedRequest.refundReason || '사유 없음'}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setSelectedRequest(null)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={() => handleProcessRequest(selectedRequest)}
-                className="flex-1 px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#1f3027] transition-colors"
-              >
-                {selectedRequest.status === '취소요청' ? '취소' : '환불'} 처리
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

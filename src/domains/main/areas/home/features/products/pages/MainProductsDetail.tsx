@@ -112,7 +112,7 @@ const MainProductsDetail = () => {
           console.error('상품 불러오기 실패:', response.message);
         }
       } catch (error) {
-        console.error('상품 API 요청 실패:', error);
+        console.error('API 요청 실패:', error);
       } finally {
         setLoadingProduct(false);
       }
@@ -127,20 +127,19 @@ const MainProductsDetail = () => {
 
     const fetchReviews = async () => {
       try {
-        // const response = await get<any[]>(`/products/${productId}/reviews`);
-        const response = await axios.get(`http://localhost:8888/api/products/${productId}/reviews`);
+        const response = await get<any[]>(`/products/${productId}/reviews`);
+        // console.log('리뷰 API 응답 전체:', response);
 
         if (response.status === 200) {
-          console.log('배열:', Array.isArray(response.data.data));
-          setReviews(response.data.data.map(mapReview));
+          // console.log('배열:', Array.isArray(response.data));
+          setReviews(response.data.map(mapReview));
           console.log(response);
         } else {
-          console.log('리뷰 API 응답:', response);
-          // console.error('리뷰 불러오기 실패:', response.message);
+          console.error('리뷰 조회 실패:', response.message);
           setReviews([]);
         }
       } catch (error: any) {
-        console.error('리뷰 API 요청 실패:', error);
+        console.error('API 요청 실패:', error);
         setReviews([]);
       } finally {
         setLoadingReviews(false);

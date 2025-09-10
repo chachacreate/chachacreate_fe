@@ -2,14 +2,15 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, Star, ChevronDown } from 'lucide-react';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import { legacyGet } from '@src/libs/request';
 
 interface Product {
-  id: string;
+  id: number;
   name: string;
   price: number;
   image: string;
   /** 카테고리 value 값 저장: [메인, 서브] (예: ['electronics','phone']) */
-  categories: string[];
+  categories: number[];
   rating: number;
   orderCount: number;
   viewCount: number;
@@ -28,75 +29,62 @@ interface CategoryOption {
 }
 
 const PAGE_SIZE = 12;
-const TOTAL_COUNT = 96;
+
+const UP_CATEGORY_NAME_TO_ID: Record<string, number> = {
+  패션잡화: 1,
+  '인테리어 소품': 2,
+  악세서리: 3,
+  '케이스/문구': 4,
+  기타: 5,
+};
 
 const categoryOptions: CategoryOption[] = [
-  { value: 'all', label: '전체', subCategories: [{ value: 'all', label: '전체' }] },
   {
-    value: 'electronics',
-    label: '전자제품',
+    value: '1', // FASHION
+    label: '패션잡화',
     subCategories: [
-      { value: 'all', label: '전체' },
-      { value: 'phone', label: '스마트폰' },
-      { value: 'computer', label: '컴퓨터' },
-      { value: 'audio', label: '오디오' },
-      { value: 'camera', label: '카메라' },
+      { value: '1', label: '티셔츠/니트/셔츠' },
+      { value: '2', label: '생활한복' },
+      { value: '3', label: '가방/파우치' },
+      { value: '4', label: '여성신발/수제화' },
+      { value: '5', label: '패션잡화 기타' },
     ],
   },
   {
-    value: 'fashion',
-    label: '패션/의류',
+    value: '2', // INTERIOR
+    label: '인테리어 소품',
     subCategories: [
-      { value: 'all', label: '전체' },
-      { value: 'men', label: '남성의류' },
-      { value: 'women', label: '여성의류' },
-      { value: 'shoes', label: '신발' },
-      { value: 'accessories', label: '액세서리' },
+      { value: '6', label: '패브릭' },
+      { value: '7', label: '꽃/식물' },
+      { value: '8', label: '조명' },
+      { value: '9', label: '인테리어 소품 기타' },
     ],
   },
   {
-    value: 'home',
-    label: '생활/홈',
+    value: '3', // ACCESSORY
+    label: '악세서리',
     subCategories: [
-      { value: 'all', label: '전체' },
-      { value: 'furniture', label: '가구' },
-      { value: 'kitchen', label: '주방용품' },
-      { value: 'bedding', label: '침구' },
-      { value: 'decor', label: '인테리어' },
+      { value: '10', label: '반지' },
+      { value: '11', label: '팔찌' },
+      { value: '12', label: '귀걸이' },
+      { value: '13', label: '악세서리 기타' },
     ],
   },
   {
-    value: 'beauty',
-    label: '뷰티',
+    value: '4', // LIFESTYLE
+    label: '케이스/문구',
     subCategories: [
-      { value: 'all', label: '전체' },
-      { value: 'skincare', label: '스킨케어' },
-      { value: 'makeup', label: '메이크업' },
-      { value: 'fragrance', label: '향수' },
-      { value: 'hair', label: '헤어케어' },
+      { value: '14', label: '폰케이스' },
+      { value: '15', label: '노트/필기도구' },
+      { value: '16', label: '인형/장난감' },
+      { value: '17', label: '주차번호/차량스티커' },
+      { value: '18', label: '케이스/문구 기타' },
     ],
   },
   {
-    value: 'sports',
-    label: '스포츠/레저',
-    subCategories: [
-      { value: 'all', label: '전체' },
-      { value: 'fitness', label: '헬스/요가' },
-      { value: 'outdoor', label: '아웃도어' },
-      { value: 'ball', label: '구기용품' },
-      { value: 'water', label: '수상스포츠' },
-    ],
-  },
-  {
-    value: 'books',
-    label: '도서/문구',
-    subCategories: [
-      { value: 'all', label: '전체' },
-      { value: 'novel', label: '소설' },
-      { value: 'study', label: '학습서' },
-      { value: 'hobby', label: '취미' },
-      { value: 'stationery', label: '문구' },
-    ],
+    value: '5', // ETC
+    label: '기타',
+    subCategories: [{ value: '19', label: '기타' }],
   },
 ];
 
@@ -130,81 +118,78 @@ const MainProductsPage = () => {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
 
-  /** 더미 상품 생성 (총개수, 시작 id) */
-  const generateDummyProducts = useCallback((count: number, startId: number = 1): Product[] => {
-    const MAIN_VALUES = categoryOptions.filter((c) => c.value !== 'all').map((c) => c.value);
-    const NAME_BANK = [
-      '무선 블루투스 이어폰',
-      '캐시미어 니트',
-      '프리미엄 향수',
-      '스마트 워치',
-      '요가 매트',
-      '베스트셀러 소설',
-      '핸드 크림 세트',
-      '런닝화',
-    ];
-    const arr: Product[] = [];
-    for (let i = 0; i < count; i++) {
-      const idNum = startId + i;
-      const main = MAIN_VALUES[idNum % MAIN_VALUES.length];
-      const subList = categoryOptions
-        .find((c) => c.value === main)!
-        .subCategories.filter((s) => s.value !== 'all');
-      const sub = subList.length ? subList[idNum % subList.length].value : 'all';
-      arr.push({
-        id: `product-${idNum}`,
-        name: `${NAME_BANK[idNum % NAME_BANK.length]} ${idNum}`,
-        price: Math.floor(Math.random() * 200000) + 10000,
-        image: `https://picsum.photos/seed/p${idNum}/600/600`,
-        // value 값 저장!
-        categories: [main, sub],
-        rating: Math.round((Math.random() * 4 + 1) * 2) / 2, // 1.0~5.0, 0.5 step
-        orderCount: Math.floor(Math.random() * 1000),
-        viewCount: Math.floor(Math.random() * 5000),
-        storeName: `스토어${idNum}`,
-      });
-    }
-    return arr;
-  }, []);
+  async function fetchAllProducts(params?: {
+    type?: string; // 배열 → 단일 문자열
+    d?: string;
+    u?: string;
+    keyword?: string;
+    sort?: string;
+  }): Promise<Product[]> {
+    const response = await legacyGet<{ status: number; message: string; data: any[] }>(
+      '/main/products',
+      params
+    );
+    const productsData = Array.isArray(response.data) ? response.data : [];
 
-  /** 최초 96개 생성 */
+    return productsData.map((p) => ({
+      id: p.productId,
+      name: p.productName,
+      price: p.price,
+      image: p.pimgUrl,
+      categories: [UP_CATEGORY_NAME_TO_ID[p.ucategoryName] ?? 5, p.dcategoryId ?? 0],
+      rating: p.rating ?? 0,
+      orderCount: p.saleCnt ?? 0,
+      viewCount: p.viewCnt ?? 0,
+      storeName: p.storeName || '뜨락상회',
+    }));
+  }
+
   useEffect(() => {
-    const totalProducts = generateDummyProducts(TOTAL_COUNT, 1); // ✅ 시그니처 고침
-    setAllProducts(totalProducts);
-  }, [generateDummyProducts]);
-
-  /** 메인 카테고리 변경 시 하위카테고리 초기화 + 페이지 리셋 */
-  useEffect(() => {
-    setSelectedSubCategory('all');
-    setPage(1);
-  }, [selectedMainCategory]);
-
-  /** 검색/필터/정렬 변경 시 페이지 리셋 */
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, sortBy, selectedSubCategory]);
-
-  /** 필터 + 정렬 + 페이지 반영 */
-  const filteredAll = useMemo(() => {
-    let data = allProducts.filter((p) => {
-      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const mainOk = selectedMainCategory === 'all' || p.categories[0] === selectedMainCategory;
-
-      const subOk = selectedSubCategory === 'all' || p.categories[1] === selectedSubCategory;
-
-      return matchesSearch && mainOk && subOk;
-    });
-
-    // 정렬
-    data = [...data];
-    switch (sortBy) {
-      case 'latest': {
-        // id 숫자 내림차순
-        const toNum = (id: string) => Number(id.replace('product-', ''));
-        data.sort((a, b) => toNum(b.id) - toNum(a.id));
-        break;
+    async function loadProducts() {
+      setLoading(true);
+      try {
+        const products = await fetchAllProducts({
+          type: selectedMainCategory !== 'all' ? String(selectedMainCategory) : undefined,
+          d: selectedSubCategory !== 'all' ? String(selectedSubCategory) : undefined,
+          keyword: searchTerm || undefined,
+          sort: sortBy || undefined,
+        });
+        setAllProducts(products);
+        setPage(1);
+      } catch (err) {
+        console.error('상품 불러오기 실패', err);
+        setAllProducts([]);
+      } finally {
+        setLoading(false);
       }
+    }
+
+    loadProducts();
+  }, [selectedMainCategory, selectedSubCategory, searchTerm, sortBy]);
+
+  const filteredAll = useMemo(() => {
+    return allProducts.filter((p) => {
+      const matchesSearch =
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.categories.some((catId) =>
+          VALUE_TO_LABEL[String(catId)]?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+      const categoryOk =
+        (selectedMainCategory === 'all' || p.categories[0] === Number(selectedMainCategory)) &&
+        (selectedSubCategory === 'all' || p.categories[1] === Number(selectedSubCategory));
+
+      return matchesSearch && categoryOk;
+    });
+  }, [allProducts, searchTerm, selectedMainCategory, selectedSubCategory]);
+
+  // 이후 정렬 로직도 그대로 적용
+  const sortedFilteredAll = useMemo(() => {
+    const data = [...filteredAll];
+    switch (sortBy) {
+      case 'latest':
+        data.sort((a, b) => b.id - a.id);
+        break;
       case 'popular':
         data.sort((a, b) => b.orderCount - a.orderCount);
         break;
@@ -222,14 +207,30 @@ const MainProductsPage = () => {
         break;
     }
     return data;
-  }, [allProducts, searchTerm, selectedMainCategory, selectedSubCategory, sortBy]);
+  }, [filteredAll, sortBy]);
 
-  /** 현재 페이지까지 slice */
+  /** 메인 카테고리 변경 시 하위카테고리 초기화 + 페이지 리셋 */
+  useEffect(() => {
+    const currentCategory = categoryOptions.find((c) => c.value === selectedMainCategory);
+    if (currentCategory && currentCategory.subCategories.length > 0) {
+      setSelectedSubCategory(currentCategory.subCategories[0].value); // 첫 번째 서브카테고리
+    } else {
+      setSelectedSubCategory('all'); // 서브카테고리 없으면 'all'
+    }
+    setPage(1);
+  }, [selectedMainCategory]);
+
+  /** 검색/필터/정렬 변경 시 페이지 리셋 */
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, sortBy, selectedSubCategory]);
+
+  // 페이지 단위 slice
   useEffect(() => {
     const end = page * PAGE_SIZE;
-    setFilteredProducts(filteredAll.slice(0, end));
-    setHasMore(end < filteredAll.length);
-  }, [filteredAll, page]);
+    setFilteredProducts(sortedFilteredAll.slice(0, end));
+    setHasMore(end < sortedFilteredAll.length);
+  }, [sortedFilteredAll, page]);
 
   /** 무한 스크롤 */
   const loadMoreProducts = useCallback(() => {
@@ -253,7 +254,7 @@ const MainProductsPage = () => {
   }, [loadMoreProducts]);
 
   /** 화면 표기용: value -> label */
-  const labelOf = (value: string) => VALUE_TO_LABEL[value] ?? value;
+  const labelOf = (value: number | string) => VALUE_TO_LABEL[String(value)] ?? String(value);
 
   /** 총 카운트(필터 반영) */
   const totalFilteredCount = filteredAll.length;
@@ -288,10 +289,8 @@ const MainProductsPage = () => {
     return stars;
   };
 
-  // 임시
-  const storeUrl = 'hihiyaho';
   const handleProductClick = (productId: string) => {
-    window.location.href = `/${storeUrl}/productdetail/${productId}`;
+    window.location.href = `/main/products/${productId}`;
   };
 
   return (
@@ -341,7 +340,7 @@ const MainProductsPage = () => {
             </div>
 
             {/* 서브카테고리 */}
-            {selectedMainCategory !== 'all' && subCategories.length > 1 && (
+            {selectedMainCategory !== 'all' && subCategories.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {subCategories.map((sub) => (
                   <button
@@ -406,7 +405,7 @@ const MainProductsPage = () => {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                onClick={() => handleProductClick(product.id)}
+                onClick={() => handleProductClick(String(product.id))}
                 // 더 눈에 띄게: 테두리 + hover 강조 + 살짝 상승
                 className="group bg-white rounded-xl border border-gray-200 shadow-sm
                             hover:shadow-lg hover:border-[#2d4739]/40 hover:-translate-y-1

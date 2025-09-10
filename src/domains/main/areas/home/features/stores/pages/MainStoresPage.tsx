@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Search, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Search, ChevronDown, ChevronUp } from 'lucide-react';
 
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import StoresSubnavbar from "@src/shared/areas/navigation/features/subnavbar/stores/StoresSubnavbar";
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import StoresSubnavbar from '@src/shared/areas/navigation/features/subnavbar/stores/StoresSubnavbar';
+import { legacyGet } from '@src/libs/request';
 
 /** 스토어 타입 */
 type Store = {
@@ -11,8 +12,7 @@ type Store = {
   name: string;
   description: string;
   image: string;
-  /** 스토어가 판매하는 상품의 카테고리 목록 (value 값) */
-  categoriesSold: string[]; // e.g., ["electronics","phone","phone","camera","camera"]
+  categoriesSold: string[];
   orderCount: number;
   viewCount: number;
   /** 스토어 커스텀 색상(선택): 카드 호버 테두리/칩 컬러에 사용 */
@@ -25,78 +25,57 @@ type CategoryOption = {
   subCategories: { value: string; label: string }[];
 };
 
-type SortKey = "views" | "orders" | "name";
+type SortKey = 'views' | 'orders' | 'name';
 
 const PAGE_SIZE = 12;
-const TOTAL_COUNT = 96;
 
 const categoryOptions: CategoryOption[] = [
-  { value: "all", label: "전체", subCategories: [{ value: "all", label: "전체" }] },
   {
-    value: "electronics",
-    label: "전자제품",
+    value: '1', // FASHION
+    label: '패션잡화',
     subCategories: [
-      { value: "all", label: "전체" },
-      { value: "phone", label: "스마트폰" },
-      { value: "computer", label: "컴퓨터" },
-      { value: "audio", label: "오디오" },
-      { value: "camera", label: "카메라" },
+      { value: '1', label: '티셔츠/니트/셔츠' },
+      { value: '2', label: '생활한복' },
+      { value: '3', label: '가방/파우치' },
+      { value: '4', label: '여성신발/수제화' },
+      { value: '5', label: '패션잡화 기타' },
     ],
   },
   {
-    value: "fashion",
-    label: "패션/의류",
+    value: '2', // INTERIOR
+    label: '인테리어 소품',
     subCategories: [
-      { value: "all", label: "전체" },
-      { value: "men", label: "남성의류" },
-      { value: "women", label: "여성의류" },
-      { value: "shoes", label: "신발" },
-      { value: "accessories", label: "액세서리" },
+      { value: '6', label: '패브릭' },
+      { value: '7', label: '꽃/식물' },
+      { value: '8', label: '조명' },
+      { value: '9', label: '인테리어 소품 기타' },
     ],
   },
   {
-    value: "home",
-    label: "생활/홈",
+    value: '3', // ACCESSORY
+    label: '악세서리',
     subCategories: [
-      { value: "all", label: "전체" },
-      { value: "furniture", label: "가구" },
-      { value: "kitchen", label: "주방용품" },
-      { value: "bedding", label: "침구" },
-      { value: "decor", label: "인테리어" },
+      { value: '10', label: '반지' },
+      { value: '11', label: '팔찌' },
+      { value: '12', label: '귀걸이' },
+      { value: '13', label: '악세서리 기타' },
     ],
   },
   {
-    value: "beauty",
-    label: "뷰티",
+    value: '4', // LIFESTYLE
+    label: '케이스/문구',
     subCategories: [
-      { value: "all", label: "전체" },
-      { value: "skincare", label: "스킨케어" },
-      { value: "makeup", label: "메이크업" },
-      { value: "fragrance", label: "향수" },
-      { value: "hair", label: "헤어케어" },
+      { value: '14', label: '폰케이스' },
+      { value: '15', label: '노트/필기도구' },
+      { value: '16', label: '인형/장난감' },
+      { value: '17', label: '주차번호/차량스티커' },
+      { value: '18', label: '케이스/문구 기타' },
     ],
   },
   {
-    value: "sports",
-    label: "스포츠/레저",
-    subCategories: [
-      { value: "all", label: "전체" },
-      { value: "fitness", label: "헬스/요가" },
-      { value: "outdoor", label: "아웃도어" },
-      { value: "ball", label: "구기용품" },
-      { value: "water", label: "수상스포츠" },
-    ],
-  },
-  {
-    value: "books",
-    label: "도서/문구",
-    subCategories: [
-      { value: "all", label: "전체" },
-      { value: "novel", label: "소설" },
-      { value: "study", label: "학습서" },
-      { value: "hobby", label: "취미" },
-      { value: "stationery", label: "문구" },
-    ],
+    value: '5', // ETC
+    label: '기타',
+    subCategories: [{ value: '19', label: '기타' }],
   },
 ];
 
@@ -112,38 +91,48 @@ const VALUE_TO_LABEL: Record<string, string> = (() => {
 
 /** 대표 카테고리(최빈값) 계산 */
 function getRepresentativeCategory(categoriesSold: string[]): string {
-  if (!categoriesSold.length) return "all";
+  if (!categoriesSold.length) return 'all';
   const freq = new Map<string, number>();
-  for (const v of categoriesSold) {
-    freq.set(v, (freq.get(v) ?? 0) + 1);
-  }
-  let best = "all";
-  let max = 0;
-  for (const [k, n] of freq) {
-    if (n > max) {
-      best = k;
-      max = n;
+  categoriesSold.forEach((v) => freq.set(v, (freq.get(v) ?? 0) + 1));
+
+  let maxCount = 0;
+  let best = categoriesSold[0]; // 첫 요소 기본값
+  categoriesSold.forEach((v) => {
+    const count = freq.get(v) ?? 0;
+    if (count > maxCount) {
+      best = v;
+      maxCount = count;
     }
-  }
+  });
   return best;
 }
 
+/** API에서 받아온 categoriesSold 라벨 → value 매핑 */
+function mapCategoriesToValue(categories: string[]): string[] {
+  return categories
+    .map((c) => {
+      const entry = Object.entries(VALUE_TO_LABEL).find(([_, label]) => label === c);
+      return entry ? entry[0] : undefined;
+    })
+    .filter((v): v is string => !!v); // undefined 제거
+}
+
 const sortOptions: { value: SortKey; label: string }[] = [
-  { value: "views", label: "조회순" },
-  { value: "orders", label: "판매순" },
-  { value: "name", label: "가나다순" },
+  { value: 'views', label: '조회순' },
+  { value: 'orders', label: '판매순' },
+  { value: 'name', label: '가나다순' },
 ];
 
 /** 커스텀 컬러 팔레트(데모용) */
-const PALETTE = ["#2d4739", "#0e7490", "#6d28d9", "#b45309", "#15803d"];
+const PALETTE = ['#2d4739', '#0e7490', '#6d28d9', '#b45309', '#15803d'];
 
 const MainStoresPage: React.FC = () => {
   const [allStores, setAllStores] = useState<Store[]>([]);
   const [visibleStores, setVisibleStores] = useState<Store[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [mainCat, setMainCat] = useState("all");
-  const [subCat, setSubCat] = useState("all");
-  const [sortBy, setSortBy] = useState<SortKey>("views");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [mainCat, setMainCat] = useState('all');
+  const [subCat, setSubCat] = useState('all');
+  const [sortBy, setSortBy] = useState<SortKey>('views');
 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -154,96 +143,64 @@ const MainStoresPage: React.FC = () => {
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  /** 더미 스토어 생성 */
-  const generateDummyStores = useCallback((count: number, startId: number) => {
-    const MAIN_VALUES = categoryOptions.filter((c) => c.value !== "all").map((c) => c.value);
-    const SUB_LOOKUP: Record<string, string[]> = {};
-    categoryOptions.forEach((c) => {
-      if (c.value !== "all") {
-        SUB_LOOKUP[c.value] = c.subCategories.filter((s) => s.value !== "all").map((s) => s.value);
+  /** API 호출로 전체 스토어 불러오기 */
+  const fetchAllStores = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await legacyGet<{ status: number; message: string; data: any[] }>(
+        '/main/store/stores'
+      );
+      if (response.status === 200) {
+        const storesData = Array.isArray(response.data) ? response.data : [];
+        const mapped: Store[] = storesData.map((s, idx) => ({
+          id: String(s.storeId),
+          name: s.storeName,
+          description: s.storeDesc,
+          image: s.logoImg || `https://picsum.photos/seed/${idx}/800/800`,
+          categoriesSold: s.categoriesSold ? mapCategoriesToValue(s.categoriesSold) : [],
+          orderCount: s.orderCnt ?? 0,
+          viewCount: s.viewCnt ?? 0,
+          accentColor: s.accentColor,
+        }));
+        setAllStores(mapped);
+      } else {
+        console.error('스토어 전체 조회 실패:', response.message);
       }
-    });
-
-    const NAME_BANK = [
-      "뜰안공방",
-      "세렌디피티",
-      "숲속아틀리에",
-      "수작상점",
-      "온기그릇",
-      "봄봄마켓",
-      "한땀상회",
-      "리본리본",
-    ];
-    const DESC_BANK = [
-      "핸드메이드의 온기를 전합니다.",
-      "작지만 정성 가득한 공방입니다.",
-      "자연에서 온 재료로 만듭니다.",
-      "일상의 작은 기쁨을 전해요.",
-      "정갈한 디테일, 담백한 디자인.",
-      "환경을 생각하는 지속가능 공방.",
-      "수공예 감성을 담은 스토어.",
-      "선물하기 좋은 제품만 골랐어요.",
-    ];
-
-    const stores: Store[] = [];
-    for (let i = 0; i < count; i++) {
-      const idNum = startId + i;
-      const main = MAIN_VALUES[idNum % MAIN_VALUES.length];
-      const subs = SUB_LOOKUP[main] ?? [];
-      const sold: string[] = [];
-      const soldLen = 5 + (idNum % 6); // 5~10개
-      for (let k = 0; k < soldLen; k++) {
-        sold.push(subs.length ? subs[(idNum + k) % subs.length] : main);
-      }
-      stores.push({
-        id: `store-${idNum}`,
-        name: `${NAME_BANK[idNum % NAME_BANK.length]} ${idNum}`,
-        description:
-          DESC_BANK[idNum % DESC_BANK.length] +
-          " " +
-          "추가 설명 텍스트가 길어지는 상황을 가정합니다. 여러 줄의 콘텐츠가 들어와도 잘 보이도록 처리합니다. ".repeat(
-            (idNum % 5) + 1
-          ),
-        image: `https://picsum.photos/seed/s${idNum}/800/800`,
-        categoriesSold: [main, ...sold],
-        orderCount: Math.floor(Math.random() * 2000),
-        viewCount: Math.floor(Math.random() * 10000),
-        accentColor: PALETTE[idNum % PALETTE.length],
-      });
+    } catch (error) {
+      console.error('API 요청 실패:', error);
+      setAllStores([]);
+    } finally {
+      setLoading(false);
     }
-    return stores;
   }, []);
 
-  /** 최초 더미 데이터 로드 */
   useEffect(() => {
-    const total = generateDummyStores(TOTAL_COUNT, 1);
-    setAllStores(total);
-  }, [generateDummyStores]);
+    fetchAllStores();
+  }, [fetchAllStores]);
 
   /** 필터링 & 정렬 결과 */
   const filteredAll = useMemo(() => {
-    let data = allStores.filter((s) => {
-      const nameOk = s.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const repMain = s.categoriesSold[0]; // 첫 원소: 메인
-      const repSub = getRepresentativeCategory(s.categoriesSold.slice(1));
-      const mainOk = mainCat === "all" || repMain === mainCat;
-      const subOk = subCat === "all" || repSub === subCat;
-      return nameOk && mainOk && subOk;
-    });
+    return allStores
+      .filter((s) => {
+        const nameOk = s.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const repMain = s.categoriesSold[0] ?? 'all';
+        const repSub = getRepresentativeCategory(s.categoriesSold.slice(1));
 
-    data = [...data];
-    switch (sortBy) {
-      case "views":
-        data.sort((a, b) => b.viewCount - a.viewCount);
-        break;
-      case "orders":
-        data.sort((a, b) => b.orderCount - a.orderCount);
-        break;
-      case "name":
-        data.sort((a, b) => a.name.localeCompare(b.name, "ko"));
-        break;
-    }
-    return data;
+        const mainOk = mainCat === 'all' || repMain === mainCat;
+        const subOk = subCat === 'all' || repSub === subCat;
+
+        return nameOk && mainOk && subOk;
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'views':
+            return b.viewCount - a.viewCount;
+          case 'orders':
+            return b.orderCount - a.orderCount;
+          case 'name':
+            return a.name.localeCompare(b.name, 'ko');
+        }
+      });
   }, [allStores, searchTerm, mainCat, subCat, sortBy]);
 
   /** 페이지 적용 */
@@ -254,9 +211,14 @@ const MainStoresPage: React.FC = () => {
     setHasMore(end < filteredAll.length);
   }, [filteredAll, page]);
 
-  /** 메인/서브 카테고리 변경 시 페이지 리셋 */
+  /** 메인 카테고리 변경 시 첫 번째 서브카테고리 자동 선택 + 페이지 리셋 */
   useEffect(() => {
-    setSubCat("all");
+    const currentCategory = categoryOptions.find((c) => c.value === mainCat);
+    if (currentCategory && currentCategory.subCategories.length > 0) {
+      setSubCat(currentCategory.subCategories[0].value);
+    } else {
+      setSubCat('all');
+    }
     setPage(1);
   }, [mainCat]);
 
@@ -280,7 +242,7 @@ const MainStoresPage: React.FC = () => {
           }
         });
       },
-      { root: null, rootMargin: "0px 0px 600px 0px", threshold: 0 }
+      { root: null, rootMargin: '0px 0px 600px 0px', threshold: 0 }
     );
     io.observe(sentinelRef.current);
     return () => io.disconnect();
@@ -296,15 +258,24 @@ const MainStoresPage: React.FC = () => {
   const totalFilteredCount = filteredAll.length;
 
   /** 모바일 설명 토글 */
-  const toggleExpand = (id: string) =>
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleExpand = (id: string) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  // 서브네비게이션 클릭 핸들러 - "전체 스토어" 클릭 시 필터 초기화
+  const handleSubnavClick = (to: string) => {
+    if (to === '/main/stores') {
+      setSearchTerm('');
+      setMainCat('all');
+      setSubCat('all');
+      setPage(1);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
       <Header />
       <Mainnavbar />
       {/* 서브 네브바 자체에 여백 적용된 버전을 쓰는 경우 className 없이 사용해도 OK */}
-      <StoresSubnavbar className="mb-6 md:mb-8" />
+      <StoresSubnavbar className="mb-6 md:mb-8" onItemClick={handleSubnavClick} />
 
       {/* 🔶 240px 패딩 + 내부 1440 */}
       <div className="px-4 sm:px-6 xl:px-[240px]">
@@ -336,8 +307,8 @@ const MainStoresPage: React.FC = () => {
                   onClick={() => setMainCat(c.value)}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                     mainCat === c.value
-                      ? "bg-[#2d4739] text-white"
-                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                      ? 'bg-[#2d4739] text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                   }`}
                 >
                   {c.label}
@@ -346,7 +317,7 @@ const MainStoresPage: React.FC = () => {
             </div>
 
             {/* 서브카테고리 */}
-            {mainCat !== "all" && (subCategories?.length ?? 0) > 1 && (
+            {mainCat !== 'all' && (subCategories?.length ?? 0) > 1 && (
               <div className="flex flex-wrap gap-2">
                 {subCategories.map((s) => (
                   <button
@@ -354,8 +325,8 @@ const MainStoresPage: React.FC = () => {
                     onClick={() => setSubCat(s.value)}
                     className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
                       subCat === s.value
-                        ? "bg-[#2d4739]/10 text-[#2d4739] border border-[#2d4739]"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        ? 'bg-[#2d4739]/10 text-[#2d4739] border border-[#2d4739]'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
                     {s.label}
@@ -388,7 +359,8 @@ const MainStoresPage: React.FC = () => {
           {/* 총 개수 */}
           <div className="mb-6">
             <p className="text-gray-600">
-              총 <span className="font-semibold text-[#2d4739]">{totalFilteredCount}</span>개의 스토어
+              총 <span className="font-semibold text-[#2d4739]">{totalFilteredCount}</span>개의
+              스토어
             </p>
           </div>
 
@@ -398,14 +370,14 @@ const MainStoresPage: React.FC = () => {
               const repMain = s.categoriesSold[0];
               const repSub = getRepresentativeCategory(s.categoriesSold.slice(1));
               const isOpen = !!expanded[s.id];
-              const accent = s.accentColor || "#2d4739";
+              const accent = s.accentColor || '#2d4739';
 
               return (
                 <div
                   key={s.id}
                   onClick={() => handleStoreClick(s.id)}
                   // ✅ 커스텀 색상: CSS 변수로 주입 → hover:border-[var(--store-accent)] 사용
-                  style={{ ["--store-accent" as any]: accent }}
+                  style={{ ['--store-accent' as any]: accent }}
                   className="
                     group bg-white rounded-xl border border-gray-200 shadow-sm
                     hover:shadow-lg hover:border-[var(--store-accent)] hover:-translate-y-1
@@ -430,13 +402,15 @@ const MainStoresPage: React.FC = () => {
                     <div
                       onClick={(e) => e.stopPropagation()} // 오버레이 클릭은 카드 네비게이션 막기
                       className={[
-                        "absolute inset-0 flex",
-                        "transition-opacity duration-200",
+                        'absolute inset-0 flex',
+                        'transition-opacity duration-200',
                         // 기본(모바일 기준) 상태
-                        isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
+                        isOpen
+                          ? 'opacity-100 pointer-events-auto'
+                          : 'opacity-0 pointer-events-none',
                         // 데스크탑: hover 시 표시
-                        "md:pointer-events-none md:opacity-0 md:group-hover:opacity-100",
-                      ].join(" ")}
+                        'md:pointer-events-none md:opacity-0 md:group-hover:opacity-100',
+                      ].join(' ')}
                     >
                       {/* 반투명 배경 + 블러 */}
                       <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
@@ -462,12 +436,12 @@ const MainStoresPage: React.FC = () => {
                       {/* 아래서 위로 올라오는 느낌(모바일 시각 보강) */}
                       <div
                         className={[
-                          "absolute inset-x-0 bottom-0 h-10",
-                          "bg-gradient-to-t from-black/50 to-transparent",
-                          isOpen ? "opacity-100" : "opacity-0",
-                          "md:opacity-0",
-                          "transition-opacity duration-200",
-                        ].join(" ")}
+                          'absolute inset-x-0 bottom-0 h-10',
+                          'bg-gradient-to-t from-black/50 to-transparent',
+                          isOpen ? 'opacity-100' : 'opacity-0',
+                          'md:opacity-0',
+                          'transition-opacity duration-200',
+                        ].join(' ')}
                       />
                     </div>
                   </div>
@@ -479,20 +453,20 @@ const MainStoresPage: React.FC = () => {
                   >
                     {/* ✅ 모바일 전용: 설명 토글 버튼 (카드 본문 최상단, 작은 원형) */}
                     <div className="mb-2 md:hidden flex justify-center">
-                    <button
+                      <button
                         onClick={() => toggleExpand(s.id)}
                         className="
                         inline-flex items-center justify-center
                         w-6 h-6 rounded-full border border-gray-300 bg-white
                         text-gray-700 shadow-sm active:scale-[0.95]
                         "
-                    >
+                      >
                         {isOpen ? (
-                        <ChevronDown className="w-3.5 h-3.5" />
+                          <ChevronDown className="w-3.5 h-3.5" />
                         ) : (
-                        <ChevronUp className="w-3.5 h-3.5" />
+                          <ChevronUp className="w-3.5 h-3.5" />
                         )}
-                    </button>
+                      </button>
                     </div>
 
                     {/* 카테고리 칩 */}

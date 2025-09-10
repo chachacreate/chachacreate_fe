@@ -4,7 +4,7 @@ import type { JWTPayload } from './apiResponse';
 import { logOut } from '@src/shared/util/LegacyNavigate';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''; // 예: '/api'
-const API_LEGACY_URL = import.meta.env.VITE_API_LEGACY_URL ?? 'http://localhost:9999/legacy'; // Legacy URL
+const API_LEGACY_URL = import.meta.env.VITE_API_LEGACY_URL ?? ''; // Legacy URL
 
 // ====================== JWT helpers (Spring Boot용) ======================
 export const decodeToken = (token: string): JWTPayload | null => {

@@ -3,8 +3,9 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import { Star, ShoppingCart, CreditCard, Flag, Edit, Minus, Plus, ThumbsUp, X } from 'lucide-react';
 import { get, legacyGet } from '@src/libs/request';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import axios from 'axios';
+import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 
 interface Product {
   id: string;
@@ -14,6 +15,7 @@ interface Product {
   images: string[];
   storeName: string;
   storeId: string;
+  storeUrl?: string;
   categories: string[];
   description: string;
   rating: number;
@@ -51,8 +53,9 @@ const mapProduct = (api: any): Product => {
     price: productDetail.price ?? 0,
     thumbnailUrl: main,
     images: uniqueImages.length ? uniqueImages : main ? [main] : [],
-    storeName: productDetail.storeName ?? '',
+    storeName: productDetail.storeName ?? '뜨락상회',
     storeId: (productDetail.storeId ?? '').toString(),
+    storeUrl: productDetail.storeUrl,
     categories: [
       productDetail.typeCategoryName,
       productDetail.ucategoryName,
@@ -206,8 +209,9 @@ const MainProductsDetail = () => {
     }
   };
 
+  // 스토어 이름 클릭 시 스토어 정보 페이지로 이동
   const handleStoreClick = () => {
-    window.location.href = `/stores/${product?.storeId}`;
+    window.location.href = `/${product?.storeUrl}/info`;
   };
 
   const handleReport = () => {
@@ -356,10 +360,14 @@ const MainProductsDetail = () => {
   // 이미지 안전 접근: images가 비어있으면 thumbnailUrl 사용
   const mainImage = product.images?.[selectedImageIndex] ?? product.thumbnailUrl ?? '';
 
+  // 메인인지 경로인지 여부 체크
+  const { pathname } = useLocation();
+  const isMain = pathname.startsWith('/main');
+
   return (
     <div className="min-h-screen bg-white">
       <Header />
-      <Mainnavbar />
+      {isMain ? <Mainnavbar /> : <Storenavbar />}
       {/* 컨테이너 */}
       <div className="max-w-screen-2xl mx-auto px-4 ">
         <div className="max-w-[1440px] mx-auto py-0 sm:py-8">

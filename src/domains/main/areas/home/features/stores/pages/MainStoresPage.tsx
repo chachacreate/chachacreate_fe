@@ -15,6 +15,7 @@ type Store = {
   categoriesSold: string[];
   orderCount: number;
   viewCount: number;
+  storeUrl: string;
   /** 스토어 커스텀 색상(선택): 카드 호버 테두리/칩 컬러에 사용 */
   accentColor?: string; // 예: "#2d4739"
 };
@@ -160,6 +161,7 @@ const MainStoresPage: React.FC = () => {
           categoriesSold: s.categoriesSold ? mapCategoriesToValue(s.categoriesSold) : [],
           orderCount: s.orderCnt ?? 0,
           viewCount: s.viewCnt ?? 0,
+          storeUrl: s.storeUrl,
           accentColor: s.accentColor,
         }));
         setAllStores(mapped);
@@ -251,8 +253,8 @@ const MainStoresPage: React.FC = () => {
   const currentCategory = categoryOptions.find((c) => c.value === mainCat);
   const subCategories = currentCategory?.subCategories ?? [];
 
-  const handleStoreClick = (storeId: string) => {
-    window.location.href = `/main/stores/${storeId}`; // 필요 시 라우트에 맞게 수정
+  const handleStoreClick = (storeUrl: string) => {
+    window.location.href = `/${storeUrl}`; // 필요 시 라우트에 맞게 수정
   };
 
   const totalFilteredCount = filteredAll.length;

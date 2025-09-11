@@ -1,6 +1,7 @@
 // src/domains/main/areas/mypage/routes.ts
 import { lazy, Suspense, createElement } from "react";
 import type { RouteObject } from "react-router-dom";
+import MainMypageOrderdetail from "./pages/MainMypageOrderdetail";
 
 // ✅ lazy import (실제 파일 경로는 프로젝트 구조에 맞게 수정)
 const MainMypagePage = lazy(() => import("./pages/MainMypagePage"));
@@ -29,6 +30,7 @@ export const mypageRoutes: RouteObject[] = [
       { path: "classes", element: withSuspense(MainMypageClassesPage) },
       { path: "message", element: withSuspense(MainMypageMessagePage) },
       { path: "myreview", element: withSuspense(MainMypageMyreviewPage) },
+      { path: "orders/:orderId", element: withSuspense(MainMypageOrderdetail) },
     ],
   },
 ];

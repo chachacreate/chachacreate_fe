@@ -448,23 +448,12 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
       <Mainnavbar />
 
       {/* 모바일 상단바 */}
-      <div className="lg:hidden">
-        <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-          <div className="px-4 py-3 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => (history.length > 1 ? history.back() : (window.location.href = "/main/mypage"))}
-              className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <h1 className="text-lg font-bold text-gray-900">마이페이지</h1>
-            <div className="flex-1" />
-          </div>
-        </div>
+      <div className="lg:hidden"> 
+          <MypageSidenavbar />
 
         {/* 모바일 컨텐츠 */}
-        <div className="px-4 py-4">
+        <div className="px-4">
+          
           <Container>
             <div className="space-y-8">
               {/* 기본정보 섹션 */}

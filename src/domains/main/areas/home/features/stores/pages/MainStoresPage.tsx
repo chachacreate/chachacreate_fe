@@ -377,7 +377,7 @@ const MainStoresPage: React.FC = () => {
               return (
                 <div
                   key={s.id}
-                  onClick={() => handleStoreClick(s.id)}
+                  onClick={() => handleStoreClick(s.storeUrl)}
                   // ✅ 커스텀 색상: CSS 변수로 주입 → hover:border-[var(--store-accent)] 사용
                   style={{ ['--store-accent' as any]: accent }}
                   className="

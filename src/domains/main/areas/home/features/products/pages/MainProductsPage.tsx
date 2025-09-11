@@ -15,6 +15,7 @@ interface Product {
   orderCount: number;
   viewCount: number;
   storeName: string;
+  storeUrl: string;
 }
 
 interface FilterOption {
@@ -141,6 +142,7 @@ const MainProductsPage = () => {
       orderCount: p.saleCnt ?? 0,
       viewCount: p.viewCnt ?? 0,
       storeName: p.storeName || '뜨락상회',
+      storeUrl: p.storeUrl || 'main',
     }));
   }
 
@@ -289,8 +291,8 @@ const MainProductsPage = () => {
     return stars;
   };
 
-  const handleProductClick = (productId: string) => {
-    window.location.href = `/main/products/${productId}`;
+  const handleProductClick = (storeUrl: string, productId: string) => {
+    window.location.href = `/${storeUrl}/products/${productId}`;
   };
 
   return (
@@ -405,7 +407,7 @@ const MainProductsPage = () => {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                onClick={() => handleProductClick(String(product.id))}
+                onClick={() => handleProductClick(product.storeUrl, String(product.id))}
                 // 더 눈에 띄게: 테두리 + hover 강조 + 살짝 상승
                 className="group bg-white rounded-xl border border-gray-200 shadow-sm
                             hover:shadow-lg hover:border-[#2d4739]/40 hover:-translate-y-1

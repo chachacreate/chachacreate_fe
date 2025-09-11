@@ -1,27 +1,23 @@
-// src/domains/main/areas/mypage/pages/MainMypagePage.tsx
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+// src/domains/main/areas/mypage/pages/MypageApiSmokeTest.tsx
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { Loader2, MapPin, User, Lock, Banknote, FileText, Image as ImageIcon, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
+// 컴포넌트 imports (첫 번째 코드에서 사용된 컴포넌트들)
 import Header from "@src/shared/areas/layout/features/header/Header";
 import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
 import MypageSidenavbar from "@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar";
 
+
+// 요청 유틸 (그대로 사용)
 import { get, patch, legacyGet, legacyPost } from "@src/libs/request";
-import type { ApiResponse } from "@src/libs/apiResponse";
+import { isLoggedIn } from "@src/shared/util/jwtUtils";
 
-/* ------------------------------ Consts ------------------------------ */
-const BRAND = "#2D4739";
-const CAREER_MAX = 150;
-
-/* ------------------------------ Types ------------------------------- */
+/* ======================== Types ======================== */
 type Params = { storeUrl?: string };
 
-type LegacyEnvelope<T> = {
-  status: number;
-  message?: string;
-  data: T | null;
-};
+type LegacyEnvelope<T> = { status: number; message?: string; data: T | null };
+type ApiResponse<T> = { status: number; message: string; data: T | null };
 
 type Member = {
   memberId: number;
@@ -37,761 +33,1159 @@ type Address = {
   addressExtra?: string;
 };
 
-/** 판매자 정보(계좌/이력) */
-type SellerInfo = {
-  /** 은행 코드 (예: "004", "020" ...) */
-  bankCode: string;
-  /** 은행명 (옵션) */
-  bankName?: string;
-  /** 계좌번호 (하이픈 없이) */
-  accountNumber: string;
-  /** 예금주명 */
-  accountOwner: string;
-  /** 판매자 이력/소개 (최대 150자) */
-  careerText: string;
-  /** (옵션) 등록된 대표 이미지 URL */
-  careerImageUrl?: string | null;
+type SellerLegacy = {
+  account?: string;
+  accountBank?: string; // 은행명
+  accountOwner?: string;
+  profileInfo?: string;
+  profileImageName?: string;
 };
 
-/* ----------------------------- Helpers ------------------------------ */
+type BankVerifyResponse = {
+  bankHolderInfo?: string;
+};
+
+/* ======================== Helpers ======================== */
 function asApi<T>(env: LegacyEnvelope<T>): ApiResponse<T> {
-  return {
-    status: env.status,
-    message: env.message ?? "",
-    data: env.data as T,
-  };
+  return { status: env.status, message: env.message ?? "", data: env.data as T };
 }
 
-const isPasswordValid = (pwd: string) => {
-  const specialChars = `!"#$%&'()*+,-./:;<=>?@[\\]^_\`{|}~`;
-  const specialPattern = new RegExp("[" + specialChars.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&") + "]");
-  if (pwd.length < 8) return false;
-  if (!/[a-zA-Z]/.test(pwd)) return false;
-  if (!/[0-9]/.test(pwd)) return false;
-  if (!specialPattern.test(pwd)) return false;
-  return true;
-};
-
-/** (예시) 은행 목록 — 필요하면 서버에서 내려받도록 바꿔도 됨 */
 const BANKS = [
   { code: "004", name: "국민은행" },
   { code: "020", name: "우리은행" },
   { code: "088", name: "신한은행" },
   { code: "003", name: "기업은행" },
-  { code: "090", name: "카카오뱅크" },
+  { code: "023", name: "SC제일은행" },
   { code: "011", name: "농협은행" },
-  { code: "027", name: "씨티은행" },
+  { code: "005", name: "외환은행" },
+  { code: "090", name: "카카오뱅크" },
+  { code: "032", name: "부산은행" },
   { code: "071", name: "우체국" },
+  { code: "031", name: "대구은행" },
+  { code: "037", name: "전북은행" },
+  { code: "035", name: "제주은행" },
+  { code: "007", name: "수협은행" },
+  { code: "027", name: "씨티은행" },
+  { code: "039", name: "경남은행" },
 ];
+const bankNameByCode = (code: string) => BANKS.find(b => b.code === code)?.name ?? "";
+const bankCodeByName = (name: string) => BANKS.find(b => b.name === name)?.code ?? "";
 
-/* ---------------------------- Component ----------------------------- */
-export default function MainMypagePage() {
+/** 특수문자 포함 비밀번호 검증 (간단 버전) */
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const isPasswordValid = (pwd: string) => {
+  const special = new RegExp("[" + escapeRegExp(`!"#$%&'()*+,-./:;<=>?@[\\]^_\`{|}~`) + "]");
+  return pwd.length >= 8 && /[a-zA-Z]/.test(pwd) && /[0-9]/.test(pwd) && special.test(pwd);
+};
+
+/* ======================== Component ======================== */
+export default function MypageApiSmokeTest() {
   const { storeUrl } = useParams<Params>();
   const legacyStore = useMemo(() => storeUrl ?? "default", [storeUrl]);
 
-  // base loading
-  const [loading, setLoading] = useState(true);
-  const [addrLoading, setAddrLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // member
+  // ---- 상태 ----
   const [member, setMember] = useState<Member | null>(null);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
 
-  // address
-  const [address, setAddress] = useState<Address | null>(null);
+  // 기본정보(표시용)
+  const [nameValue, setNameValue] = useState("");
+  const [phoneValue, setPhoneValue] = useState("");
+  const [emailValue, setEmailValue] = useState("");
+
+  // 주소
   const [postNum, setPostNum] = useState("");
   const [addressRoad, setAddressRoad] = useState("");
   const [addressDetail, setAddressDetail] = useState("");
   const [addressExtra, setAddressExtra] = useState("");
 
-  // password
+  // 비밀번호 (입력만; 현비번은 절대 조회/노출 안 함)
   const [pwdCurrent, setPwdCurrent] = useState("");
   const [pwdNew, setPwdNew] = useState("");
   const [pwdNewOk, setPwdNewOk] = useState("");
+  const [showCurrentPwd, setShowCurrentPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showNewPwdOk, setShowNewPwdOk] = useState(false);
 
-  // ---------------------- Seller (계좌/이력) ----------------------
-  const [sellerLoading, setSellerLoading] = useState(false);
-  const [sellerInfo, setSellerInfo] = useState<SellerInfo | null>(null);
-  const [sellerOpen, setSellerOpen] = useState(false);
-
-  // form states for seller
+  // 판매자 계좌 정보
   const [bankCode, setBankCode] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [accountOwner, setAccountOwner] = useState(""); // 기본값: memberName
+  const [account, setAccount] = useState("");
+  const [accountOwner, setAccountOwner] = useState("");
+  const [isAccountEditing, setIsAccountEditing] = useState(false);
+  const [isAccountVerified, setIsAccountVerified] = useState(false);
+  const [savedAccountNum, setSavedAccountNum] = useState("");
+  const [savedBankCode, setSavedBankCode] = useState("");
+  const [originalSellerData, setOriginalSellerData] = useState<SellerLegacy>({});
+
+  // 이력 정보
   const [careerText, setCareerText] = useState("");
-  const [careerImage, setCareerImage] = useState<File | null>(null);
-  const [careerPreview, setCareerPreview] = useState<string | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState("");
 
-  const accountEditable = useMemo(() => !!accountNumber, [accountNumber]);
+  const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /* ------------------------ Load Member/Addr ------------------------ */
-  const fetchMemberAndAddress = useCallback(async () => {
+  /** 멤버별 주소 조회: Boot API 사용 (레거시 코드 참고) */
+  const fetchAddressByMemberId = useCallback(
+    async (memberId: number) => {
+      try {
+        const response = await get<Address>(`/api/info/memberAddress/${memberId}`);
+        if (response.status === 200 && response.data) return response.data;
+        return null;
+      } catch (error) {
+        console.error("주소 조회 실패:", error);
+        return null;
+      }
+    },
+    []
+  );
+
+  /** 계좌 인증 API 호출 (레거시: /legacy/common/bank) */
+  const verifyBankAccount = useCallback(async (bankCode: string, accountNum: string) => {
+    const clean = accountNum.replace(/[^0-9]/g, "");
+    const env = await legacyGet<LegacyEnvelope<BankVerifyResponse>>(
+      `/common/bank?bank_code=${encodeURIComponent(bankCode)}&bank_num=${encodeURIComponent(clean)}`
+    );
+    return asApi(env); // ApiResponse<BankVerifyResponse>
+  }, []);
+
+  /** 전체 불러오기: 기본정보(레거시) → 주소(Boot) → 판매자(레거시) */
+  const loadAll = useCallback(async () => {
+    if (!isLoggedIn()) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+    setLoading(true);
     try {
-      setLoading(true);
-      setError(null);
-
-      // Member (LEGACY)
-      const memberEnv = await legacyGet<LegacyEnvelope<Member>>(`/legacy/${legacyStore}/mypage`);
+      // 1) Member (LEGACY)
+      const memberEnv = await legacyGet<LegacyEnvelope<Member>>(`/${legacyStore}/mypage`);
       const memberRes = asApi(memberEnv);
       if (memberRes.status !== 200 || !memberRes.data) {
-        throw new Error(memberRes.message || "회원 정보를 불러오지 못했습니다.");
+        throw new Error(memberRes.message || "회원 정보 조회 실패");
       }
       const m = memberRes.data;
       setMember(m);
-      setName(m.memberName ?? "");
-      setPhone(m.memberPhone ?? "");
-      setEmail(m.memberEmail ?? "");
+      setNameValue(m.memberName ?? "");
+      setPhoneValue(m.memberPhone ?? "");
+      setEmailValue(m.memberEmail ?? "");
 
-      // Address (LEGACY)
-      if (m.memberId) {
-        setAddrLoading(true);
-        const addrEnv = await legacyGet<LegacyEnvelope<Address>>(
-          `http://localhost:8888/api/info/memberAddress/${m.memberId}`
-        );
-        const addrRes = asApi(addrEnv);
-        if (addrRes.status === 200 && addrRes.data) {
-          const a = addrRes.data;
-          setAddress(a);
-          setPostNum(a.postNum ?? "");
-          setAddressRoad(a.addressRoad ?? "");
-          setAddressDetail(a.addressDetail ?? "");
-          setAddressExtra(a.addressExtra ?? "");
-        } else {
-          setAddress(null);
-          setPostNum("");
-          setAddressRoad("");
-          setAddressDetail("");
-          setAddressExtra("");
-        }
-      }
-
-      // Seller Info (LEGACY)
-      await fetchSellerInfo();
-    } catch (e: any) {
-      setError(e?.message ?? "정보를 불러오는 중 오류가 발생했습니다.");
-    } finally {
-      setAddrLoading(false);
-      setLoading(false);
-    }
-  }, [legacyStore]);
-
-  /* ------------------------- Load Seller Info ----------------------- */
-  const fetchSellerInfo = useCallback(async () => {
-    try {
-      setSellerLoading(true);
-      // ⚠️ 실제 레거시 조회 엔드포인트로 교체
-      const env = await legacyGet<LegacyEnvelope<SellerInfo>>(
-        `/legacy/${legacyStore}/mypage/seller`
-      );
-      const res = asApi(env);
-      if (res.status === 200 && res.data) {
-        setSellerInfo(res.data);
-        setBankCode(res.data.bankCode ?? "");
-        setAccountNumber(res.data.accountNumber ?? "");
-        setAccountOwner(res.data.accountOwner ?? "");
-        setCareerText(res.data.careerText ?? "");
-        setCareerPreview(res.data.careerImageUrl || null);
+      // 2) Address (Boot)
+      const a = await fetchAddressByMemberId(m.memberId);
+      if (a) {
+        setPostNum(a.postNum ?? "");
+        setAddressRoad(a.addressRoad ?? "");
+        setAddressDetail(a.addressDetail ?? "");
+        setAddressExtra(a.addressExtra ?? "");
       } else {
-        // 최초 미등록 상태: 예금주는 기본값으로 회원명
-        // (없으면 비워둬도 됨)
-        setSellerInfo(null);
-        setAccountOwner((member?.memberName ?? "").toString());
+        setPostNum("");
+        setAddressRoad("");
+        setAddressDetail("");
+        setAddressExtra("");
       }
-    } catch (err) {
-      // 미등록이면 404일 수 있음 → 조용히 무시
-      setSellerInfo(null);
-      if (member?.memberName) setAccountOwner(member.memberName);
-    } finally {
-      setSellerLoading(false);
-    }
-  }, [legacyStore, member?.memberName]);
 
-  useEffect(() => {
-    fetchMemberAndAddress();
-  }, [fetchMemberAndAddress]);
-
-  /* --------------------------- Postcode ----------------------------- */
-  const openDaumPostcode = () => {
-    const win: any = window as any;
-    if (!win.daum || !win.daum.Postcode) {
-      alert("주소 검색 스크립트를 불러올 수 없습니다.");
-      return;
-    }
-    new win.daum.Postcode({
-      oncomplete: (data: any) => {
-        let addr = "";
-        let extraAddr = "";
-
-        if (data.userSelectedType === "R") addr = data.roadAddress;
-        else addr = data.jibunAddress;
-
-        if (data.userSelectedType === "R") {
-          if (data.bname !== "" && /[동|로|가]$/g.test(data.bname)) extraAddr += data.bname;
-          if (data.buildingName !== "" && data.apartment === "Y") {
-            extraAddr += (extraAddr !== "" ? ", " + data.buildingName : data.buildingName);
-          }
-          if (extraAddr !== "") extraAddr = " (" + extraAddr + ")";
-        }
-
-        setPostNum(data.zonecode || "");
-        setAddressRoad(addr || "");
-        setAddressExtra(extraAddr || "");
-        setTimeout(() => {
-          document.querySelector<HTMLInputElement>("#address-detail-input")?.focus();
-        }, 10);
-      },
-    }).open();
-  };
-
-  /* -------------------------- Save (Top) ---------------------------- */
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!member) {
-      alert("회원 정보를 불러오지 못했습니다.");
-      return;
-    }
-
-    const isPasswordChanged = !!pwdNew;
-    const isAddressChanged =
-      postNum !== (address?.postNum ?? "") ||
-      addressRoad !== (address?.addressRoad ?? "") ||
-      addressDetail !== (address?.addressDetail ?? "") ||
-      (addressExtra || "") !== (address?.addressExtra || "");
-
-    // 비밀번호
-    if (isPasswordChanged) {
-      if (!isPasswordValid(pwdNew)) {
-        alert("비밀번호는 8자 이상이며 영문, 숫자, 특수문자를 포함해야 합니다.");
-        return;
-      }
-      if (pwdNew !== pwdNewOk) {
-        alert("새 비밀번호와 확인이 일치하지 않습니다.");
-        return;
-      }
-      const body = {
-        currentPassword: pwdCurrent,
-        newPassword: pwdNew,
-        newPasswordConfirm: pwdNewOk,
-      };
+      // 3) Seller (LEGACY)
       try {
-        const resp = await patch<unknown>("/api/mypage/changepwd", body);
-        if (resp.status === 200) {
-          alert("비밀번호가 성공적으로 수정되었습니다.");
-          setPwdCurrent("");
-          setPwdNew("");
-          setPwdNewOk("");
-        } else {
-          alert(`비밀번호 수정 실패: ${resp.message ?? "오류"}`);
-          return;
-        }
-      } catch (err: any) {
-        alert(`비밀번호 수정 중 오류가 발생했습니다: ${err?.message ?? "알 수 없는 오류"}`);
-        return;
-      }
-    }
-
-    // 주소
-    if (isAddressChanged) {
-      if (!postNum || !addressRoad) {
-        alert("우편번호와 주소를 모두 입력해주세요.");
-        return;
-      }
-      const addrPayload: Address = {
-        postNum,
-        addressRoad,
-        addressDetail,
-        addressExtra,
-      };
-      try {
-        const env = await legacyPost<LegacyEnvelope<unknown>>(
-          `/legacy/${legacyStore}/mypage/order/addr/update`,
-          addrPayload
-        );
-        const resp = asApi(env);
-        if (resp.status === 200) {
-          alert("주소가 성공적으로 수정되었습니다.");
-          setAddress(addrPayload);
-        } else {
-          alert(`주소 수정 실패: ${resp.message ?? "오류"}`);
-        }
-      } catch (err: any) {
-        alert(`주소 수정 중 오류가 발생했습니다: ${err?.message ?? "알 수 없는 오류"}`);
-      }
-    }
-  };
-
-  /* ----------------------- Seller Save/Upload ----------------------- */
-  const onClickAccountVerify = async () => {
-    if (!bankCode || !accountNumber || !accountOwner) {
-      alert("은행, 계좌번호, 예금주명을 모두 입력해주세요.");
-      return;
-    }
-    // ⚠️ 실계좌 인증 API가 별도로 있으면 여기서 호출하세요.
-    alert("계좌 형식이 유효합니다. (실제 인증 API 연동 필요)");
-  };
-
-  const onClickAccountEdit = () => {
-    // 현 구조에서는 인풋이 항상 수정 가능하므로 별도 토글 없어도 됨
-    // 필요 시 상태를 두고 disable/enable 전환 가능
-    alert("계좌 정보를 수정할 수 있습니다.");
-  };
-
-  const onChangeCareerFile = (f: File | null) => {
-    setCareerImage(f);
-    if (f) {
-      const reader = new FileReader();
-      reader.onload = () => setCareerPreview(reader.result as string);
-      reader.readAsDataURL(f);
-    } else {
-      setCareerPreview(null);
-    }
-  };
-
-  const saveSellerAll = async () => {
-    if (careerText.length > CAREER_MAX) {
-      alert(`이력 설명은 최대 ${CAREER_MAX}자까지만 입력 가능합니다.`);
-      return;
-    }
-    if (!bankCode || !accountNumber || !accountOwner) {
-      alert("은행/계좌/예금주를 확인해주세요.");
-      return;
-    }
-
-    // 1) 이미지 업로드 (선택)
-    let uploadedImageUrl: string | undefined = sellerInfo?.careerImageUrl || undefined;
-    if (careerImage) {
-      try {
-        const form = new FormData();
-        form.append("file", careerImage);
-        // ⚠️ 실제 업로드 엔드포인트로 교체
-        const env = await legacyPost<LegacyEnvelope<{ url: string }>>(
-          `/legacy/${legacyStore}/mypage/seller/career-image`,
-          form as any
-        );
+        const env = await legacyGet<LegacyEnvelope<SellerLegacy>>(`/main/sell/info`);
         const res = asApi(env);
-        if (res.status === 200 && res.data?.url) {
-          uploadedImageUrl = res.data.url;
+        if (res.status === 200 && res.data) {
+          const s = res.data;
+          setAccount(s.account ?? "");
+          setBankCode(bankCodeByName(s.accountBank ?? ""));
+          setAccountOwner(s.accountOwner ?? m.memberName ?? "");
+          setCareerText(s.profileInfo ?? "");
+          if (s.profileImageName) {
+            setProfileImagePreview(`/resources/profileImages/${s.profileImageName}`);
+          } else {
+            setProfileImagePreview("");
+          }
+          // 저장 기준값
+          setSavedAccountNum(s.account ?? "");
+          setSavedBankCode(bankCodeByName(s.accountBank ?? ""));
+          setOriginalSellerData(s);
+          setIsAccountVerified(true);
+          setIsAccountEditing(false);
         } else {
-          alert("이미지 업로드에 실패했습니다. (선택 사항이므로 계속 진행 가능합니다)");
+          // 신규 등록 모드
+          setAccount("");
+          setBankCode("");
+          setAccountOwner(m.memberName ?? "");
+          setCareerText("");
+          setProfileImagePreview("");
+          setSavedAccountNum("");
+          setSavedBankCode("");
+          setOriginalSellerData({});
+          setIsAccountVerified(false);
+          setIsAccountEditing(true);
         }
       } catch {
-        alert("이미지 업로드 중 오류가 발생했습니다. (선택 사항이므로 계속 진행 가능합니다)");
+        // 신규 등록 모드
+        setAccount("");
+        setBankCode("");
+        setAccountOwner(m.memberName ?? "");
+        setCareerText("");
+        setProfileImagePreview("");
+        setSavedAccountNum("");
+        setSavedBankCode("");
+        setOriginalSellerData({});
+        setIsAccountVerified(false);
+        setIsAccountEditing(true);
       }
+    } catch (e: any) {
+      alert(e?.message || "조회 중 오류");
+    } finally {
+      setLoading(false);
+    }
+  }, [legacyStore, fetchAddressByMemberId]);
+
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
+  /* ======================== Actions ======================== */
+
+  // 주소 저장: Boot PATCH (/api/mypage/changeaddr)
+  const saveAddress = async () => {
+    if (!member) return alert("member 없음");
+    const addressData = { postNum, addressRoad, addressDetail, addressExtra };
+    try {
+      const result = await patch<any>(`/mypage/changeaddr`, addressData);
+      if (result.status === 200) {
+        alert("주소 저장 성공");
+      } else {
+        alert("주소 저장 실패");
+      }
+    } catch (err: any) {
+      console.error("[saveAddress] error:", err);
+      alert("api 호출 실패");
+    }
+  };
+
+  // 📌 우편번호 팝업 열기
+  const openPostcode = () => {
+    if (typeof window === "undefined") return;
+
+    const run = () => {
+      new window.daum!.Postcode({
+        oncomplete: (data: any) => {
+          // 기본 필드
+          const zonecode = data.zonecode || "";
+          const road = data.roadAddress || "";
+          const jibun = data.jibunAddress || "";
+
+          // 참고항목(동/건물명 등) 조합
+          const extras: string[] = [];
+          if (data.bname) extras.push(data.bname);
+          if (data.buildingName) extras.push(data.buildingName);
+          const extraText = extras.length ? `(${extras.join(", ")})` : "";
+
+          // 상태 반영
+          setPostNum(zonecode);
+          setAddressRoad(road || jibun);       // 기본은 도로명, 없으면 지번
+          setAddressExtra(extraText);
+          setAddressDetail("");                // 상세는 사용자가 직접 입력
+        },
+      }).open();
+    };
+
+    // 일부 환경은 load 래핑 필요
+    if (window.daum?.postcode?.load) window.daum.postcode.load(run);
+    else if (window.daum?.Postcode) run();
+    else alert("우편번호 스크립트가 아직 로드되지 않았습니다.");
+  };
+
+  // 비밀번호 변경: Boot PATCH (/api/mypage/changepwd)
+  const changePassword = async () => {
+    if (!pwdCurrent) return alert("현재 비밀번호를 입력하세요.");
+    if (!pwdNew) return alert("새 비밀번호를 입력하세요.");
+    if (!isPasswordValid(pwdNew)) return alert("비밀번호는 8자 이상, 영문/숫자/특수문자 포함");
+    if (pwdNew !== pwdNewOk) return alert("비밀번호 확인이 일치하지 않습니다.");
+    const payload = {
+      currentPassword: pwdCurrent,
+      newPassword: pwdNew,
+      newPasswordConfirm: pwdNewOk,
+    };
+    try {
+      const result = await patch<string>(`/mypage/changepwd`, payload);
+      alert(result as unknown as string || "비밀번호 변경 성공");
+      setPwdCurrent("");
+      setPwdNew("");
+      setPwdNewOk("");
+    } catch (err: any) {
+      console.error("[changePassword] error:", err);
+      alert(err?.message || "비밀번호 변경 실패");
+    }
+  };
+
+  // 계좌 인증
+  const handleAccountVerify = async () => {
+    if (!bankCode || !account) {
+      alert("은행과 계좌번호를 모두 입력해주세요.");
+      return;
+    }
+    try {
+      const res = await verifyBankAccount(bankCode, account);
+      const holder = res.data?.bankHolderInfo;
+      if (holder) {
+        setAccountOwner(holder);
+        const loginName = member?.memberName?.trim() ?? "";
+        if (loginName && holder.trim() === loginName) {
+          setIsAccountVerified(true);
+          setIsAccountEditing(false);
+          alert("계좌 인증이 완료되었습니다.");
+        } else {
+          setIsAccountVerified(false);
+          alert("예금주명이 로그인 사용자와 다릅니다.");
+        }
+      } else {
+        alert("예금주 정보를 찾을 수 없습니다.");
+      }
+    } catch (err: any) {
+      console.error("[handleAccountVerify] error:", err);
+      alert("예금주 조회 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 계좌 수정 모드 활성화
+  const handleAccountEdit = () => {
+    setIsAccountEditing(true);
+    setIsAccountVerified(false);
+  };
+
+  // 계좌 수정 취소
+  const handleAccountCancel = () => {
+    setAccount(savedAccountNum);
+    setBankCode(savedBankCode);
+    setAccountOwner(originalSellerData.accountOwner ?? member?.memberName ?? "");
+    setIsAccountEditing(false);
+    setIsAccountVerified(!!savedAccountNum);
+  };
+
+  // 이미지 파일 선택 처리 (미리보기만)
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = ev => setProfileImagePreview(ev.target?.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // 이미지 삭제
+  const handleImageRemove = () => {
+    setProfileImagePreview("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  // 판매자 정보 저장 (계좌 + 이력)
+  const saveSeller = async () => {
+    const currentAccountNum = account;
+    const currentBankCode = bankCode;
+    const currentBankName = bankNameByCode(bankCode);
+
+    // 계좌/은행 변경되었는데 인증 안했으면 막기
+    if (
+      (currentAccountNum !== savedAccountNum || currentBankCode !== savedBankCode) &&
+      !isAccountVerified
+    ) {
+      alert("계좌 인증을 먼저 완료해주세요.");
+      return;
+    }
+    if (!currentBankName) {
+      alert("은행을 선택하세요.");
+      return;
+    }
+    if (!currentAccountNum) {
+      alert("계좌번호를 입력하세요.");
+      return;
+    }
+    if (!accountOwner) {
+      alert("예금주명을 확인할 수 없습니다. 계좌 인증을 진행하세요.");
+      return;
     }
 
-    // 2) 판매자 정보 저장
-    const payload: SellerInfo = {
-      bankCode,
-      bankName: BANKS.find((b) => b.code === bankCode)?.name,
-      accountNumber,
-      accountOwner,
-      careerText,
-      careerImageUrl: uploadedImageUrl ?? null,
+    const payload = {
+      account: currentAccountNum,
+      accountBank: currentBankName, // 서버는 '은행명' 기대
+      accountOwner,                 // ✅ 인증으로 채워진 예금주명 저장
+      profileInfo: careerText,
     };
 
     try {
-      // ⚠️ 실제 저장 엔드포인트로 교체
-      const env = await legacyPost<LegacyEnvelope<unknown>>(
-        `/legacy/${legacyStore}/mypage/seller`,
-        payload
-      );
+      const env = await legacyPost<LegacyEnvelope<unknown>>(`/main/sell/info`, payload);
       const res = asApi(env);
       if (res.status === 200) {
-        alert("판매자 정보가 저장되었습니다.");
-        setSellerInfo(payload);
+        alert("판매자 정보 저장 성공");
+        // 저장 기준값 업데이트
+        setSavedAccountNum(currentAccountNum);
+        setSavedBankCode(currentBankCode);
+        await loadAll();
       } else {
-        alert(res.message || "판매자 정보 저장에 실패했습니다.");
+        alert(res.message || "판매자 정보 저장 실패");
       }
     } catch (err: any) {
-      alert(`판매자 정보 저장 중 오류가 발생했습니다: ${err?.message ?? "알 수 없는 오류"}`);
+      console.error("[saveSeller] error:", err);
+      alert(err?.message || "판매자 정보 저장 실패");
     }
   };
 
-  /* ----------------------------- UI States -------------------------- */
-  if (loading) {
-    return (
-      <div className="min-h-screen font-jua" style={{ background: "linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)" }}>
-        <Header />
-        <Mainnavbar />
-        <MypageSidenavbar>
-          <div className="flex items-center justify-center h-96">
-            <div className="flex items-center gap-2 text-gray-500">
-              <Loader2 className="w-6 h-6 animate-spin" />
-              불러오는 중…
-            </div>
-          </div>
-        </MypageSidenavbar>
+  /** 단일 컨테이너 컴포넌트: 검색~주문내역까지, 섹션 내부 분리 + 하단 패딩 */
+  const Container = ({ children }: { children: React.ReactNode }) => (
+    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden mb-6 pb-6">
+      <div className="bg-gradient-to-r from-[#2d4739] to-gray-800 px-6 md:px-8 py-5 md:py-6">
+        <h2 className="text-xl md:text-2xl text-white mb-1.5 md:mb-2">마이 정보 수정</h2>
+        <p className="text-gray-200 text-xs md:text-sm">나의 정보를 확인하고 수정하세요</p>
       </div>
-    );
-  }
+      <div className="p-4 md:p-6">{children}</div>
+      {/* ⬇️ 컨테이너 자체 하단 패딩 확보 */}
+      <div className="px-4 md:px-6 pt-2" />
+    </div>
+  );
 
-  if (error) {
-    return (
-      <div className="min-h-screen font-jua" style={{ background: "linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)" }}>
-        <Header />
-        <Mainnavbar />
-        <MypageSidenavbar>
-          <div className="p-6">
-            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-700">{error}</div>
-          </div>
-        </MypageSidenavbar>
-      </div>
-    );
-  }
+  // 기존 state 선언 부분에 추가
+const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
 
-  /* -------------------------------- View ---------------------------- */
+  /* ======================== JSX Return ======================== */
   return (
     <div className="min-h-screen font-jua" style={{ background: "linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)" }}>
       <Header />
       <Mainnavbar />
 
-      <MypageSidenavbar>
-        <div className="mx-auto w-full max-w-[1440px]">
-          <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-            {/* 헤더 */}
-            <div className="bg-gradient-to-r from-[#2d4739] to-gray-800 px-6 md:px-8 py-5 md:py-6">
-              <h2 className="text-xl md:text-2xl text-white mb-1.5 md:mb-2">마이페이지</h2>
-              <p className="text-gray-200 text-xs md:text-sm">개인정보와 주소, 판매자 정보를 안전하게 관리하세요</p>
-            </div>
+      {/* 모바일 상단바 */}
+      <div className="lg:hidden">
+        <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+          <div className="px-4 py-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => (history.length > 1 ? history.back() : (window.location.href = "/main/mypage"))}
+              className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-lg font-bold text-gray-900">마이페이지</h1>
+            <div className="flex-1" />
+          </div>
+        </div>
 
-            {/* 본문 */}
-            <form className="p-6 md:p-8 space-y-8" onSubmit={onSubmit}>
-              {/* 기본 정보 */}
-              <section className="bg-gray-50 rounded-xl p-5 md:p-6 border border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <User className="w-5 h-5 text-[#2d4739]" />
-                  기본 정보
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="block text-sm text-gray-700">이름</label>
-                    <input value={name} disabled readOnly className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-100 focus:outline-none" />
+        {/* 모바일 컨텐츠 */}
+        <div className="px-4 py-4">
+          <Container>
+            <div className="space-y-8">
+              {/* 기본정보 섹션 */}
+              <section className="bg-white rounded-xl border border-gray-200 shadow-lg p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold text-gray-900">기본정보</h3>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">이름</label>
+                    <input 
+                      value={nameValue} 
+                      readOnly 
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+                    />
                   </div>
-
-                  <div className="space-y-2">
-                    <label className="block text-sm text-gray-700">이메일</label>
-                    <input value={email} disabled readOnly className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-100 focus:outline-none" />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">이메일</label>
+                    <input 
+                      value={emailValue} 
+                      readOnly 
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+                    />
                   </div>
-
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="block text-sm text-gray-700">연락처</label>
-                    <input value={phone} disabled readOnly className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-100 focus:outline-none" />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">연락처</label>
+                    <input 
+                      value={phoneValue} 
+                      readOnly 
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+                    />
                   </div>
                 </div>
               </section>
 
-              {/* 비밀번호 변경 */}
-              <section className="bg-blue-50 rounded-xl p-5 md:p-6 border border-blue-100">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Lock className="w-5 h-5 text-blue-600" />
-                  비밀번호 변경
-                </h3>
-
+              {/* 주소 섹션 */}
+              <section className="bg-white rounded-xl border border-gray-200 shadow-lg p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-6">주소 정보</h3>
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="block text-sm text-gray-700">현재 비밀번호</label>
-                    <input
-                      type="password"
-                      value={pwdCurrent}
-                      onChange={(e) => setPwdCurrent(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="현재 비밀번호를 입력하세요"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="block text-sm text-gray-700">새 비밀번호</label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">우편번호</label>
+                    <div className="flex gap-2">
                       <input
-                        type="password"
-                        value={pwdNew}
-                        onChange={(e) => setPwdNew(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                        placeholder="새 비밀번호"
+                        placeholder="우편번호"
+                        value={postNum}
+                        readOnly
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50"
                       />
-                      {pwdNew.length > 0 && !isPasswordValid(pwdNew) && (
-                        <p className="text-xs text-rose-600 mt-1">8자 이상, 영문/숫자/특수문자를 포함해야 합니다.</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="block text-sm text-gray-700">새 비밀번호 확인</label>
-                      <input
-                        type="password"
-                        value={pwdNewOk}
-                        onChange={(e) => setPwdNewOk(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                        placeholder="비밀번호 확인"
-                      />
-                      {pwdNewOk.length > 0 && pwdNew !== pwdNewOk && (
-                        <p className="text-xs text-rose-600 mt-1">비밀번호가 일치하지 않습니다.</p>
-                      )}
+                      <button
+                        type="button"
+                        onClick={openPostcode}
+                        className="px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] whitespace-nowrap transition-colors"
+                      >
+                        찾기
+                      </button>
                     </div>
                   </div>
-                </div>
-              </section>
-
-              {/* 주소 정보 */}
-              <section className="bg-green-50 rounded-xl p-5 md:p-6 border border-green-100">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-green-600" />
-                  주소 정보
-                </h3>
-
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">도로명 주소</label>
                     <input
-                      value={postNum}
-                      onChange={(e) => setPostNum(e.target.value)}
-                      placeholder="우편번호"
-                      className="px-4 py-3 border border-gray-200 rounded-lg bg-gray-100 focus:outline-none sm:w-[160px]"
-                      disabled={addrLoading}
-                    />
-                    <button
-                      type="button"
-                      onClick={openDaumPostcode}
-                      className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition font-medium"
-                      disabled={addrLoading}
-                    >
-                      주소 검색
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="block text-sm text-gray-700">도로명 주소</label>
-                    <input
+                      placeholder="도로명 주소"
                       value={addressRoad}
                       onChange={(e) => setAddressRoad(e.target.value)}
-                      placeholder="주소"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                      disabled={addrLoading}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
                     />
                   </div>
-
-                  <div className="space-y-2">
-                    <label className="block text-sm text-gray-700">상세 주소</label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">상세 주소</label>
                     <input
-                      id="address-detail-input"
+                      placeholder="상세 주소"
                       value={addressDetail}
                       onChange={(e) => setAddressDetail(e.target.value)}
-                      placeholder="상세주소"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                      disabled={addrLoading}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
                     />
-                    {addressExtra && <p className="text-xs text-gray-500">참고항목: {addressExtra}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">참고 항목</label>
+                    <input
+                      placeholder="참고 항목 (예: (동, 아파트))"
+                      value={addressExtra}
+                      onChange={(e) => setAddressExtra(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
+                    />
                   </div>
                 </div>
+                <button 
+                  onClick={saveAddress} 
+                  className="w-full mt-6 px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
+                >
+                  주소 저장
+                </button>
               </section>
 
-              {/* =================== 판매자 정보 관리 (추가) =================== */}
-              <section className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                {/* 토글 헤더 */}
-                <button
-                  type="button"
-                  onClick={() => setSellerOpen((v) => !v)}
-                  className="w-full flex items-center justify-between px-6 py-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white"
-                >
-                  <div className="flex items-center gap-2">
-                    <Banknote className="w-5 h-5" />
-                    <span className="font-semibold">판매자 정보 관리</span>
+              {/* 비밀번호 변경 섹션 */}
+              <section className="bg-white rounded-xl border border-gray-200 shadow-lg p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-6">비밀번호 변경</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">현재 비밀번호</label>
+                    <div className="relative">
+                      <input
+                        type={showCurrentPwd ? "text" : "password"}
+                        placeholder="현재 비밀번호"
+                        value={pwdCurrent}
+                        onChange={(e) => setPwdCurrent(e.target.value)}
+                        className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPwd(!showCurrentPwd)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showCurrentPwd ? "🙈" : "👁️"}
+                      </button>
+                    </div>
                   </div>
-                  {sellerOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">새 비밀번호</label>
+                    <div className="relative">
+                      <input
+                        type={showNewPwd ? "text" : "password"}
+                        placeholder="새 비밀번호"
+                        value={pwdNew}
+                        onChange={(e) => setPwdNew(e.target.value)}
+                        className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPwd(!showNewPwd)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showNewPwd ? "🙈" : "👁️"}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">새 비밀번호 확인</label>
+                    <div className="relative">
+                      <input
+                        type={showNewPwdOk ? "text" : "password"}
+                        placeholder="새 비밀번호 확인"
+                        value={pwdNewOk}
+                        onChange={(e) => setPwdNewOk(e.target.value)}
+                        className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPwdOk(!showNewPwdOk)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showNewPwdOk ? "🙈" : "👁️"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  onClick={changePassword} 
+                  className="w-full mt-6 px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
+                >
+                  비밀번호 변경
+                </button>
+              </section>
+
+              {/* 판매자 정보 토글 섹션 */}
+              <section className="bg-white rounded-xl border border-gray-200 shadow-lg p-6">
+                <button
+                  onClick={() => setIsSellerInfoVisible(!isSellerInfoVisible)}
+                  className="w-full flex items-center justify-between text-lg font-bold text-gray-900 hover:text-[#2d4739] transition-colors"
+                >
+                  <span>판매자 정보 확인하기</span>
+                  <span className={`transform transition-transform ${isSellerInfoVisible ? 'rotate-180' : ''}`}>
+                    ↓
+                  </span>
                 </button>
 
-                {sellerOpen && (
-                  <div className="p-6 space-y-8">
-                    {/* 계좌 등록 */}
-                    <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                      <div className="px-5 py-4 bg-blue-600 text-white flex items-center gap-2">
-                        <Banknote className="w-5 h-5" />
-                        <span className="font-semibold">계좌 등록하기</span>
-                      </div>
-
-                      <div className="p-5 space-y-6">
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">예금주명</label>
+                {isSellerInfoVisible && (
+                  <div className="mt-6 space-y-8">
+                    {/* 계좌 정보 */}
+                    <div className="border-t border-gray-100 pt-6">
+                      <h3 className="text-lg font-bold text-gray-900 mb-6">계좌 정보</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">은행</label>
+                          {isAccountEditing ? (
+                            <select
+                              value={bankCode}
+                              onChange={(e) => setBankCode(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
+                            >
+                              <option value="">선택</option>
+                              {BANKS.map(b => (
+                                <option key={b.code} value={b.code}>{b.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              value={bankNameByCode(bankCode)}
+                              readOnly
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 font-medium"
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">계좌번호</label>
+                          <input
+                            placeholder="계좌번호"
+                            value={account}
+                            onChange={(e) => setAccount(e.target.value.replace(/[^0-9-]/g, ""))}
+                            disabled={!isAccountEditing}
+                            className={`w-full px-3 py-2 border border-gray-200 rounded-lg ${
+                              isAccountEditing 
+                                ? "focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]" 
+                                : "bg-gray-50 text-gray-600"
+                            }`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">예금주명 (인증으로만 변경됨)</label>
                           <input
                             value={accountOwner}
-                            onChange={(e) => setAccountOwner(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 focus:outline-none"
-                            placeholder="예금주명"
+                            readOnly
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
                           />
                         </div>
+                      </div>
 
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">은행 선택</label>
-                          <select
-                            value={bankCode}
-                            onChange={(e) => setBankCode(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="">은행을 선택해주세요</option>
-                            {BANKS.map((b) => (
-                              <option key={b.code} value={b.code}>
-                                {b.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">계좌번호</label>
-                          <input
-                            value={accountNumber}
-                            onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, ""))}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="계좌번호 (-없이 입력)"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={onClickAccountVerify}
-                              className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition font-medium"
+                      <div className="flex gap-2 mt-6">
+                        {isAccountEditing ? (
+                          <>
+                            <button 
+                              onClick={handleAccountVerify} 
+                              className="flex-1 px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
                             >
                               계좌 인증
                             </button>
-                            {accountEditable && (
-                              <button
-                                type="button"
-                                onClick={onClickAccountEdit}
-                                className="px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 transition font-medium"
+                            {savedAccountNum && (
+                              <button 
+                                onClick={handleAccountCancel} 
+                                className="flex-1 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
                               >
-                                수정하기
+                                취소
                               </button>
                             )}
-                          </div>
-                        </div>
+                          </>
+                        ) : (
+                          <button 
+                            onClick={handleAccountEdit} 
+                            className="w-full px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
+                          >
+                            수정
+                          </button>
+                        )}
                       </div>
-                    </section>
 
-                    {/* 나의 이력 등록 */}
-                    <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                      <div className="px-5 py-4 bg-green-600 text-white flex items-center gap-2">
-                        <FileText className="w-5 h-5" />
-                        <span className="font-semibold">나의 이력 등록하기</span>
-                      </div>
-
-                      <div className="p-5 space-y-5">
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">이력 설명</label>
-                          <textarea
-                            rows={4}
-                            value={careerText}
-                            onChange={(e) => setCareerText(e.target.value.slice(0, CAREER_MAX))}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-                            placeholder="판매자님의 경력과 전문분야를 소개해주세요 (최대 150자)"
-                          />
-                          <div className="text-sm text-gray-500 text-right">
-                            {careerText.length}/{CAREER_MAX}
-                          </div>
+                      {isAccountVerified && (
+                        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg shadow-sm">
+                          <div className="text-green-700 text-sm font-medium">✓ 계좌 인증 완료</div>
                         </div>
+                      )}
+                    </div>
 
-                        {/* (선택) 이미지 업로드 */}
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">대표 이미지 (선택)</label>
-                          <div className="flex items-center gap-3">
-                            <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer hover:bg-gray-50">
-                              <ImageIcon className="w-4 h-4 text-gray-600" />
-                              <span>이미지 선택</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => onChangeCareerFile(e.target.files?.[0] ?? null)}
-                              />
-                            </label>
-                            {careerPreview && (
+                    {/* 나의 이력 */}
+                    <div className="border-t border-gray-100 pt-6">
+                      <h3 className="text-lg font-bold text-gray-900 mb-6">나의 이력</h3>
+
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">프로필 이미지</label>
+                          <div
+                            className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm"
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            {profileImagePreview ? (
                               <img
-                                src={careerPreview}
-                                alt="preview"
-                                className="w-16 h-16 rounded-lg border object-cover"
+                                src={profileImagePreview}
+                                alt="프로필 미리보기"
+                                className="w-full h-full object-cover rounded-lg"
                               />
+                            ) : (
+                              <div className="text-center text-gray-500">
+                                <div className="text-2xl mb-1">+</div>
+                                <div className="text-xs">이미지 선택</div>
+                              </div>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500">jpg, png, gif 권장</p>
+
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            className="hidden"
+                          />
+
+                          {profileImagePreview && (
+                            <button
+                              onClick={handleImageRemove}
+                              className="mt-2 px-3 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 transition-colors"
+                            >
+                              이미지 삭제
+                            </button>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">나의 이력 (최대 150자)</label>
+                          <textarea
+                            placeholder="나의 이력을 입력해주세요..."
+                            rows={5}
+                            value={careerText}
+                            onChange={(e) => setCareerText(e.target.value.slice(0, 150))}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739] resize-none"
+                          />
+                          <div className="text-xs text-gray-500 mt-1 text-right">
+                            {careerText.length}/150
+                          </div>
                         </div>
                       </div>
-                    </section>
 
-                    {/* 판매자 저장 액션 */}
-                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                      <button
-                        type="button"
-                        onClick={saveSellerAll}
-                        className="flex-1 sm:flex-none px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition font-semibold shadow"
+                      <button 
+                        onClick={saveSeller} 
+                        className="w-full mt-6 px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
                       >
-                        모든 정보 저장
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // 폼 초기화(서버값 기준)
-                          if (sellerInfo) {
-                            setBankCode(sellerInfo.bankCode ?? "");
-                            setAccountNumber(sellerInfo.accountNumber ?? "");
-                            setAccountOwner(sellerInfo.accountOwner ?? "");
-                            setCareerText(sellerInfo.careerText ?? "");
-                            setCareerPreview(sellerInfo.careerImageUrl || null);
-                            setCareerImage(null);
-                          } else {
-                            setBankCode("");
-                            setAccountNumber("");
-                            setAccountOwner(member?.memberName ?? "");
-                            setCareerText("");
-                            setCareerPreview(null);
-                            setCareerImage(null);
-                          }
-                        }}
-                        className="flex-1 sm:flex-none px-6 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition font-medium"
-                      >
-                        취소
+                        판매자 정보 저장
                       </button>
                     </div>
                   </div>
                 )}
               </section>
 
-              {/* 상단 저장/취소 */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 sm:flex-none px-8 py-3 text-white rounded-xl hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-brand-900 transition font-semibold shadow"
-                  style={{ backgroundColor: BRAND }}
-                >
-                  변경사항 저장
-                </button>
-                <button
-                  type="button"
-                  className="flex-1 sm:flex-none px-8 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition font-medium"
-                  onClick={() => {
-                    // 기본 정보/주소 폼 초기화
-                    if (member) {
-                      setName(member.memberName ?? "");
-                      setPhone(member.memberPhone ?? "");
-                      setEmail(member.memberEmail ?? "");
-                    }
-                    if (address) {
-                      setPostNum(address.postNum ?? "");
-                      setAddressRoad(address.addressRoad ?? "");
-                      setAddressDetail(address.addressDetail ?? "");
-                      setAddressExtra(address.addressExtra ?? "");
-                    }
-                    setPwdCurrent("");
-                    setPwdNew("");
-                    setPwdNewOk("");
-                  }}
-                >
-                  취소
-                </button>
-              </div>
-            </form>
-          </div>
+              {/* 디버그 정보 */}
+              <section className="bg-gray-50 rounded-xl border border-gray-200 shadow-sm p-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">디버그 정보</h4>
+                <div className="space-y-1 text-xs text-gray-600">
+                  <div>storeUrl: <code className="bg-white px-1 rounded">{legacyStore}</code></div>
+                  <div>memberId: <code className="bg-white px-1 rounded">{member?.memberId ?? "-"}</code></div>
+                  <div>계좌 인증 상태: <code className="bg-white px-1 rounded">{isAccountVerified ? "인증됨" : "미인증"}</code></div>
+                  <div>수정 모드: <code className="bg-white px-1 rounded">{isAccountEditing ? "수정중" : "조회"}</code></div>
+                </div>
+              </section>
+            </div>
+          </Container>
         </div>
-      </MypageSidenavbar>
+
+        {/* 페이지 바닥 여백 */}
+        <div className="pb-6" />
+      </div>
+
+      {/* 데스크톱: 240 사이드 + 1440 컨텐츠 */}
+      <div className="hidden lg:block">
+        <MypageSidenavbar>
+          <div className="mx-auto w-full max-w-[1440px] px-0">
+            <Container>
+              <div className="space-y-8">
+                {/* 기본정보 섹션 */}
+                <section className="bg-white rounded-xl border border-gray-200 shadow-lg p-8">
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-xl font-bold text-gray-900">기본정보</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">이름</label>
+                      <input 
+                        value={nameValue} 
+                        readOnly 
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">이메일</label>
+                      <input 
+                        value={emailValue} 
+                        readOnly 
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">연락처</label>
+                      <input 
+                        value={phoneValue} 
+                        readOnly 
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                {/* 주소 섹션 */}
+                <section className="bg-white rounded-xl border border-gray-200 shadow-lg p-8">
+                  <h3 className="text-xl font-bold text-gray-900 mb-8">주소 정보</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">우편번호</label>
+                      <div className="flex gap-3">
+                        <input
+                          placeholder="우편번호"
+                          value={postNum}
+                          readOnly
+                          className="flex-1 px-4 py-3 border border-gray-200 rounded-lg bg-gray-50"
+                        />
+                        <button
+                          type="button"
+                          onClick={openPostcode}
+                          className="px-6 py-3 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] whitespace-nowrap transition-colors"
+                        >
+                          우편번호 찾기
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">참고 항목</label>
+                      <input
+                        placeholder="참고 항목 (예: (동, 아파트))"
+                        value={addressExtra}
+                        onChange={(e) => setAddressExtra(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">도로명 주소</label>
+                      <input
+                        placeholder="도로명 주소"
+                        value={addressRoad}
+                        onChange={(e) => setAddressRoad(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">상세 주소</label>
+                      <input
+                        placeholder="상세 주소"
+                        value={addressDetail}
+                        onChange={(e) => setAddressDetail(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end mt-8">
+                    <button 
+                      onClick={saveAddress} 
+                      className="px-8 py-3 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
+                    >
+                      주소 저장
+                    </button>
+                  </div>
+                </section>
+
+                {/* 비밀번호 변경 섹션 */}
+                <section className="bg-white rounded-xl border border-gray-200 shadow-lg p-8">
+                  <h3 className="text-xl font-bold text-gray-900 mb-8">비밀번호 변경</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">현재 비밀번호</label>
+                      <div className="relative">
+                        <input
+                          type={showCurrentPwd ? "text" : "password"}
+                          placeholder="현재 비밀번호"
+                          value={pwdCurrent}
+                          onChange={(e) => setPwdCurrent(e.target.value)}
+                          className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPwd(!showCurrentPwd)}
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showCurrentPwd ? "🙈" : "👁️"}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">새 비밀번호</label>
+                      <div className="relative">
+                        <input
+                          type={showNewPwd ? "text" : "password"}
+                          placeholder="새 비밀번호"
+                          value={pwdNew}
+                          onChange={(e) => setPwdNew(e.target.value)}
+                          className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPwd(!showNewPwd)}
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showNewPwd ? "🙈" : "👁️"}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">새 비밀번호 확인</label>
+                      <div className="relative">
+                        <input
+                          type={showNewPwdOk ? "text" : "password"}
+                          placeholder="새 비밀번호 확인"
+                          value={pwdNewOk}
+                          onChange={(e) => setPwdNewOk(e.target.value)}
+                          className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPwdOk(!showNewPwdOk)}
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showNewPwdOk ? "🙈" : "👁️"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end mt-8">
+                    <button 
+                      onClick={changePassword} 
+                      className="px-8 py-3 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
+                    >
+                      비밀번호 변경
+                    </button>
+                  </div>
+                </section>
+
+                {/* 판매자 정보 토글 섹션 */}
+                <section className="bg-white rounded-xl border border-gray-200 shadow-lg p-8" >
+                  <button
+                    onClick={() => setIsSellerInfoVisible(!isSellerInfoVisible)}
+                    className="w-full flex items-center justify-between text-xl font-bold text-gray-900 hover:text-[#2d4739] transition-colors"
+                  >
+                    <span>판매자 정보 확인하기</span>
+                    <span className={`transform transition-transform ${isSellerInfoVisible ? 'rotate-180' : ''}`}>
+                      ↓
+                    </span>
+                  </button>
+
+                  {isSellerInfoVisible && (
+                    <div className="mt-8 space-y-8">
+                      {/* 계좌 정보 섹션 */}
+                      <div className="bg-gray-50 rounded-xl border border-gray-100 shadow-sm p-8">
+                        <h3 className="text-xl font-bold text-gray-900 mb-8">계좌 정보</h3>
+                        <div className="space-y-6">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-3">은행</label>
+                            {isAccountEditing ? (
+                              <select
+                                value={bankCode}
+                                onChange={(e) => setBankCode(e.target.value)}
+                                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
+                              >
+                                <option value="">선택</option>
+                                {BANKS.map(b => (
+                                  <option key={b.code} value={b.code}>{b.name}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                value={bankNameByCode(bankCode)}
+                                readOnly
+                                className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 font-medium"
+                              />
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-3">계좌번호</label>
+                            <input
+                              placeholder="계좌번호"
+                              value={account}
+                              onChange={(e) => setAccount(e.target.value.replace(/[^0-9-]/g, ""))}
+                              disabled={!isAccountEditing}
+                              className={`w-full px-4 py-3 border border-gray-200 rounded-lg ${
+                                isAccountEditing 
+                                  ? "focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]" 
+                                  : "bg-gray-50 text-gray-600"
+                              }`}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-3">예금주명 (인증으로만 변경됨)</label>
+                            <input
+                              value={accountOwner}
+                              readOnly
+                              className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-8">
+                          {isAccountEditing ? (
+                            <>
+                              <button 
+                                onClick={handleAccountVerify} 
+                                className="flex-1 px-6 py-3 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
+                              >
+                                계좌 인증
+                              </button>
+                              {savedAccountNum && (
+                                <button 
+                                  onClick={handleAccountCancel} 
+                                  className="flex-1 px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                                >
+                                  취소
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <button 
+                              onClick={handleAccountEdit} 
+                              className="w-full px-6 py-3 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
+                            >
+                              수정
+                            </button>
+                          )}
+                        </div>
+
+                        {isAccountVerified && (
+                          <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm">
+                            <div className="text-green-700 font-medium">✓ 계좌 인증 완료</div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 나의 이력 섹션 */}
+                      <div className="bg-gray-50 rounded-xl border border-gray-100 shadow-sm p-8">
+                        <h3 className="text-xl font-bold text-gray-900 mb-8">나의 이력</h3>
+
+                        <div className="space-y-6">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-3">프로필 이미지</label>
+                            <div
+                              className="w-40 h-40 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer bg-white hover:bg-gray-50 transition-colors shadow-sm"
+                              onClick={() => fileInputRef.current?.click()}
+                            >
+                              {profileImagePreview ? (
+                                <img
+                                  src={profileImagePreview}
+                                  alt="프로필 미리보기"
+                                  className="w-full h-full object-cover rounded-lg"
+                                />
+                              ) : (
+                                <div className="text-center text-gray-500">
+                                  <div className="text-3xl mb-2">+</div>
+                                  <div className="text-sm">이미지 선택</div>
+                                </div>
+                              )}
+                            </div>
+
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageChange}
+                              className="hidden"
+                            />
+
+                            {profileImagePreview && (
+                              <button
+                                onClick={handleImageRemove}
+                                className="mt-3 px-4 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600 transition-colors"
+                              >
+                                이미지 삭제
+                              </button>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-3">나의 이력 (최대 150자)</label>
+                            <textarea
+                              placeholder="나의 이력을 입력해주세요..."
+                              rows={6}
+                              value={careerText}
+                              onChange={(e) => setCareerText(e.target.value.slice(0, 150))}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739] resize-none bg-white"
+                            />
+                            <div className="text-sm text-gray-500 mt-2 text-right">
+                              {careerText.length}/150
+                            </div>
+                          </div>
+
+                          <button 
+                            onClick={saveSeller} 
+                            className="w-full px-6 py-3 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
+                          >
+                            판매자 정보 저장
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                {/* 디버그 정보 */}
+                <section className="bg-gray-50 rounded-xl border border-gray-200 shadow-sm p-6">
+                  <h4 className="text-lg font-medium text-gray-700 mb-4">디버그 정보</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                    <div>
+                      <span className="font-medium">storeUrl:</span>
+                      <div className="mt-1">
+                        <code className="bg-white px-2 py-1 rounded border shadow-sm">{legacyStore}</code>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="font-medium">memberId:</span>
+                      <div className="mt-1">
+                        <code className="bg-white px-2 py-1 rounded border shadow-sm">{member?.memberId ?? "-"}</code>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="font-medium">계좌 인증 상태:</span>
+                      <div className="mt-1">
+                        <code className="bg-white px-2 py-1 rounded border shadow-sm">{isAccountVerified ? "인증됨" : "미인증"}</code>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="font-medium">수정 모드:</span>
+                      <div className="mt-1">
+                        <code className="bg-white px-2 py-1 rounded border shadow-sm">{isAccountEditing ? "수정중" : "조회"}</code>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </Container>
+          </div>
+        </MypageSidenavbar>
+      </div>
     </div>
   );
 }

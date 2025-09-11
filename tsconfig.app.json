@@ -30,5 +30,5 @@
       "@components/*": ["src/components/*"]
     }
   },
-  "include": ["src", "postcss.config.cjs", "tailwind.config.js"]
+  "include": ["src", "src/types","postcss.config.cjs", "tailwind.config.js"]
 }

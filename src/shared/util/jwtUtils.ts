@@ -7,7 +7,7 @@ export interface DecodedUserInfo {
   name: string;
   phone?: string;
   id?: number;
-  memberRole?: string;
+  role?: string;
   exp?: number;
   iat?: number;
   [key: string]: any; // 추가 필드들을 위한 확장성
@@ -83,7 +83,7 @@ export function getUserInfoFromToken(token?: string): UserInfo | null {
       name: decoded.name,
       phone: decoded.phone,
       memberId: decoded.id,
-      role: decoded.memberRole,
+      role: decoded.role,
     };
   } catch (error) {
     console.error('사용자 정보 추출 실패:', error);

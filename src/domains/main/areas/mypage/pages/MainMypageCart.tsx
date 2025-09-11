@@ -1,6 +1,6 @@
 // src/domains/main/areas/mypage/pages/MainMypageCart.tsx
-import React, { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import React, { use, useMemo, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   Minus,
@@ -16,6 +16,7 @@ import MypageSidenavbar from "@src/shared/areas/navigation/features/sidenavbar/m
 
 /** 브랜드 컬러 */
 const BRAND = "#2d4739";
+
 
 /** 이미지 없을 때 placeholder */
 const PLACEHOLDER =
@@ -276,6 +277,36 @@ const clearOtherStores = () => {
     };
   }, [items, selectedIds]);
 
+  // 결제 naivgate
+const naivgate = useNavigate();
+
+
+  const handleCheckout = () => {
+    const selected = items.filter((x) => selectedIds.has(x.id));
+    if (selected.length === 0) {  
+      alert("결제할 상품을 선택해주세요.");
+      return;
+    }
+
+    const orderItems = selected.map((it) => ({
+      productId: it.productId,
+      productName: it.name,
+      productDetail: it.desc ?? "",
+      productCnt: it.qty,
+      price: it.price,
+      pimgUrl: it.image || "",
+      storeName: it.storeName,
+      storeUrl: it.storeUrl ?? "main",
+      cartId: it.id, // 장바구니 주문 표식
+    }));
+
+    // 주문 정보 세션스토리지에 저장
+    sessionStorage.setItem("orderItems", JSON.stringify(orderItems));
+    // 주문 페이지로 이동
+    naivgate("/main/order");
+    // naivgate("/main/order");
+  };
+
   /** 공통 헤더 + 글로벌 컨트롤(전체선택/비우기) */
   const HeaderCard = () => (
     <div className="rounded-2xl border border-gray-300 overflow-hidden">
@@ -390,6 +421,7 @@ const clearOtherStores = () => {
     const sectionAllChecked =
       list.length > 0 && list.every((it) => selectedIds.has(it.id));
     const sectionSomeChecked = list.some((it) => selectedIds.has(it.id));
+    
 
     return (
       <section className="rounded-2xl border border-gray-300 bg-white overflow-hidden">
@@ -632,7 +664,7 @@ const clearOtherStores = () => {
             calcSummary.count === 0 ? "opacity-50 cursor-not-allowed" : "hover:opacity-95",
           ].join(" ")}
           style={{ backgroundColor: BRAND }}
-          onClick={() => alert("결제 플로우로 이동")}
+          onClick={handleCheckout}
         >
           결제하기
         </button>

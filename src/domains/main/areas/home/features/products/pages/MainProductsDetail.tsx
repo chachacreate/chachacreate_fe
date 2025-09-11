@@ -3,8 +3,7 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import { Star, ShoppingCart, CreditCard, Flag, Edit, Minus, Plus, ThumbsUp, X } from 'lucide-react';
 import { get, legacyGet } from '@src/libs/request';
-import { useLocation, useParams } from 'react-router-dom';
-import axios from 'axios';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 
 interface Product {
@@ -98,6 +97,8 @@ const MainProductsDetail = () => {
 
   const [loadingProduct, setLoadingProduct] = useState(true);
   const [loadingReviews, setLoadingReviews] = useState(true);
+
+  const navigate = useNavigate();
 
   // 상품 상세 불러오기
   useEffect(() => {
@@ -227,8 +228,23 @@ const MainProductsDetail = () => {
   };
 
   const handleBuyNow = () => {
-    alert('결제 페이지로 이동합니다.');
+  if (!product) return;
+
+  const item = {
+    productId: Number(product.id) || product.id,
+    productName: product.name,
+    productDetail: "", // 옵션/선택사항이 있다면 채워주세요
+    productCnt: quantity,
+    price: product.price,
+    pimgUrl: product.thumbnailUrl || product.images?.[0] || "",
+    storeName: product.storeName,
+    storeUrl: product.storeUrl ?? "main",
+    cartId: null, // 바로결제라 장바구니 아님
   };
+
+  sessionStorage.setItem("orderItems", JSON.stringify([item]));
+  navigate("/main/order");
+};
 
   const handleSubmitReview = () => {
     if (newReview.content.trim()) {

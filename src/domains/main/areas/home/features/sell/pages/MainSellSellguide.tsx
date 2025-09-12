@@ -10,17 +10,13 @@ import {
   ShieldCheck,
   Truck,
   Sparkles,
+  UserPlus,
 } from "lucide-react";
 
 import Header from "@src/shared/areas/layout/features/header/Header";
 import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
 import SellSubnavbar from "@src/shared/areas/navigation/features/subnavbar/sell/SellSubnavbar";
-
-/** 개인판매자만 버튼 노출 (데모) - 임시 주석처리 */
-// const getIsPersonalSeller = (): boolean => {
-//   const role = (typeof window !== "undefined" && localStorage.getItem("role")) || "";
-//   return role === "personal";
-// };
+import { isSeller, isUser, getCurrentUserRole } from "@src/shared/util/roleAuth";
 
 type Step = {
   title: string;
@@ -63,7 +59,20 @@ const STEPS: Step[] = [
 ];
 
 const MainSellSellguide: React.FC = () => {
-  // const isPersonal = getIsPersonalSeller(); // 임시 주석처리
+  // 현재 사용자 정보 가져오기
+  const currentUser = getCurrentUserRole();
+  const userRole = currentUser?.toString() || null;
+
+  // 역할별 체크
+  const userIsSeller = isSeller();
+  const userIsUser = isUser();
+  const userIsPersonalSeller = userRole === 'PERSONAL_SELLER'; // 개인판매자 직접 체크
+
+  // 디버깅용 (개발 중에만 사용)
+  console.log('Current user role:', userRole);
+  console.log('isSeller():', userIsSeller);
+  console.log('isUser():', userIsUser);
+  console.log('isPersonalSeller:', userIsPersonalSeller);
 
   /** --- Reveal 애니메이션 플래그 --- */
   const [mounted, setMounted] = useState(false);
@@ -165,9 +174,94 @@ const MainSellSellguide: React.FC = () => {
   );
 
   const goToOpenForm = () => {
-  window.location.href = "/auth/join/seller";
-};
+    window.location.href = "/main/store/openform"; // 스토어 개설 페이지 경로
+  };
 
+  const goToPersonalSellRegister = () => {
+    window.location.href = "/auth/join/seller"; // 개인판매자 등록 페이지 경로
+  };
+
+  // CTA 버튼 렌더링 함수
+  const renderCTAButton = () => {
+    // 개인판매자 또는 일반 판매자인 경우 → 스토어 개설 버튼
+    if (userIsSeller || userIsPersonalSeller) {
+      return (
+        <button
+          onClick={goToOpenForm}
+          className="group relative inline-flex items-center gap-2 rounded-xl 
+bg-[#6B8F7D] text-white px-6 py-3 font-semibold 
+hover:bg-green-600 transform hover:scale-105 
+transition-all duration-300 shadow-md hover:shadow-lg"
+        >
+          <span className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <Sparkles className="w-4 h-4 opacity-90 group-hover:rotate-12 transition-transform" />
+          스토어 개설 신청
+          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+        </button>
+      );
+    } else if (userIsUser) {
+      // 일반 유저인 경우 → 개인판매자 등록 버튼
+      return (
+        <button
+          onClick={goToPersonalSellRegister}
+          className="group relative inline-flex items-center gap-2 rounded-xl 
+            bg-[#6B8F7D] text-white px-6 py-3 font-semibold 
+            hover:bg-green-600 transform hover:scale-105 
+            transition-all duration-300 shadow-md hover:shadow-lg"
+        >
+          <span className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <UserPlus className="w-4 h-4 opacity-90 group-hover:scale-110 transition-transform" />
+          개인판매자 등록하기
+          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+        </button>
+      );
+    } else {
+      // 로그인하지 않았거나 다른 역할인 경우
+      return (
+        <span className="inline-flex items-center gap-2 rounded-lg bg-gray-100/80 backdrop-blur-sm px-3 py-2 text-sm text-gray-700 opacity-0 animate-fade-in-slide" style={{ animationDelay: "0.3s" }}>
+          <Info className="w-4 h-4 text-gray-500 animate-pulse" />
+          로그인 후 이용 가능합니다
+        </span>
+      );
+    }
+  };
+
+  // 하단 CTA 버튼 렌더링 함수
+  const renderBottomCTAButton = () => {
+    // 개인판매자 또는 일반 판매자인 경우 → 스토어 개설 버튼
+    if (userIsSeller || userIsPersonalSeller) {
+      return (
+        <button
+          onClick={goToOpenForm}
+          className="group relative inline-flex items-center gap-2 rounded-xl 
+            bg-[#6B8F7D] text-white px-6 py-3 font-semibold 
+            hover:bg-green-600 transform hover:scale-105 
+            transition-all duration-300 shadow-md hover:shadow-lg"
+        >
+          <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <Sparkles className="w-5 h-5 group-hover:animate-spin" />
+          지금 바로 개설하기
+          <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
+        </button>
+      );
+    } else if (userIsUser) {
+      return (
+        <button
+          onClick={goToPersonalSellRegister}
+          className="group relative inline-flex items-center gap-2 rounded-xl 
+            bg-[#6B8F7D] text-white px-6 py-3 font-semibold 
+            hover:bg-green-600 transform hover:scale-105 
+            transition-all duration-300 shadow-md hover:shadow-lg"
+        >
+          <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <UserPlus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          개인판매자 등록하기
+          <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
+        </button>
+      );
+    }
+    return null;
+  };
 
   return (
     <>
@@ -238,6 +332,7 @@ const MainSellSellguide: React.FC = () => {
                     style={{ animationDelay: "0.2s" }}
                   >
                     간단한 절차만 거치면 누구나 자신의 상품을 판매할 수 있습니다!
+                    이미 개인판매자로 등록되어 있다면 스토어 개설을 해보세요 !
                   </p>
 
                   {/* 혜택 배지 */}
@@ -270,20 +365,9 @@ const MainSellSellguide: React.FC = () => {
                   </p>
                 </div>
 
-                {/* CTA - 항상 활성화된 버튼 */}
+                {/* CTA */}
                 <div className="md:text-right">
-                  <button
-                    onClick={goToOpenForm}
-                    className="group relative inline-flex items-center gap-2 rounded-xl 
-bg-[#6B8F7D] text-white px-6 py-3 font-semibold 
-hover:bg-green-600 transform hover:scale-105 
-transition-all duration-300 shadow-md hover:shadow-lg"
-                  >
-                    <span className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <Sparkles className="w-4 h-4 opacity-90 group-hover:animate-spin transition-transform" />
-                    개인판매 시작하기
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </button>
+                  {renderCTAButton()}
                 </div>
               </div>
             </section>
@@ -406,25 +490,18 @@ transition-all duration-300 shadow-md hover:shadow-lg"
               </div>
             </section>
 
-            {/* --- 하단 CTA - 항상 표시 --- */}
-            <div
-              className="mt-10 md:mt-14 text-center opacity-0 animate-fade-in-slide"
-              style={{ animationDelay: "0.6s" }}
-            >
-              <a
-                href="/auth/join/seller"
-                className="group relative inline-flex items-center gap-2 rounded-2xl 
-bg-[#6B8F7D] text-white px-8 py-4 text-base md:text-lg font-semibold 
-hover:bg-green-600 transform hover:scale-105 
-transition-all duration-300 shadow-md hover:shadow-2xl"
+            {/* --- 하단 CTA --- */}
+            {(userIsSeller || userIsPersonalSeller || userIsUser) && (
+              <div
+                className="mt-10 md:mt-14 text-center opacity-0 animate-fade-in-slide"
+                style={{ animationDelay: "0.6s" }}
               >
-                <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <Sparkles className="w-5 h-5 group-hover:animate-spin" />
-                지금 바로 개인판매 시작하기
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
-              </a>
-              <p className="text-sm text-gray-600 mt-3 animate-pulse">⚡ 단 2분이면 완료됩니다</p>
-            </div>
+                {renderBottomCTAButton()}
+                <p className="text-sm text-gray-600 mt-3 animate-pulse">
+                  {(userIsSeller || userIsPersonalSeller) ? "⚡ 단 2분이면 완료됩니다" : "⚡ 개인판매자로 새로운 시작을 해보세요"}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

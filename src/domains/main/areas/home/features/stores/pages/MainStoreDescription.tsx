@@ -312,7 +312,7 @@ const MainStoreDescription: React.FC = () => {
 
                 {/* CTA */}
                 <div className="md:text-right">
-                  {/* {isPersonal ? ( */}
+                  {isPersonal ? (
                   <button
                     onClick={goToOpenForm}
                     className="group relative inline-flex items-center gap-2 rounded-xl 
@@ -325,7 +325,7 @@ transition-all duration-300 shadow-md hover:shadow-lg"
                     스토어 개설 신청
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </button>
-                  {/* ) : (
+                  ) : (
                     <span 
                       className="inline-flex items-center gap-2 rounded-lg bg-gray-100/80 backdrop-blur-sm px-3 py-2 text-sm text-gray-700 opacity-0 animate-fade-in-slide"
                       style={{ animationDelay: '0.3s' }}
@@ -333,7 +333,7 @@ transition-all duration-300 shadow-md hover:shadow-lg"
                       <Info className="w-4 h-4 text-gray-500 animate-pulse" />
                       개인판매자 로그인 시 신청 버튼이 표시됩니다
                     </span>
-                  )} */}
+                  )}
                 </div>
               </div>
             </section>
@@ -459,7 +459,7 @@ transition-all duration-300 shadow-md hover:shadow-lg"
             </section>
 
             {/* --- 하단 CTA (개인판매자만) --- */}
-            {/* {isPersonal && ( */}
+            {isPersonal && (
             <div
               className="mt-10 md:mt-14 text-center opacity-0 animate-fade-in-slide"
               style={{ animationDelay: '0.6s' }}
@@ -478,7 +478,7 @@ transition-all duration-300 shadow-md hover:shadow-lg"
               </button>
               <p className="text-sm text-gray-600 mt-3 animate-pulse">⚡ 단 2분이면 완료됩니다</p>
             </div>
-            {/* )} */}
+             )} 
           </div>
         </div>
       </div>

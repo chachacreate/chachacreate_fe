@@ -6,11 +6,12 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 
-import api from '@src/libs/apiService'; // Boot용
+import api from '@src/libs/apiService'; // Boot용 + FastAPI
 import EditorAPI, {
   type EditorHandle,
 } from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
 import axios from 'axios';
+import { predictImage } from '../services/aiService/aiService';
 
 type Params = { storeUrl: string };
 type EnumItem = { id: number; name: string };
@@ -84,11 +85,15 @@ const ProductInsert: FC = () => {
   const navigate = useNavigate();
   const { storeUrl = '' } = useParams<Params>();
   const [forms, setForms] = useState<ProductForm[]>([createEmptyProductForm(1)]);
+  const [isLoadingAiPrice, setIsLoadingAiPrice] = useState<Record<string, boolean>>({});
 
   // 카테고리
   const [typeCats, setTypeCats] = useState<EnumItem[]>([]);
   const [uCats, setUCats] = useState<EnumItem[]>([]);
   const [dCatsByU, setDCatsByU] = useState<DCatsByU>({});
+
+  // AI 예측 정보 저장
+  const [aiPredictionInfo, setAiPredictionInfo] = useState<Record<string, any>>({});
 
   // 에디터 refs
   const editorRefs = useRef<Record<string, EditorHandle | null>>({});
@@ -118,6 +123,7 @@ const ProductInsert: FC = () => {
       if (prev.length === 1) return prev;
       delete editorRefs.current[formId];
       delete pendingDescImagesRef.current[formId];
+      delete isLoadingAiPrice[formId];
       const filtered = prev.filter((f) => f.id !== formId);
       return filtered.map((f, i) => ({ ...f, productNumber: i + 1 }));
     });
@@ -158,11 +164,80 @@ const ProductInsert: FC = () => {
     );
   };
 
-  const genAiPrice = (formId: string) => {
-    const t = forms.find((f) => f.id === formId);
-    const base = (t?.name.length || 6) * 1200;
-    const randomized = Math.round((base + Math.random() * 8000) / 100) * 100;
-    updateForm(formId, 'aiPrice', randomized as number);
+  // ✅ AI 가격 추천 - 이미지 예측 API 사용
+  const genAiPrice = async (formId: string) => {
+    const form = forms.find((f) => f.id === formId);
+    if (!form) return;
+
+    // 첫 번째 이미지가 있는지 확인
+    if (!form.images.length || !form.images[0].file) {
+      alert('AI 가격 추천을 위해 상품 사진을 먼저 업로드해 주세요.');
+      return;
+    }
+
+    setIsLoadingAiPrice((prev) => ({ ...prev, [formId]: true }));
+
+    try {
+      const result = await predictImage(form.images[0].file);
+
+      if (result.success && result.predictions.length > 0) {
+        const topPrediction = result.predictions[0];
+        setAiPredictionInfo((prev: any) => ({
+          ...prev,
+          [formId]: result,
+        }));
+        if (topPrediction.price_info && topPrediction.price_info.median_price) {
+          const medianPrice = Math.round(topPrediction.price_info.median_price);
+          updateForm(formId, 'aiPrice', medianPrice);
+          // 선택사항: 예측된 카테고리 정보를 사용자에게 알려주기
+          console.log(
+            `AI 예측 카테고리: ${topPrediction.category} (신뢰도: ${(topPrediction.confidence * 100).toFixed(1)}%)`
+          );
+        } else {
+          // 가격 정보가 없는 경우 기본 로직 사용
+          const base = (form?.name.length || 6) * 1200;
+          const randomized = Math.round((base + Math.random() * 8000) / 100) * 100;
+          updateForm(formId, 'aiPrice', randomized as number);
+          alert('해당 카테고리의 가격 정보가 없어 기본 알고리즘으로 가격을 추천했습니다.');
+        }
+      } else {
+        throw new Error('이미지 예측에 실패했습니다.');
+      }
+    } catch (error: any) {
+      console.error('AI 가격 추천 실패:', error);
+
+      // 실패 시 기존 로직으로 폴백
+      const base = (form?.name.length || 6) * 1200;
+      const randomized = Math.round((base + Math.random() * 8000) / 100) * 100;
+      updateForm(formId, 'aiPrice', randomized as number);
+
+      alert('AI 가격 분석에 실패하여 기본 알고리즘으로 가격을 추천합니다.');
+    } finally {
+      setIsLoadingAiPrice((prev) => ({ ...prev, [formId]: false }));
+    }
+  };
+
+  // AI 예측 정보 툴팁 생성
+  const generatePredictionTooltip = (formId: string): string => {
+    const predictionInfo = aiPredictionInfo[formId];
+    if (!predictionInfo) return '';
+
+    let tooltip = `🎯 예측 완료: ${predictionInfo.top_category} (신뢰도: ${(predictionInfo.top_confidence * 100).toFixed(2)}%)\n`;
+
+    predictionInfo.predictions.forEach((pred: any, index: number) => {
+      if (pred.price_info) {
+        tooltip += `📊 카테고리 '${pred.price_info.db_category}' 가격 통계:\n`;
+        tooltip += `   평균: ${pred.price_info.average_price.toLocaleString()}원\n`;
+        tooltip += `   범위: ${pred.price_info.min_price.toLocaleString()}원 ~ ${pred.price_info.max_price.toLocaleString()}원\n`;
+        tooltip += `   중앙값: ${pred.price_info.median_price.toLocaleString()}원\n`;
+        tooltip += `   상품수: ${pred.price_info.product_count}개`;
+      } else {
+        tooltip += `📭 카테고리 '${pred.category}'에 대한 가격 정보가 없습니다.`;
+      }
+      if (index < predictionInfo.predictions.length - 1) tooltip += '\n';
+    });
+
+    return tooltip;
   };
 
   const onChangeLarge = (formId: string, largeId: string) => {
@@ -338,6 +413,8 @@ const ProductInsert: FC = () => {
 
           {forms.map((form) => {
             const dOptions = form.categoryMiddle ? (dCatsByU[form.categoryMiddle] ?? []) : [];
+            const isAiPriceLoading = isLoadingAiPrice[form.id] || false;
+
             return (
               <section key={form.id} className="rounded-2xl border bg-white p-4 sm:p-6 lg:p-8">
                 <div className="flex items-start justify-between mb-6">
@@ -418,19 +495,35 @@ const ProductInsert: FC = () => {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          className="px-3 py-2 rounded-md border hover:bg-gray-50"
+                          className="px-3 py-2 rounded-md border hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 flex items-center gap-1"
                           onClick={() => genAiPrice(form.id)}
+                          disabled={isAiPriceLoading}
                         >
-                          AI 가격 추천
+                          {isAiPriceLoading && (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500"></div>
+                          )}
+                          {isAiPriceLoading ? 'AI 분석 중...' : 'AI 가격 추천'}
                         </button>
-                        <input
-                          readOnly
-                          className="border rounded-md px-3 py-2 flex-1 bg-gray-50"
-                          placeholder="AI 추천가"
-                          value={form.aiPrice ? `${Number(form.aiPrice).toLocaleString()} 원` : ''}
-                        />
+                        <div className="relative flex-1">
+                          <input
+                            readOnly
+                            className="border rounded-md px-3 py-2 w-full bg-gray-50 cursor-help"
+                            placeholder="AI 추천가"
+                            value={
+                              form.aiPrice ? `${Number(form.aiPrice).toLocaleString()} 원` : ''
+                            }
+                            title={
+                              form.aiPrice && aiPredictionInfo[form.id]
+                                ? generatePredictionTooltip(form.id)
+                                : ''
+                            }
+                          />
+                        </div>
                       </div>
                     </div>
+                    <p className="text-xs text-gray-500">
+                      * AI 가격 추천은 첫 번째 상품 사진을 분석하여 시장 가격을 제안합니다.
+                    </p>
                   </div>
 
                   {/* 상세설명 (Editor) + AI 프롬프트/버튼 */}

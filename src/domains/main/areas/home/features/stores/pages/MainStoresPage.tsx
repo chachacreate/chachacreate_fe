@@ -253,8 +253,9 @@ const MainStoresPage: React.FC = () => {
   const currentCategory = categoryOptions.find((c) => c.value === mainCat);
   const subCategories = currentCategory?.subCategories ?? [];
 
-  const handleStoreClick = (storeUrl: string) => {
+  const handleStoreClick = (storeId: string, storeUrl: string) => {
     window.location.href = `/${storeUrl}`; // 필요 시 라우트에 맞게 수정
+    legacyGet(`/main/store/click/${storeId}`);
   };
 
   const totalFilteredCount = filteredAll.length;
@@ -377,7 +378,7 @@ const MainStoresPage: React.FC = () => {
               return (
                 <div
                   key={s.id}
-                  onClick={() => handleStoreClick(s.storeUrl)}
+                  onClick={() => handleStoreClick(s.id, s.storeUrl)}
                   // ✅ 커스텀 색상: CSS 변수로 주입 → hover:border-[var(--store-accent)] 사용
                   style={{ ['--store-accent' as any]: accent }}
                   className="

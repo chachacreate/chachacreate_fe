@@ -1,14 +1,14 @@
 // src/domains/main/areas/home/features/products/pages/MainProductsorder.tsx
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ChevronLeft, CreditCard, MapPin, Package, Loader2 } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, CreditCard, MapPin, Package, Loader2 } from 'lucide-react';
 
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import MypageSidenavbar from "@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar";
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar';
 
-import { get, legacyPost } from "@src/libs/request";
-import { getCurrentUser, type UserInfo } from "@src/shared/util/jwtUtils";
+import { get, legacyPost } from '@src/libs/request';
+import { getCurrentUser, type UserInfo } from '@src/shared/util/jwtUtils';
 
 /* ============ 타입 ============ */
 type StoredOrderItem = {
@@ -24,7 +24,6 @@ type StoredOrderItem = {
 };
 
 type BootAddress = {
-  addressId: number;
   postNum: string;
   addressRoad: string;
   addressDetail: string;
@@ -35,7 +34,7 @@ type BootAddress = {
 const loadScriptOnce = (src: string, id: string) =>
   new Promise<void>((resolve, reject) => {
     if (document.getElementById(id)) return resolve();
-    const s = document.createElement("script");
+    const s = document.createElement('script');
     s.src = src;
     s.async = true;
     s.id = id;
@@ -55,14 +54,14 @@ const MainProductsorder: React.FC = () => {
   const [useDefaultAddr, setUseDefaultAddr] = useState(false);
   const [defaultAddrId, setDefaultAddrId] = useState<number | null>(null);
 
-  const [postNum, setPostNum] = useState("");
-  const [addressRoad, setAddressRoad] = useState("");
-  const [addressDetail, setAddressDetail] = useState("");
-  const [addressExtra, setAddressExtra] = useState("");
+  const [postNum, setPostNum] = useState('');
+  const [addressRoad, setAddressRoad] = useState('');
+  const [addressDetail, setAddressDetail] = useState('');
+  const [addressExtra, setAddressExtra] = useState('');
 
   // 수령인/연락처 (초기값: 로그인 사용자 이름/전화)
-  const [receiverName, setReceiverName] = useState(user?.name ?? "");
-  const [receiverPhone, setReceiverPhone] = useState(user?.phone ?? "");
+  const [receiverName, setReceiverName] = useState(user?.name ?? '');
+  const [receiverPhone, setReceiverPhone] = useState(user?.phone ?? '');
 
   // 주문 상품
   const [items, setItems] = useState<StoredOrderItem[]>([]);
@@ -83,7 +82,7 @@ const MainProductsorder: React.FC = () => {
 
   // 결제 타이틀 (첫 상품명 + 외 N개) - 레거시와 동일한 로직
   const productTitle = useMemo(() => {
-    if (items.length === 0) return "";
+    if (items.length === 0) return '';
     const first = items[0].productName;
     return items.length > 1 ? `${first} 외 ${items.length - 1}개의 상품` : first;
   }, [items]);
@@ -96,14 +95,17 @@ const MainProductsorder: React.FC = () => {
     (async () => {
       try {
         await Promise.all([
-          loadScriptOnce("https://cdn.iamport.kr/js/iamport.payment-1.2.0.js", "iamport-script"),
-          loadScriptOnce("//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js", "daum-postcode-script"),
+          loadScriptOnce('https://cdn.iamport.kr/js/iamport.payment-1.2.0.js', 'iamport-script'),
+          loadScriptOnce(
+            '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js',
+            'daum-postcode-script'
+          ),
         ]);
 
-        const raw = sessionStorage.getItem("orderItems");
+        const raw = sessionStorage.getItem('orderItems');
         if (!raw) {
-          alert("선택된 상품이 없습니다. 장바구니에서 다시 선택해주세요.");
-          navigate("/main/mypage/cart");
+          alert('선택된 상품이 없습니다. 장바구니에서 다시 선택해주세요.');
+          navigate('/main/mypage/cart');
           return;
         }
         const parsed: StoredOrderItem[] = JSON.parse(raw);
@@ -111,46 +113,51 @@ const MainProductsorder: React.FC = () => {
         setIsFromCart(parsed.some((p) => p.cartId !== undefined && p.cartId !== null));
       } catch (e: any) {
         console.error(e);
-        setError("초기화 중 문제가 발생했습니다.");
+        setError('초기화 중 문제가 발생했습니다.');
       } finally {
         setLoading(false);
       }
     })();
   }, [navigate]);
 
-  // 기본배송지 체크 → Boot 주소 조회
+  const [loadingDefaultAddr, setLoadingDefaultAddr] = useState(false);
+
+  // 기본배송지 fetch
   const fetchDefaultAddress = useCallback(async () => {
     if (!user?.memberId) return;
+
     try {
-      // Boot API: GET /api/info/memberAddress/{memberId}
-      const res = await get<any>(`/info/memberAddress/${user.memberId}`);
-      if (res?.status === 200 && res?.data) {
-        const addr = res.data as BootAddress;
-        setPostNum(addr.postNum ?? "");
-        setAddressRoad(addr.addressRoad ?? "");
-        setAddressDetail(addr.addressDetail ?? "");
-        setAddressExtra(addr.addressExtra ?? "");
-        setDefaultAddrId(addr.addressId);
+      setLoadingDefaultAddr(true);
+      const response = await get<any>(`/info/memberAddress/${user.memberId}`);
+      if (response?.status === 200 && response?.data) {
+        const addr = response.data;
+        setPostNum(addr.postNum ?? '');
+        setAddressRoad(addr.addressRoad ?? '');
+        setAddressDetail(addr.addressDetail ?? '');
+        setAddressExtra(addr.addressExtra ?? '');
+        console.log('DEBUG fetched addr:', addr);
       } else {
-        alert("기본 배송지를 불러오지 못했습니다.");
+        setDefaultAddrId(null);
+        alert('기본 배송지를 불러오지 못했습니다.');
       }
-    } catch (e) {
-      console.error(e);
-      alert("기본 배송지 불러오기 실패");
+    } catch (error) {
+      setDefaultAddrId(null);
+      console.error('API 요청 실패', error);
+    } finally {
+      setLoadingDefaultAddr(false);
     }
   }, [user?.memberId]);
 
-  // 기본배송지 토글
-  const onToggleDefaultAddr = async (checked: boolean) => {
+  // 체크박스 토글
+  const onToggleDefaultAddr = (checked: boolean) => {
     setUseDefaultAddr(checked);
     if (checked) {
-      await fetchDefaultAddress();
+      fetchDefaultAddress(); // fetch가 끝날 때까지 로딩 상태로 결제 막기
     } else {
-      setPostNum("");
-      setAddressRoad("");
-      setAddressDetail("");
-      setAddressExtra("");
-      setDefaultAddrId(null);
+      setPostNum('');
+      setAddressRoad('');
+      setAddressDetail('');
+      setAddressExtra('');
     }
   };
 
@@ -158,30 +165,30 @@ const MainProductsorder: React.FC = () => {
   const openDaumPostcode = () => {
     const w = window as any;
     if (!w?.daum?.Postcode) {
-      alert("주소 검색 스크립트를 불러오지 못했습니다.");
+      alert('주소 검색 스크립트를 불러오지 못했습니다.');
       return;
     }
     new w.daum.Postcode({
       oncomplete: function (data: any) {
-        let addr = "";
-        let extraAddr = "";
+        let addr = '';
+        let extraAddr = '';
 
-        if (data.userSelectedType === "R") {
+        if (data.userSelectedType === 'R') {
           addr = data.roadAddress;
-          if (data.bname !== "" && /[동|로|가]$/g.test(data.bname)) extraAddr += data.bname;
-          if (data.buildingName !== "" && data.apartment === "Y") {
-            extraAddr += (extraAddr !== "" ? ", " + data.buildingName : data.buildingName);
+          if (data.bname !== '' && /[동|로|가]$/g.test(data.bname)) extraAddr += data.bname;
+          if (data.buildingName !== '' && data.apartment === 'Y') {
+            extraAddr += extraAddr !== '' ? ', ' + data.buildingName : data.buildingName;
           }
-          if (extraAddr !== "") extraAddr = " (" + extraAddr + ")";
+          if (extraAddr !== '') extraAddr = ' (' + extraAddr + ')';
           setAddressExtra(extraAddr);
         } else {
           addr = data.jibunAddress;
-          setAddressExtra("");
+          setAddressExtra('');
         }
 
         setPostNum(data.zonecode);
         setAddressRoad(addr);
-        const el = document.getElementById("detailAddressInput") as HTMLInputElement | null;
+        const el = document.getElementById('detailAddressInput') as HTMLInputElement | null;
         el?.focus();
       },
     }).open();
@@ -190,63 +197,52 @@ const MainProductsorder: React.FC = () => {
   // 결제하기 - 레거시 코드와 동일한 구조로 수정
   const onPay = async () => {
     if (!user?.memberId) {
-      alert("로그인 정보가 없습니다.");
+      alert('로그인 정보가 없습니다.');
       return;
-    }
-    
-    // 주소 검증 - 레거시와 동일
-    if (!useDefaultAddr) {
-      if (!postNum.trim() || !addressDetail.trim()) {
-        alert("주소를 입력해주세요.");
-        return;
-      }
-    } else {
-      if (!defaultAddrId) {
-        alert("기본 배송지 로딩이 아직 완료되지 않았습니다.");
-        return;
-      }
     }
 
     const w = window as any;
     if (!w.IMP) {
-      alert("결제 모듈(아임포트)을 불러오지 못했습니다.");
+      alert('결제 모듈(아임포트)을 불러오지 못했습니다.');
       return;
     }
 
     setPaying(true);
     try {
       const IMP = w.IMP;
-      IMP.init("imp85735807");
+      IMP.init('imp85735807');
 
       const amount = finalTotal;
-      const merchant_uid = "merchant_" + new Date().getTime();
+      const merchant_uid = 'merchant_' + new Date().getTime();
 
       // 결제 처리
       await new Promise<void>((resolve, reject) => {
         IMP.request_pay(
           {
-            pg: "html5_inicis",
-            pay_method: "card",
+            pg: 'html5_inicis',
+            pay_method: 'card',
             merchant_uid,
             name: productTitle,
             amount: parseInt(String(amount), 10),
-            buyer_email: user?.email ?? "",
-            buyer_name: user?.name ?? "",
+            buyer_email: user?.email ?? '',
+            buyer_name: user?.name ?? '',
           },
           (rsp: any) => {
             if (rsp?.success) resolve();
-            else reject(new Error(rsp?.error_msg || "결제 실패"));
+            else reject(new Error(rsp?.error_msg || '결제 실패'));
           }
         );
       });
 
       // DTO 조립 - 레거시와 정확히 동일한 구조
-      const bootAddr = useDefaultAddr ? null : {
-        postNum: postNum || null,
-        addressRoad: addressRoad || null,
-        addressDetail: addressDetail || null,
-        addressExtra: addressExtra || null,
-      };
+      const bootAddr = useDefaultAddr
+        ? null
+        : {
+            postNum: postNum || null,
+            addressRoad: addressRoad || null,
+            addressDetail: addressDetail || null,
+            addressExtra: addressExtra || null,
+          };
 
       const orderInfo = {
         memberId: user.memberId,
@@ -255,7 +251,7 @@ const MainProductsorder: React.FC = () => {
         orderPhone: receiverPhone,
         addressId: useDefaultAddr ? defaultAddrId : null,
         cardId: null,
-        orderStatus: "ORDER_OK",
+        orderStatus: 'ORDER_OK',
       };
 
       // detailList - orderId는 null로 설정 (서버에서 생성)
@@ -276,50 +272,50 @@ const MainProductsorder: React.FC = () => {
       console.log('DEBUG sending DTO:', orderRequestDTO);
 
       // 주문 생성 (레거시)
-const res = await legacyPost<any>("/main/order", orderRequestDTO);
+      const res = await legacyPost<any>('/main/order', orderRequestDTO);
 
-if (res?.status === 201) {
-  const orderId = parseInt(String(res.data), 10);
+      if (res?.status === 201) {
+        const orderId = parseInt(String(res.data), 10);
 
-  // 장바구니에서 온 경우 → 항목 삭제 (선택적)
-  if (isFromCart) {
-    try {
-      const cartIds = items.map((p) => p.cartId).filter((id): id is number => !!id);
-      await Promise.all(
-        cartIds.map((cid) =>
-          fetch(`/main/mypage/cart/delete/${cid}`, { method: "DELETE" }).catch(() => null)
-        )
-      );
-    } catch (e) {
-      console.warn("장바구니 삭제 실패:", e);
+        // 장바구니에서 온 경우 → 항목 삭제 (선택적)
+        if (isFromCart) {
+          try {
+            const cartIds = items.map((p) => p.cartId).filter((id): id is number => !!id);
+            await Promise.all(
+              cartIds.map((cid) =>
+                fetch(`/main/mypage/cart/delete/${cid}`, { method: 'DELETE' }).catch(() => null)
+              )
+            );
+          } catch (e) {
+            console.warn('장바구니 삭제 실패:', e);
+          }
+        }
+
+        // 성공 시
+        alert(`주문이 완료되었습니다. 주문번호 : ${orderId}`);
+        sessionStorage.removeItem('orderItems');
+        navigate(`/main/order/result/success?orderId=${orderId}&amount=${String(finalTotal)}`, {
+          state: { orderId, amount: finalTotal },
+        });
+      } else {
+        // 실패 시
+        const msg = res?.message ?? '주문 생성 실패';
+        navigate(`/main/order/result/fail?message=${encodeURIComponent(msg)}`, {
+          state: { message: msg },
+        });
+      }
+    } catch (e: any) {
+      console.error('결제/주문 오류:', e);
+      const msg = e?.message ?? '결제 또는 주문 처리 실패';
+      alert(`결제/주문에 실패했습니다. ${msg}`);
+
+      // 예외 발생 시도 fail로 이동
+      navigate(`/main/order/result/fail?message=${encodeURIComponent(msg)}`, {
+        state: { message: msg },
+      });
+    } finally {
+      setPaying(false);
     }
-  }
-
-  // 성공 시
-  alert(`주문이 완료되었습니다. 주문번호 : ${orderId}`);
-  sessionStorage.removeItem("orderItems");
-  navigate(`/main/order/result/success?orderId=${orderId}&amount=${String(finalTotal)}`, {
-    state: { orderId, amount: finalTotal },
-  });
-} else {
-  // 실패 시
-  const msg = res?.message ?? "주문 생성 실패";
-  navigate(`/main/order/result/fail?message=${encodeURIComponent(msg)}`, {
-    state: { message: msg },
-  });
-}
-} catch (e: any) {
-console.error("결제/주문 오류:", e);
-const msg = e?.message ?? "결제 또는 주문 처리 실패";
-alert(`결제/주문에 실패했습니다. ${msg}`);
-
-// 예외 발생 시도 fail로 이동
-navigate(`/main/order/result/fail?message=${encodeURIComponent(msg)}`, {
-  state: { message: msg },
-});
-} finally {
-setPaying(false);
-}
   };
 
   // 우측 결제 요약 sticky
@@ -332,7 +328,10 @@ setPaying(false);
           {items.map((it) => {
             const itemTotal = it.price * it.productCnt;
             return (
-              <div key={`${it.productId}-${it.productCnt}`} className="flex items-center justify-between text-sm">
+              <div
+                key={`${it.productId}-${it.productCnt}`}
+                className="flex items-center justify-between text-sm"
+              >
                 <span className="truncate">
                   {it.productName} × {it.productCnt}
                 </span>
@@ -355,17 +354,24 @@ setPaying(false);
           onClick={onPay}
           disabled={paying || items.length === 0}
           className={`mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white font-semibold transition
-            ${paying ? "bg-gray-400 cursor-not-allowed" : "bg-[#2d4739] hover:bg-[#243c30]"}`}
+            ${paying ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#2d4739] hover:bg-[#243c30]'}`}
         >
-          {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-          {paying ? "결제 처리중..." : "결제하기"}
+          {paying ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <CreditCard className="w-4 h-4" />
+          )}
+          {paying ? '결제 처리중...' : '결제하기'}
         </button>
       </div>
     </aside>
   );
 
   return (
-    <div className="min-h-screen font-jua" style={{ background: "linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)" }}>
+    <div
+      className="min-h-screen font-jua"
+      style={{ background: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)' }}
+    >
       <Header />
       <Mainnavbar />
 
@@ -375,7 +381,7 @@ setPaying(false);
           <div className="px-4 py-3 flex items-center gap-3">
             <button
               type="button"
-              onClick={() => (history.length > 1 ? history.back() : navigate("/main"))}
+              onClick={() => (history.length > 1 ? history.back() : navigate('/main'))}
               className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -442,8 +448,8 @@ setPaying(false);
                       className={`mt-6 md:mt-0 h-10 px-3 rounded-lg border text-sm
                         ${
                           postcodeDisabled
-                            ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                            : "bg-white hover:bg-gray-50 text-gray-800 border-gray-300"
+                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                            : 'bg-white hover:bg-gray-50 text-gray-800 border-gray-300'
                         }`}
                     >
                       우편번호 찾기
@@ -519,18 +525,28 @@ setPaying(false);
                         className="flex items-center gap-4 border-t first:border-t-0 pt-4 first:pt-0"
                       >
                         <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200 shrink-0">
-                          <img src={it.pimgUrl} alt={it.productName} className="w-full h-full object-cover" />
+                          <img
+                            src={it.pimgUrl}
+                            alt={it.productName}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                         <div className="flex-1">
                           <div className="text-sm text-gray-500">{it.storeName}</div>
-                          <div className="text-base font-semibold text-gray-900">{it.productName}</div>
+                          <div className="text-base font-semibold text-gray-900">
+                            {it.productName}
+                          </div>
                           {it.productDetail && (
-                            <div className="text-sm text-gray-600 line-clamp-2">{it.productDetail}</div>
+                            <div className="text-sm text-gray-600 line-clamp-2">
+                              {it.productDetail}
+                            </div>
                           )}
                           <div className="text-sm text-gray-700 mt-1">수량: {it.productCnt}개</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-base font-semibold text-gray-900">{it.price.toLocaleString()} 원</div>
+                          <div className="text-base font-semibold text-gray-900">
+                            {it.price.toLocaleString()} 원
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -593,8 +609,8 @@ setPaying(false);
                     className={`mt-6 h-10 px-3 rounded-lg border text-sm
                       ${
                         postcodeDisabled
-                          ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                          : "bg-white hover:bg-gray-50 text-gray-800 border-gray-300"
+                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                          : 'bg-white hover:bg-gray-50 text-gray-800 border-gray-300'
                       }`}
                   >
                     우편번호 찾기
@@ -668,18 +684,28 @@ setPaying(false);
                       className="flex items-center gap-4 border-t first:border-t-0 pt-4 first:pt-0"
                     >
                       <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200 shrink-0">
-                        <img src={it.pimgUrl} alt={it.productName} className="w-full h-full object-cover" />
+                        <img
+                          src={it.pimgUrl}
+                          alt={it.productName}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div className="flex-1">
                         <div className="text-sm text-gray-500">{it.storeName}</div>
-                        <div className="text-base font-semibold text-gray-900">{it.productName}</div>
+                        <div className="text-base font-semibold text-gray-900">
+                          {it.productName}
+                        </div>
                         {it.productDetail && (
-                          <div className="text-sm text-gray-600 line-clamp-2">{it.productDetail}</div>
+                          <div className="text-sm text-gray-600 line-clamp-2">
+                            {it.productDetail}
+                          </div>
                         )}
                         <div className="text-sm text-gray-700 mt-1">수량: {it.productCnt}개</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-base font-semibold text-gray-900">{it.price.toLocaleString()} 원</div>
+                        <div className="text-base font-semibold text-gray-900">
+                          {it.price.toLocaleString()} 원
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -692,16 +718,22 @@ setPaying(false);
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-xs text-gray-500">총 결제 금액</div>
-                  <div className="text-lg font-bold text-gray-900">{finalTotal.toLocaleString()} 원</div>
+                  <div className="text-lg font-bold text-gray-900">
+                    {finalTotal.toLocaleString()} 원
+                  </div>
                 </div>
                 <button
                   onClick={onPay}
                   disabled={paying || items.length === 0}
                   className={`inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-white font-semibold transition
-                    ${paying ? "bg-gray-400 cursor-not-allowed" : "bg-[#2d4739] hover:bg-[#243c30]"}`}
+                    ${paying ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#2d4739] hover:bg-[#243c30]'}`}
                 >
-                  {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                  {paying ? "결제 처리중..." : "결제하기"}
+                  {paying ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CreditCard className="w-4 h-4" />
+                  )}
+                  {paying ? '결제 처리중...' : '결제하기'}
                 </button>
               </div>
             </div>

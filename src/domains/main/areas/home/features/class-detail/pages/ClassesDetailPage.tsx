@@ -339,274 +339,276 @@ export default function ClassesDetailPage() {
       <Header />
       <Mainnavbar />
 
-      <main className="w-full">
-        {isLoading ? (
-          <div className="container-1920 py-12">
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 animate-pulse">
-              <div className="h-6 w-1/3 bg-gray-200 rounded mb-2" />
-              <div className="h-4 w-2/3 bg-gray-200 rounded mb-6" />
-              <div className="h-10 w-24 bg-gray-200 rounded" />
-            </div>
-          </div>
-        ) : loadError ? (
-          <div className="container-1920 py-12">
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-8">
-              <h1 className="text-lg font-semibold text-red-700">오류가 발생했어요</h1>
-              <p className="text-sm text-red-600 mt-1">{loadError}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="mt-6 h-10 px-4 rounded-xl border border-red-300 hover:bg-red-100 text-red-700"
-              >
-                다시 시도
-              </button>
-            </div>
-          </div>
-        ) : !summary ? (
-          <div className="container-1920 py-12">
-            <div className="rounded-2xl border border-gray-200 bg-white p-8">
-              <h1 className="text-lg font-semibold">클래스를 찾을 수 없습니다</h1>
-              <p className="text-sm text-gray-500 mt-1">존재하지 않거나 삭제되었을 수 있어요.</p>
-              <button
-                onClick={() => nav(-1)}
-                className="mt-6 h-10 px-4 rounded-xl border border-gray-300 hover:bg-gray-50"
-              >
-                이전으로
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="container-1920 py-8 lg:py-12">
-            {/* 상단: 이미지 + 기본 정보 */}
-            <section className="mb-10">
-              <div className="flex flex-col xl:flex-row items-start gap-8 xl:gap-[120px]">
-                {/* 왼쪽: 이미지 */}
-                <div className="w-full xl:w-[670px]">
-                  <div className="rounded-2xl overflow-hidden border border-gray-200">
-                    <div className="relative w-full aspect-[2/1]">
-                      {firstImageSrc ? (
-                        <img
-                          src={firstImageSrc}
-                          alt={summary.title}
-                          className="absolute inset-0 w-full h-full object-cover"
-                          loading="eager"
-                          decoding="async"
-                          fetchPriority="high"
-                          width={800}
-                          height={400}
-                          onError={(e) =>
-                            console.warn('CARD IMG ERROR', e.currentTarget.currentSrc)
-                          }
-                        />
-                      ) : (
-                        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                          <span className="text-gray-500">클래스 이미지</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 오른쪽: 텍스트/가격 */}
-                <div className="flex-1 xl:max-w-[503px] xl:h-[335px] flex flex-col justify-between">
-                  <div className="flex flex-col gap-2.5">
-                    <h1 className="text-[16px] sm:text-[24px] xl:text-[28px] leading-[1.5] font-bold">
-                      {summary.title}
-                    </h1>
-                    <p className="text-[#3d3d3d] text-[12px] sm:text-[20px] xl:text-[28px] leading-[1.5]">
-                      {summary.storeName ? `${summary.storeName}의 클래스` : '{store}의 클래스'}
-                    </p>
-                    <p className="text-[#3d3d3d] text-[12px] sm:text-[20px] xl:text-[24px] leading-[1.5]">
-                      {address || '서울특별시 마포구'}
-                    </p>
-                  </div>
-                  <p className="mt-6 xl:mt-0 text-black text-[22px] sm:text-[26px] xl:text-[32px] leading-[1.5] font-bold">
-                    {formatCurrency(summary.price)} 원
-                  </p>
-                </div>
+      {/* 1920px 기준 양옆 240px 패딩, 내부 콘텐츠 1440px */}
+      <main className="max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-16 xl:px-[240px]">
+        <div className="max-w-[1440px] mx-auto">
+          {isLoading ? (
+            <div className="py-12">
+              <div className="rounded-2xl border border-gray-200 bg-white p-8 animate-pulse">
+                <div className="h-6 w-1/3 bg-gray-200 rounded mb-2" />
+                <div className="h-4 w-2/3 bg-gray-200 rounded mb-6" />
+                <div className="h-10 w-24 bg-gray-200 rounded" />
               </div>
-            </section>
-
-            {/* 중간: FullCalendar + 시간표 */}
-            <section
-              ref={calendarSectionRef}
-              className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10"
-            >
-              {/* 왼쪽: FullCalendar */}
-              <div className="bg-white border border-gray-200 rounded-2xl p-4">
-                <h3 className="text-lg font-semibold mb-3">날짜/타임 일정</h3>
-                <FullCalendar
-                  plugins={[dayGridPlugin, interactionPlugin]}
-                  initialView="dayGridMonth"
-                  headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }}
-                  height="auto"
-                  dayMaxEvents={3}
-                  events={calendarEvents}
-                  dateClick={onDateClick}
-                  eventClick={onEventClick}
-                  fixedWeekCount={false}
-                  firstDay={0}
-                  locale="ko"
-                />
-              </div>
-
-              {/* 오른쪽: 시간표 */}
-              <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                <h3 className="text-lg font-semibold mb-2">시간 선택</h3>
-                {!selectedDate ? (
-                  <p className="text-sm text-gray-500">날짜를 먼저 선택해주세요.</p>
-                ) : timeList.length > 0 ? (
-                  <>
-                    <p className="text-sm text-gray-500 mb-3">{selectedDate}</p>
-                    <div className="grid grid-cols-2 gap-3 mb-6">
-                      {timeList.map((t) => {
-                        const isSelected = selectedTime === t.time;
-                        const disabled = !t.reservable || t.seatsLeft <= 0;
-                        return (
-                          <button
-                            key={`${selectedDate}_${t.time}`}
-                            onClick={() => !disabled && setSelectedTime(t.time)}
-                            disabled={disabled}
-                            className={[
-                              'py-3 px-4 rounded-lg text-sm font-medium transition-colors text-left',
-                              disabled
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                : isSelected
-                                  ? 'bg-[#2D4739] text-white'
-                                  : 'bg-gray-50 hover:bg-gray-100 text-gray-700',
-                            ].join(' ')}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span>{t.time}</span>
-                              <span className="text-xs opacity-80">여석 {t.seatsLeft}</span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <button
-                      ref={inlineCtaRef}
-                      onClick={handleApply}
-                      className="w-full py-4 bg-[#2D4739] text-white font-semibold rounded-xl hover:opacity-90 transition-opacity"
-                    >
-                      신청하기
-                    </button>
-                  </>
-                ) : (
-                  <div className="text-sm text-gray-500">
-                    선택 가능한 시간이 없습니다. (모든 타임이 예약 불가)
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* 하단: 탭 네비게이션 + 콘텐츠 */}
-            <section className="bg-white border border-gray-200 rounded-2xl">
-              <nav className="flex border-b border-gray-200">
+            </div>
+          ) : loadError ? (
+            <div className="py-12">
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-8">
+                <h1 className="text-lg font-semibold text-red-700">오류가 발생했어요</h1>
+                <p className="text-sm text-red-600 mt-1">{loadError}</p>
                 <button
-                  onClick={() => setActiveTab('detail')}
-                  className={[
-                    'flex-1 py-4 px-6 text-center font-medium transition-colors',
-                    activeTab === 'detail'
-                      ? 'text-[#2D4739] border-b-2 border-[#2D4739]'
-                      : 'text-gray-600 hover:text-gray-900',
-                  ].join(' ')}
+                  onClick={() => window.location.reload()}
+                  className="mt-6 h-10 px-4 rounded-xl border border-red-300 hover:bg-red-100 text-red-700"
                 >
-                  상세보기
+                  다시 시도
                 </button>
+              </div>
+            </div>
+          ) : !summary ? (
+            <div className="py-12">
+              <div className="rounded-2xl border border-gray-200 bg-white p-8">
+                <h1 className="text-lg font-semibold">클래스를 찾을 수 없습니다</h1>
+                <p className="text-sm text-gray-500 mt-1">존재하지 않거나 삭제되었을 수 있어요.</p>
                 <button
-                  onClick={() => setActiveTab('store')}
-                  className={[
-                    'flex-1 py-4 px-6 text-center font-medium transition-colors',
-                    activeTab === 'store'
-                      ? 'text-[#2D4739] border-b-2 border-[#2D4739]'
-                      : 'text-gray-600 hover:text-gray-900',
-                  ].join(' ')}
+                  onClick={() => nav(-1)}
+                  className="mt-6 h-10 px-4 rounded-xl border border-gray-300 hover:bg-gray-50"
                 >
-                  스토어 정보 보기
+                  이전으로
                 </button>
-              </nav>
-
-              <div className="p-6">
-                {activeTab === 'detail' ? (
-                  <div className="prose max-w-none">
-                    <h3 className="text-xl font-semibold mb-4">클래스 상세 정보</h3>
-
-                    {/* 본문 텍스트 */}
-                    <div className="space-y-4 text-gray-700">
-                      <p>“{summary.title}” 클래스에 오신 것을 환영합니다.</p>
-
-                      {summary.description ? (
-                        <p>{summary.description}</p>
-                      ) : (
-                        <p>클래스 설명이 없습니다.</p>
-                      )}
-                      {summary.guideline && (
-                        <div className="mt-2">
-                          <h4 className="font-semibold mb-1">주의사항</h4>
-                          <p>{summary.guideline}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 상세 이미지 갤러리 (대표 제외) */}
-                    {detailImages.length > 0 && (
-                      <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {detailImages.map((src, idx) => (
-                          <div
-                            key={idx}
-                            className="relative aspect-[4/3] rounded-lg overflow-hidden shadow-sm border border-gray-200"
-                          >
-                            <img
-                              src={src}
-                              alt={`클래스 상세 이미지 ${idx + 1}`}
-                              className="w-full h-full object-cover hover:scale-105 transition-transform"
-                              loading="lazy"
-                              onError={(e) => {
-                                e.currentTarget.replaceWith(
-                                  Object.assign(document.createElement('div'), {
-                                    className: 'w-full h-full bg-gray-200',
-                                  })
-                                );
-                              }}
-                            />
+              </div>
+            </div>
+          ) : (
+            <div className="py-8 lg:py-12">
+              {/* 상단: 이미지 + 기본 정보 */}
+              <section className="mb-10">
+                <div className="flex flex-col xl:flex-row items-start gap-8 xl:gap-[120px]">
+                  {/* 왼쪽: 이미지 */}
+                  <div className="w-full xl:w-[670px]">
+                    <div className="rounded-2xl overflow-hidden border border-gray-200">
+                      <div className="relative w-full aspect-[2/1]">
+                        {firstImageSrc ? (
+                          <img
+                            src={firstImageSrc}
+                            alt={summary.title}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            loading="eager"
+                            decoding="async"
+                            fetchPriority="high"
+                            width={800}
+                            height={400}
+                            onError={(e) =>
+                              console.warn('CARD IMG ERROR', e.currentTarget.currentSrc)
+                            }
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                            <span className="text-gray-500">클래스 이미지</span>
                           </div>
-                        ))}
+                        )}
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">스토어 정보</h3>
-                    <div className="bg-gray-50 p-4 rounded-xl mb-4">
-                      <h4 className="font-semibold mb-2">{summary.storeName ?? '스토어'}</h4>
-                      <p className="text-gray-600 mb-3">
-                        {summary.storeContent ?? '스토어 소개가 없습니다.'}
-                      </p>
-                      <button
-                        onClick={handleStoreInfo}
-                        className="px-4 py-2 bg-[#2D4739] text-white rounded-lg hover:opacity-90"
-                      >
-                        스토어 상세 정보 보기
-                      </button>
                     </div>
                   </div>
-                )}
-              </div>
-            </section>
-          </div>
-        )}
 
-        {/* 플로팅 CTA */}
-        {showFixedButton && !isLoading && !loadError && summary && (
-          <button
-            onClick={scrollToCalendar}
-            className="fixed bottom-5 z-50 h-14 px-6 rounded-full bg-[#2D4739] text-white font-semibold shadow-[0_8px_20px_rgba(0,0,0,0.15)] hover:opacity-90 transition-opacity"
-            style={{ right: 'max(calc((100vw - 1440px) / 2 + 20px), 20px)' }}
-          >
-            신청하기
-          </button>
-        )}
+                  {/* 오른쪽: 텍스트/가격 */}
+                  <div className="flex-1 xl:max-w-[503px] xl:h-[335px] flex flex-col justify-between">
+                    <div className="flex flex-col gap-2.5">
+                      <h1 className="text-[16px] sm:text-[24px] xl:text-[28px] leading-[1.5] font-bold">
+                        {summary.title}
+                      </h1>
+                      <p className="text-[#3d3d3d] text-[12px] sm:text-[20px] xl:text-[28px] leading-[1.5]">
+                        {summary.storeName ? `${summary.storeName}의 클래스` : '{store}의 클래스'}
+                      </p>
+                      <p className="text-[#3d3d3d] text-[12px] sm:text-[20px] xl:text-[24px] leading-[1.5]">
+                        {address || '서울특별시 마포구'}
+                      </p>
+                    </div>
+                    <p className="mt-6 xl:mt-0 text-black text-[22px] sm:text-[26px] xl:text-[32px] leading-[1.5] font-bold">
+                      {formatCurrency(summary.price)} 원
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* 중간: FullCalendar + 시간표 */}
+              <section
+                ref={calendarSectionRef}
+                className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10"
+              >
+                {/* 왼쪽: FullCalendar */}
+                <div className="bg-white border border-gray-200 rounded-2xl p-4">
+                  <h3 className="text-lg font-semibold mb-3">날짜/타임 일정</h3>
+                  <FullCalendar
+                    plugins={[dayGridPlugin, interactionPlugin]}
+                    initialView="dayGridMonth"
+                    headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }}
+                    height="auto"
+                    dayMaxEvents={3}
+                    events={calendarEvents}
+                    dateClick={onDateClick}
+                    eventClick={onEventClick}
+                    fixedWeekCount={false}
+                    firstDay={0}
+                    locale="ko"
+                  />
+                </div>
+
+                {/* 오른쪽: 시간표 */}
+                <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                  <h3 className="text-lg font-semibold mb-2">시간 선택</h3>
+                  {!selectedDate ? (
+                    <p className="text-sm text-gray-500">날짜를 먼저 선택해주세요.</p>
+                  ) : timeList.length > 0 ? (
+                    <>
+                      <p className="text-sm text-gray-500 mb-3">{selectedDate}</p>
+                      <div className="grid grid-cols-2 gap-3 mb-6">
+                        {timeList.map((t) => {
+                          const isSelected = selectedTime === t.time;
+                          const disabled = !t.reservable || t.seatsLeft <= 0;
+                          return (
+                            <button
+                              key={`${selectedDate}_${t.time}`}
+                              onClick={() => !disabled && setSelectedTime(t.time)}
+                              disabled={disabled}
+                              className={[
+                                'py-3 px-4 rounded-lg text-sm font-medium transition-colors text-left',
+                                disabled
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : isSelected
+                                    ? 'bg-[#2D4739] text-white'
+                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700',
+                              ].join(' ')}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span>{t.time}</span>
+                                <span className="text-xs opacity-80">여석 {t.seatsLeft}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        ref={inlineCtaRef}
+                        onClick={handleApply}
+                        className="w-full py-4 bg-[#2D4739] text-white font-semibold rounded-xl hover:opacity-90 transition-opacity"
+                      >
+                        신청하기
+                      </button>
+                    </>
+                  ) : (
+                    <div className="text-sm text-gray-500">
+                      선택 가능한 시간이 없습니다. (모든 타임이 예약 불가)
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* 하단: 탭 네비게이션 + 콘텐츠 */}
+              <section className="bg-white border border-gray-200 rounded-2xl">
+                <nav className="flex border-b border-gray-200">
+                  <button
+                    onClick={() => setActiveTab('detail')}
+                    className={[
+                      'flex-1 py-4 px-6 text-center font-medium transition-colors',
+                      activeTab === 'detail'
+                        ? 'text-[#2D4739] border-b-2 border-[#2D4739]'
+                        : 'text-gray-600 hover:text-gray-900',
+                    ].join(' ')}
+                  >
+                    상세보기
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('store')}
+                    className={[
+                      'flex-1 py-4 px-6 text-center font-medium transition-colors',
+                      activeTab === 'store'
+                        ? 'text-[#2D4739] border-b-2 border-[#2D4739]'
+                        : 'text-gray-600 hover:text-gray-900',
+                    ].join(' ')}
+                  >
+                    스토어 정보 보기
+                  </button>
+                </nav>
+
+                <div className="p-6">
+                  {activeTab === 'detail' ? (
+                    <div className="prose max-w-none">
+                      <h3 className="text-xl font-semibold mb-4">클래스 상세 정보</h3>
+
+                      {/* 본문 텍스트 */}
+                      <div className="space-y-4 text-gray-700">
+                        <p>"{summary.title}" 클래스에 오신 것을 환영합니다.</p>
+
+                        {summary.description ? (
+                          <p>{summary.description}</p>
+                        ) : (
+                          <p>클래스 설명이 없습니다.</p>
+                        )}
+                        {summary.guideline && (
+                          <div className="mt-2">
+                            <h4 className="font-semibold mb-1">주의사항</h4>
+                            <p>{summary.guideline}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 상세 이미지 갤러리 (대표 제외) */}
+                      {detailImages.length > 0 && (
+                        <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {detailImages.map((src, idx) => (
+                            <div
+                              key={idx}
+                              className="relative aspect-[4/3] rounded-lg overflow-hidden shadow-sm border border-gray-200"
+                            >
+                              <img
+                                src={src}
+                                alt={`클래스 상세 이미지 ${idx + 1}`}
+                                className="w-full h-full object-cover hover:scale-105 transition-transform"
+                                loading="lazy"
+                                onError={(e) => {
+                                  e.currentTarget.replaceWith(
+                                    Object.assign(document.createElement('div'), {
+                                      className: 'w-full h-full bg-gray-200',
+                                    })
+                                  );
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <h3 className="text-xl font-semibold mb-4">스토어 정보</h3>
+                      <div className="bg-gray-50 p-4 rounded-xl mb-4">
+                        <h4 className="font-semibold mb-2">{summary.storeName ?? '스토어'}</h4>
+                        <p className="text-gray-600 mb-3">
+                          {summary.storeContent ?? '스토어 소개가 없습니다.'}
+                        </p>
+                        <button
+                          onClick={handleStoreInfo}
+                          className="px-4 py-2 bg-[#2D4739] text-white rounded-lg hover:opacity-90"
+                        >
+                          스토어 상세 정보 보기
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* 플로팅 CTA - 1440px 콘텐츠 영역 내부로 이동 */}
+          {showFixedButton && !isLoading && !loadError && summary && (
+            <button
+              onClick={scrollToCalendar}
+              className="fixed bottom-5 right-5 z-50 h-14 px-6 rounded-full bg-[#2D4739] text-white font-semibold shadow-[0_8px_20px_rgba(0,0,0,0.15)] hover:opacity-90 transition-opacity lg:right-8 xl:right-12"
+            >
+              신청하기
+            </button>
+          )}
+        </div>
       </main>
     </>
   );

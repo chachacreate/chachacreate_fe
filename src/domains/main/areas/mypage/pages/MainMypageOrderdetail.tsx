@@ -1,13 +1,22 @@
 // src/domains/main/areas/mypage/pages/MainMypageOrderdetail.tsx
-import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ChevronLeft, CreditCard, MapPin, Package, Truck, XCircle, RotateCcw, Loader2 } from "lucide-react";
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  ChevronLeft,
+  CreditCard,
+  MapPin,
+  Package,
+  Truck,
+  XCircle,
+  RotateCcw,
+  Loader2,
+} from 'lucide-react';
 
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import MypageSidenavbar from "@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar";
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar';
 
-import { legacyGet, legacyPost } from "@src/libs/request";
+import { legacyGet, legacyPost } from '@src/libs/request';
 
 /* ======================== Types ======================== */
 type Params = { orderId?: string };
@@ -23,7 +32,7 @@ interface OrderItem {
 
 interface OrderDetail {
   orderId: string | number;
-  status?: string;
+  orderStatus?: string;
   orderName: string;
   orderPhone: string;
   postNum?: string;
@@ -35,13 +44,13 @@ interface OrderDetail {
 }
 
 /* ============ 상태 타입 & 유틸 ============ */
-type PreShippingStatus = "주문완료" | "결제완료" | "배송준비중";
-type ShippingStatus = "배송중";
-type FinalizedStatus = "배송완료" | "취소완료" | "환불완료";
+type PreShippingStatus = '주문완료';
+type ShippingStatus = '발송완료';
+type FinalizedStatus = '배송완료' | '취소완료' | '환불완료';
 
-const PRE_SHIPPING: readonly PreShippingStatus[] = ["주문완료", "결제완료", "배송준비중"] as const;
-const SHIPPING: ShippingStatus = "배송중";
-const FINALIZED: readonly FinalizedStatus[] = ["배송완료", "취소완료", "환불완료"] as const;
+const PRE_SHIPPING: readonly PreShippingStatus[] = ['주문완료'] as const;
+const SHIPPING: ShippingStatus = '발송완료';
+const FINALIZED: readonly FinalizedStatus[] = ['배송완료', '취소완료', '환불완료'] as const;
 
 function isPreShipping(status?: string): status is PreShippingStatus {
   return !!status && (PRE_SHIPPING as readonly string[]).includes(status);
@@ -64,38 +73,38 @@ const MainMypageOrderdetail: React.FC = () => {
   const [detail, setDetail] = useState<OrderDetail | null>(null);
 
   const fullAddress = useMemo(() => {
-    if (!detail) return "";
+    if (!detail) return '';
     const parts = [detail.postNum, detail.addressRoad, detail.addressDetail, detail.addressExtra]
       .filter(Boolean)
       .map((s) => String(s).trim())
       .filter((s) => s.length > 0);
-    return parts.join(" ");
+    return parts.join(' ');
   }, [detail]);
 
-  const canCancel = useMemo(() => isPreShipping(detail?.status), [detail?.status]);
+  const canCancel = useMemo(() => isPreShipping(detail?.orderStatus), [detail?.orderStatus]);
   const canRefund = useMemo(() => {
-    const s = detail?.status;
+    const s = detail?.orderStatus;
     if (!s) return false;
     if (isShipping(s)) return true;
     // 배송완료/취소완료/환불완료 등 이후에는 비활성 (정책에 맞게 조정)
     return false;
-  }, [detail?.status]);
+  }, [detail?.orderStatus]);
 
   const fetchDetail = useCallback(async () => {
     if (!orderId) return;
     setLoading(true);
     setError(null);
     try {
-      // ✅ 레거시 조회 URL로 복구
-      const res = await legacyGet<any>(`/legacy/main/mypage/orderdetail/${orderId}`);
-      if (res?.status === 200 && res?.data) {
-        setDetail(res.data as OrderDetail);
+      const response = await legacyGet<any>(`/main/mypage/orderdetail/${orderId}`);
+      if (response?.status === 200 && response?.data) {
+        setDetail(response.data as OrderDetail);
+        console.log('Order detail:', response.data);
       } else {
-        setError(res?.message ?? "주문 상세 정보를 불러오지 못했습니다.");
+        setError(response?.message ?? '주문 상세 정보를 불러오지 못했습니다.');
       }
-    } catch (e: any) {
-      console.error("[OrderDetail] fetch error:", e);
-      setError("서버 통신 중 오류가 발생했습니다.");
+    } catch (error: any) {
+      console.error('API 요청 실패', error);
+      setError('서버 통신 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -107,11 +116,11 @@ const MainMypageOrderdetail: React.FC = () => {
 
   const handleBack = () => {
     if (history.length > 1) history.back();
-    else navigate("/main/mypage/orders");
+    else navigate('/main/mypage/orders');
   };
 
   const handleBackToOrders = () => {
-    navigate("/main/mypage/orders");
+    navigate('/main/mypage/orders');
   };
 
   const CANCEL_URL = (oid: string | number) => `/legacy/main/mypage/orders/${oid}/cancel`;
@@ -119,19 +128,19 @@ const MainMypageOrderdetail: React.FC = () => {
 
   const handleCancel = async () => {
     if (!detail) return;
-    if (!confirm("해당 주문을 취소하시겠습니까?")) return;
+    if (!confirm('해당 주문을 취소하시겠습니까?')) return;
     setSaving(true);
     try {
       const res = await legacyPost<any>(CANCEL_URL(detail.orderId), {});
       if (res?.status === 200) {
-        alert("주문이 취소되었습니다.");
+        alert('주문이 취소되었습니다.');
         await fetchDetail();
       } else {
-        alert(res?.message ?? "주문 취소에 실패했습니다.");
+        alert(res?.message ?? '주문 취소에 실패했습니다.');
       }
     } catch (e: any) {
-      console.error("[OrderDetail] cancel error:", e);
-      alert("요청 처리 중 오류가 발생했습니다.");
+      console.error('[OrderDetail] cancel error:', e);
+      alert('요청 처리 중 오류가 발생했습니다.');
     } finally {
       setSaving(false);
     }
@@ -139,26 +148,26 @@ const MainMypageOrderdetail: React.FC = () => {
 
   const handleRefund = async () => {
     if (!detail) return;
-    if (!confirm("환불을 요청하시겠습니까?")) return;
+    if (!confirm('환불을 요청하시겠습니까?')) return;
     setSaving(true);
     try {
       const res = await legacyPost<any>(REFUND_URL(detail.orderId), {});
       if (res?.status === 200) {
-        alert("환불이 요청되었습니다.");
+        alert('환불이 요청되었습니다.');
         await fetchDetail();
       } else {
-        alert(res?.message ?? "환불 요청에 실패했습니다.");
+        alert(res?.message ?? '환불 요청에 실패했습니다.');
       }
     } catch (e: any) {
-      console.error("[OrderDetail] refund error:", e);
-      alert("요청 처리 중 오류가 발생했습니다.");
+      console.error('[OrderDetail] refund error:', e);
+      alert('요청 처리 중 오류가 발생했습니다.');
     } finally {
       setSaving(false);
     }
   };
 
   const goProduct = (storeUrl: string | undefined, productId: number) => {
-    const base = storeUrl && storeUrl !== "" ? `/${storeUrl}` : "/main";
+    const base = storeUrl && storeUrl !== '' ? `/${storeUrl}` : '/main';
     navigate(`${base}/products/${productId}`);
   };
 
@@ -172,13 +181,15 @@ const MainMypageOrderdetail: React.FC = () => {
           불러오는 중...
         </div>
       )}
-      {error && !loading && <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4">{error}</div>}
+      {error && !loading && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4">{error}</div>
+      )}
 
       {!loading && !error && detail && (
         <>
           <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 shadow-sm">
             <p className="font-semibold text-lg">주문번호: {detail.orderId}</p>
-            <p className="text-gray-600">현재 상태: {detail.status}</p>
+            <p className="text-gray-600">현재 상태: {detail.orderStatus}</p>
           </div>
 
           {/* 주문 상품 */}
@@ -192,7 +203,11 @@ const MainMypageOrderdetail: React.FC = () => {
                   className="w-16 h-16 rounded border overflow-hidden"
                 >
                   {item.pimgUrl ? (
-                    <img src={item.pimgUrl} alt={item.productName} className="w-full h-full object-cover" />
+                    <img
+                      src={item.pimgUrl}
+                      alt={item.productName}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <div className="w-full h-full bg-gray-200" />
                   )}
@@ -237,10 +252,10 @@ const MainMypageOrderdetail: React.FC = () => {
               disabled={!canCancel || saving}
               className={`px-4 py-2 rounded-xl border ${
                 canCancel && !saving
-                  ? "bg-white hover:bg-gray-50 text-gray-800"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  ? 'bg-white hover:bg-gray-50 text-gray-800'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
               }`}
-              title={canCancel ? "주문취소" : "배송중 이전 단계에서만 취소 가능"}
+              title={canCancel ? '주문취소' : '배송중 이전 단계에서만 취소 가능'}
             >
               <XCircle className="inline w-4 h-4 mr-1" />
               주문취소
@@ -248,13 +263,13 @@ const MainMypageOrderdetail: React.FC = () => {
 
             <button
               onClick={handleRefund}
-              disabled={!canRefund || saving || isFinalized(detail.status)}
+              disabled={!canRefund || saving || isFinalized(detail.orderStatus)}
               className={`px-4 py-2 rounded-xl border ${
-                canRefund && !saving && !isFinalized(detail.status)
-                  ? "bg-white hover:bg-gray-50 text-gray-800"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                canRefund && !saving && !isFinalized(detail.orderStatus)
+                  ? 'bg-white hover:bg-gray-50 text-gray-800'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
               }`}
-              title={canRefund ? "환불 요청" : "배송중 이후에 환불 요청 가능"}
+              title={canRefund ? '환불 요청' : '배송중 이후에 환불 요청 가능'}
             >
               <RotateCcw className="inline w-4 h-4 mr-1" />
               환불요청
@@ -268,7 +283,10 @@ const MainMypageOrderdetail: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen font-jua" style={{ background: "linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)" }}>
+    <div
+      className="min-h-screen font-jua"
+      style={{ background: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)' }}
+    >
       <Header />
       <Mainnavbar />
 

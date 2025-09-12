@@ -41,7 +41,10 @@ const mainRoutes: RouteObject[] = [
 
   {
     path: ":storeUrl",
-    children: [{ path: "products", children: productsRoutes }],
+    children: [
+      { path: "products", children: productsRoutes },
+      ...mypageRoutes, // /:storeUrl/mypage - 이 부분을 children 배열 안으로 이동
+    ],
   },
 ];
 

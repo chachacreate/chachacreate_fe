@@ -293,7 +293,7 @@ export default function MainClassesPage() {
 
             {/* 은은한 대비 오버레이 (가독성) */}
              <div className="absolute inset-0 bg-black/10"></div>
-            <div className="absolute inset-0 bg-white/20"></div>
+            <div className="absolute inset-0 bg-white/40"></div>
    
 
    
@@ -380,7 +380,7 @@ export default function MainClassesPage() {
           {/* 서브 타이틀 - 원데이 클래스 안내 */}
           <div className="relative mb-12 max-w-3xl mx-auto">
             <div className="bg-white/70 rounded-2xl px-6 py-5 shadow-xl">
-              <p className="text-sm md:text-base lg:text-lg text-[#2D4739] font-normal leading-relaxed text-center">
+              <p className="text-sm md:text-base lg:text-lg text-[#2D4739] font-jua leading-relaxed text-center">
                 오늘 하루, <span className="font-semibold">원데이 클래스</span>로 새로운 경험을 시작해보세요.  
                 <br className="hidden md:block" />
                 재료와 공간이 모두 준비되어 있어 <span className="font-semibold">가볍게 배우고 즐길 수 있는 클래스</span>입니다.

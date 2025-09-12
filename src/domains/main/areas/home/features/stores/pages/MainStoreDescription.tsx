@@ -16,10 +16,12 @@ import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainna
 import StoresSubnavbar from "@src/shared/areas/navigation/features/subnavbar/stores/StoresSubnavbar";
 
 /** 개인판매자만 버튼 노출 (데모) */
-const getIsPersonalSeller = (): boolean => {
-  const role = (typeof window !== "undefined" && localStorage.getItem("role")) || "";
-  return role === "personal";
-};
+// const getIsPersonalSeller = (): boolean => {
+//   const role = (typeof window !== "undefined" && localStorage.getItem("role")) || "";
+//   return role === "personal";
+// };
+
+const getIsPersonalSeller = (): boolean => true; // 항상 활성화
 
 type Step = {
   title: string;
@@ -164,8 +166,10 @@ const MainStoreDescription: React.FC = () => {
   );
 
   const goToOpenForm = () => {
-    window.location.href = "/seller/open/apply";
+    window.location.href = "/main/store/openform"; // 새 탭에서 열기
   };
+
+  
 
   return (
     <>
@@ -299,17 +303,21 @@ const MainStoreDescription: React.FC = () => {
 
                 {/* CTA */}
                 <div className="md:text-right">
-                  {isPersonal ? (
+                  {/* {isPersonal ? ( */}
                     <button
                       onClick={goToOpenForm}
-                      className="group relative inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2d4739] to-green-600 text-white px-6 py-3 font-semibold hover:from-green-600 hover:to-[#2d4739] transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
+                      className="group relative inline-flex items-center gap-2 rounded-xl 
+bg-[#6B8F7D] text-white px-6 py-3 font-semibold 
+hover:bg-green-600 transform hover:scale-105 
+transition-all duration-300 shadow-md hover:shadow-lg"
+
                     >
                       <span className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <Sparkles className="w-4 h-4 opacity-90 group-hover:rotate-12 transition-transform" />
+                      <Sparkles className="w-4 h-4 opacity-90 group-hover:animate-spin transition-transform " />
                       스토어 개설 신청
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </button>
-                  ) : (
+                  {/* ) : (
                     <span 
                       className="inline-flex items-center gap-2 rounded-lg bg-gray-100/80 backdrop-blur-sm px-3 py-2 text-sm text-gray-700 opacity-0 animate-fade-in-slide"
                       style={{ animationDelay: '0.3s' }}
@@ -317,7 +325,7 @@ const MainStoreDescription: React.FC = () => {
                       <Info className="w-4 h-4 text-gray-500 animate-pulse" />
                       개인판매자 로그인 시 신청 버튼이 표시됩니다
                     </span>
-                  )}
+                  )} */}
                 </div>
               </div>
             </section>
@@ -441,14 +449,17 @@ const MainStoreDescription: React.FC = () => {
             </section>
 
             {/* --- 하단 CTA (개인판매자만) --- */}
-            {isPersonal && (
+            {/* {isPersonal && ( */}
               <div 
                 className="mt-10 md:mt-14 text-center opacity-0 animate-fade-in-slide"
                 style={{ animationDelay: '0.6s' }}
               >
                 <button
                   onClick={goToOpenForm}
-                  className="group relative inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#2d4739] to-green-600 text-white px-8 py-4 text-base md:text-lg font-semibold hover:from-green-600 hover:to-[#2d4739] transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-2xl"
+                  className="group relative inline-flex items-center gap-2 rounded-xl 
+bg-[#6B8F7D] text-white px-6 py-3 font-semibold 
+hover:bg-green-600 transform hover:scale-105 
+transition-all duration-300 shadow-md hover:shadow-lg"
                 >
                   <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <Sparkles className="w-5 h-5 group-hover:animate-spin" />
@@ -456,10 +467,10 @@ const MainStoreDescription: React.FC = () => {
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
                 </button>
                 <p className="text-sm text-gray-600 mt-3 animate-pulse">
-                  ⚡ 단 5분이면 완료됩니다
+                  ⚡ 단 2분이면 완료됩니다
                 </p>
               </div>
-            )}
+            {/* )} */}
           </div>
         </div>
       </div>

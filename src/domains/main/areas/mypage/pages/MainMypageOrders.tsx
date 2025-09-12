@@ -32,6 +32,7 @@ type OrderSummaryDTO = {
   pimgUrl: string | null;
   orderCnt: number;
   orderPrice: number;
+  storeUrl?: string;
 };
 
 /** 서버 래퍼 */
@@ -57,6 +58,7 @@ type OrderItem = {
   qty: number;
   price: number;
   status: OrderStatus;
+  storeUrl?: string;
 };
 
 /** 유틸 */
@@ -91,6 +93,7 @@ const adapt = (dto: OrderSummaryDTO): OrderItem => ({
   qty: Math.max(1, Number(dto.orderCnt || 1)),
   price: Math.max(0, Number(dto.orderPrice || 0)),
   status: mapStatus(dto.orderStatus),
+  storeUrl: dto.storeUrl || 'main',
 });
 
 const isInProgress = (s: OrderStatus) => ['ORDER_OK', 'SHIPPED', 'unknown'].includes(s);
@@ -338,7 +341,7 @@ export default function MainMypageOrdersPage() {
       <td className="py-3 px-3 align-middle text-sm font-jua text-gray-700">{item.orderDate}</td>
       <td className="py-3 px-3 align-middle">
         <a
-          href={`/main/product/${item.productId}`}
+          href={`/${item.storeUrl}/products/${item.productId}`}
           className="inline-block w-16 h-16 bg-gray-100 rounded-lg overflow-hidden"
         >
           <img
@@ -351,7 +354,7 @@ export default function MainMypageOrdersPage() {
       </td>
       <td className="py-3 px-3 align-middle">
         <a
-          href={`/main/product/${item.productId}`}
+          href={`/${item.storeUrl}/products/${item.productId}`}
           className="text-sm md:text-base text-gray-900 hover:underline font-jua line-clamp-2"
         >
           {item.name}

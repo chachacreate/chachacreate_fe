@@ -19,10 +19,10 @@ const withSuspense = (Comp: React.ComponentType<any>) =>
     createElement(Comp)
   );
 
-// ✅ 라우트 정의
+// ✅ 라우트 정의 - 상대 경로로 재사용 가능하게 수정
 export const mypageRoutes: RouteObject[] = [
   {
-    path: "/main/mypage",
+    path: "mypage",
     children: [
       { index: true, element: withSuspense(MainMypagePage) },
       { path: "cart", element: withSuspense(MainMypageCartPage) },

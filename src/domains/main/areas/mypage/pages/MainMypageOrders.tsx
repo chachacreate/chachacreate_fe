@@ -1,18 +1,18 @@
 // src/domains/main/areas/mypage/pages/MainMypageOrdersPage.tsx
-import { useEffect, useMemo, useState, useCallback, memo } from "react";
-import { CalendarDays, ChevronLeft, Package, ShoppingBag, Ticket, Truck, X } from "lucide-react";
+import { useEffect, useMemo, useState, useCallback, memo } from 'react';
+import { CalendarDays, ChevronLeft, Package, ShoppingBag, Ticket, Truck, X } from 'lucide-react';
 
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import MypageSidenavbar from "@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar";
-import { get } from "@src/libs/request";
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar';
+import { legacyGet } from '@src/libs/request';
 
 /** 브랜드 컬러 */
-const BRAND = "#2d4739";
+const BRAND = '#2d4739';
 
 /** 이미지 없을 때 placeholder */
 const PLACEHOLDER =
-  "data:image/svg+xml;utf8," +
+  'data:image/svg+xml;utf8,' +
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480">
        <rect width="100%" height="100%" fill="#f3f4f6"/>
@@ -23,23 +23,30 @@ const PLACEHOLDER =
      </svg>`
   );
 
-/** 서버 DTO (가정) */
 type OrderSummaryDTO = {
-  orderNumber: string;
-  orderDate: string;      // ISO
+  orderId: number;
+  orderDate: number; // timestamp(ms)
+  orderStatus: string;
   productId: number;
   productName: string;
-  productImage: string | null;
-  quantity: number;
-  price: number;
-  status: string;         // PENDING/PAID/PREPARING/SHIPPED/DELIVERED/CANCELED/REFUNDED
+  pimgUrl: string | null;
+  orderCnt: number;
+  orderPrice: number;
 };
 
 /** 서버 래퍼 */
 type ApiEnvelope<T> = { status: number; message?: string; data: T | null };
 
 /** UI 모델 */
-type OrderStatus = "pending" | "paid" | "preparing" | "shipped" | "delivered" | "canceled" | "refunded" | "unknown";
+type OrderStatus =
+  | 'ORDER_OK'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCEL_RQ'
+  | 'CANCEL_OK'
+  | 'REFUND_RQ'
+  | 'REFUND_OK'
+  | 'unknown';
 type OrderItem = {
   orderNo: string;
   orderedAt: number;
@@ -53,40 +60,44 @@ type OrderItem = {
 };
 
 /** 유틸 */
-const toDate = (iso?: string) => (iso ? iso.slice(0, 10) : "");
-const toTs = (iso?: string) => (iso ? new Date(iso).getTime() : 0);
 const formatKRW = (v: number) =>
-  new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 }).format(v);
-const mapStatus = (raw?: string): OrderStatus => {
-  const s = (raw ?? "").toUpperCase();
-  if (s.includes("CANCEL")) return "canceled";
-  if (s.includes("REFUND")) return "refunded";
-  if (s.includes("DELIVERED")) return "delivered";
-  if (s.includes("SHIPPED")) return "shipped";
-  if (s.includes("PREPAR")) return "preparing";
-  if (s.includes("PAID")) return "paid";
-  if (s.includes("PEND")) return "pending";
-  return "unknown";
-};
-const adapt = (dto: OrderSummaryDTO): OrderItem => ({
-  orderNo: dto.orderNumber,
-  orderedAt: toTs(dto.orderDate),
-  orderDate: toDate(dto.orderDate),
-  productId: dto.productId,
-  name: dto.productName ?? "(상품명 없음)",
-  image: dto.productImage ?? null,
-  qty: Math.max(1, Number(dto.quantity || 1)),
-  price: Math.max(0, Number(dto.price || 0)),
-  status: mapStatus(dto.status),
-});
-const isInProgress = (s: OrderStatus) => ["pending", "paid", "preparing", "shipped", "unknown"].includes(s);
+  new Intl.NumberFormat('ko-KR', {
+    style: 'currency',
+    currency: 'KRW',
+    maximumFractionDigits: 0,
+  }).format(v);
 
-/** 엔드포인트 */
-const ORDERS_ENDPOINT = "/mypage/orders";
+const mapStatus = (raw?: string): OrderStatus => {
+  if (!raw) return 'unknown';
+  const s = raw.toUpperCase();
+
+  if (s.includes('주문완료')) return 'ORDER_OK';
+  if (s.includes('발송완료')) return 'SHIPPED';
+  if (s.includes('배송완료')) return 'DELIVERED';
+  if (s.includes('취소요청')) return 'CANCEL_RQ';
+  if (s.includes('취소완료')) return 'CANCEL_OK';
+  if (s.includes('환불요청')) return 'REFUND_RQ';
+  if (s.includes('환불완료')) return 'REFUND_OK';
+  return 'unknown';
+};
+
+const adapt = (dto: OrderSummaryDTO): OrderItem => ({
+  orderNo: String(dto.orderId),
+  orderedAt: dto.orderDate,
+  orderDate: new Date(dto.orderDate).toISOString().slice(0, 10),
+  productId: dto.productId,
+  name: dto.productName ?? '(상품명 없음)',
+  image: dto.pimgUrl ?? null,
+  qty: Math.max(1, Number(dto.orderCnt || 1)),
+  price: Math.max(0, Number(dto.orderPrice || 0)),
+  status: mapStatus(dto.orderStatus),
+});
+
+const isInProgress = (s: OrderStatus) => ['ORDER_OK', 'SHIPPED', 'unknown'].includes(s);
 
 /** 검색바 */
 const SearchBar = memo(function SearchBar({
-  defaultValue = "",
+  defaultValue = '',
   onSubmit,
   onClear,
 }: {
@@ -114,11 +125,11 @@ const SearchBar = memo(function SearchBar({
         onChange={(e) => setLocalQ(e.target.value)}
         placeholder="주문번호, 상품명으로 검색"
         className={[
-          "w-full h-11 rounded-xl border px-4 pr-24 font-jua",
-          "text-gray-900 placeholder:text-gray-400",
-          "border-gray-300 focus:outline-none",
-          "focus:ring-2 focus:ring-[#2d4739]/25 focus:border-[#2d4739]",
-        ].join(" ")}
+          'w-full h-11 rounded-xl border px-4 pr-24 font-jua',
+          'text-gray-900 placeholder:text-gray-400',
+          'border-gray-300 focus:outline-none',
+          'focus:ring-2 focus:ring-[#2d4739]/25 focus:border-[#2d4739]',
+        ].join(' ')}
         autoComplete="off"
         spellCheck={false}
       />
@@ -126,13 +137,13 @@ const SearchBar = memo(function SearchBar({
         <button
           type="button"
           onClick={() => {
-            setLocalQ("");
+            setLocalQ('');
             onClear?.();
           }}
           aria-label="검색어 지우기"
           className="absolute right-24 top-1/2 -translate-y-1/2 p-2 rounded-md hover:bg-gray-100 active:scale-95 z-10"
         >
-        <X className="w-4 h-4" />
+          <X className="w-4 h-4" />
         </button>
       )}
       <button
@@ -148,21 +159,34 @@ const SearchBar = memo(function SearchBar({
 
 /** 상태 라벨/뱃지 */
 const statusLabel = (s: OrderStatus) =>
-  s === "pending" ? "결제대기" :
-  s === "paid" ? "결제완료" :
-  s === "preparing" ? "상품준비중" :
-  s === "shipped" ? "배송중" :
-  s === "delivered" ? "배송완료" :
-  s === "canceled" ? "취소" :
-  s === "refunded" ? "환불" : "확인중";
+  s === 'ORDER_OK'
+    ? '상품 준비중'
+    : s === 'SHIPPED'
+      ? '배송 중'
+      : s === 'DELIVERED'
+        ? '배송 완료'
+        : s === 'CANCEL_RQ'
+          ? '취소 요청'
+          : s === 'CANCEL_OK'
+            ? '취소 완료'
+            : s === 'REFUND_RQ'
+              ? '환불 요청'
+              : s === 'REFUND_OK'
+                ? '환불 완료'
+                : '확인중';
 
 const statusBadgeCls = (s: OrderStatus) =>
-  s === "pending" || s === "paid" ? "bg-amber-50 text-amber-700 border border-amber-200" :
-  s === "preparing" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-  s === "shipped" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-  s === "delivered" ? "bg-gray-100 text-gray-700 border border-gray-200" :
-  s === "canceled" || s === "refunded" ? "bg-rose-50 text-rose-700 border border-rose-200" :
-  "bg-gray-100 text-gray-700 border border-gray-200";
+  s === 'ORDER_OK'
+    ? 'bg-blue-50 text-blue-700 border border-blue-200' // 상품 준비중
+    : s === 'SHIPPED'
+      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' // 배송 중
+      : s === 'DELIVERED'
+        ? 'bg-gray-100 text-gray-700 border border-gray-200' // 배송 완료
+        : s === 'CANCEL_RQ' || s === 'REFUND_RQ'
+          ? 'bg-rose-50 text-rose-700 border border-rose-200' // 취소 관련
+          : s === 'CANCEL_OK' || s === 'REFUND_OK'
+            ? 'bg-gray-100 text-gray-700 border border-gray-200' // 환불 관련
+            : 'bg-gray-100 text-gray-700 border border-gray-200'; // 확인중 / 기타
 
 /** 모바일 카드 (섹션 공용) */
 function OrderCardMobile({ item }: { item: OrderItem }) {
@@ -173,11 +197,18 @@ function OrderCardMobile({ item }: { item: OrderItem }) {
           href={`/main/product/${item.productId}`}
           className="relative w-24 h-24 shrink-0 bg-gray-100 rounded-lg overflow-hidden"
         >
-          <img src={item.image || PLACEHOLDER} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+          <img
+            src={item.image || PLACEHOLDER}
+            alt={item.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
         </a>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium font-jua ${statusBadgeCls(item.status)}`}>
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium font-jua ${statusBadgeCls(item.status)}`}
+            >
               {statusLabel(item.status)}
             </span>
             <span className="inline-flex items-center gap-1 text-xs text-gray-600 font-jua">
@@ -191,7 +222,8 @@ function OrderCardMobile({ item }: { item: OrderItem }) {
             {item.name}
           </a>
           <div className="mt-1 text-sm text-gray-700 font-jua">
-            수량 <span className="font-semibold">{item.qty}</span> • 금액 <span className="font-semibold">{formatKRW(item.price)}</span>
+            수량 <span className="font-semibold">{item.qty}</span> • 금액{' '}
+            <span className="font-semibold">{formatKRW(item.price)}</span>
           </div>
           <div className="mt-3 flex gap-2">
             <a
@@ -209,14 +241,11 @@ function OrderCardMobile({ item }: { item: OrderItem }) {
 }
 
 export default function MainMypageOrdersPage() {
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [unauthorized, setUnauthorized] = useState(false);
   const [allOrders, setAllOrders] = useState<OrderItem[]>([]);
-
-  /** 목데이터 사용 */
-  const USE_MOCK = true;
 
   const fetchOrders = async () => {
     try {
@@ -224,48 +253,28 @@ export default function MainMypageOrdersPage() {
       setErrorMsg(null);
       setUnauthorized(false);
 
-      if (USE_MOCK) {
-        const mock: OrderSummaryDTO[] = [
-          {
-            orderNumber: "OD-20250910-0001",
-            orderDate: new Date().toISOString(),
-            productId: 101,
-            productName: "핸드메이드 도자기 머그컵",
-            productImage: null,
-            quantity: 1,
-            price: 19800,
-            status: "SHIPPED",
-          },
-          {
-            orderNumber: "OD-20250831-0007",
-            orderDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
-            productId: 77,
-            productName: "수제 허브 비누 세트",
-            productImage: null,
-            quantity: 2,
-            price: 24800,
-            status: "DELIVERED",
-          },
-        ];
-        const listAll = mock.map(adapt).sort((a, b) => b.orderedAt - a.orderedAt);
-        setAllOrders(listAll);
-        return;
-      }
-
       const paramsAll: Record<string, string> = {};
       if (q) paramsAll.q = q;
-      const resAll = await get<unknown>(ORDERS_ENDPOINT, { ...paramsAll, filter: "ALL" });
-      const rawAll = extractArray<OrderSummaryDTO>(resAll);
-      const listAll = rawAll.map(adapt).sort((a, b) => b.orderedAt - a.orderedAt);
-      setAllOrders(listAll);
-    } catch (e: any) {
-      const httpStatus = e?.response?.status;
+
+      const response = await legacyGet<any>('/main/mypage/orders', paramsAll);
+
+      if (response.status === 200) {
+        const orders: OrderItem[] = Array.isArray(response.data)
+          ? response.data.map(adapt).sort((a: OrderItem, b: OrderItem) => b.orderedAt - a.orderedAt)
+          : [];
+
+        setAllOrders(orders);
+      } else {
+        console.error('주문 내역 조회 실패', response.message);
+      }
+    } catch (error: any) {
+      const httpStatus = error?.response?.status;
       if (httpStatus === 401) {
         setUnauthorized(true);
         setAllOrders([]);
         return;
       }
-      setErrorMsg(e?.message ?? "주문 내역 조회 중 오류가 발생했습니다.");
+      console.error('API 요청 실패', error);
       setAllOrders([]);
     } finally {
       setLoading(false);
@@ -274,24 +283,34 @@ export default function MainMypageOrdersPage() {
 
   useEffect(() => {
     fetchOrders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, USE_MOCK]);
+  }, [q]);
 
-  /** 진행중/전체 */
+  // 진행 중인 주문 내역
   const inProgressOrders = useMemo(() => {
     const filtered = allOrders.filter((o) => isInProgress(o.status));
     return [...filtered].sort((a, b) => b.orderedAt - a.orderedAt);
   }, [allOrders]);
 
+  // 처리 완료된 주문 내역(배송 중인 주문 제외)
+  const inProgressSet = new Set<OrderStatus>(['ORDER_OK', 'SHIPPED']);
+
+  const otherOrders = useMemo(() => {
+    return allOrders
+      .filter((o) => !inProgressSet.has(o.status))
+      .sort((a, b) => b.orderedAt - a.orderedAt);
+  }, [allOrders]);
+
   const handleSearchSubmit = useCallback((keyword: string) => setQ(keyword), []);
-  const handleSearchClear = useCallback(() => setQ(""), []);
+  const handleSearchClear = useCallback(() => setQ(''), []);
 
   /** 단일 컨테이너 컴포넌트: 검색~주문내역까지, 섹션 내부 분리 + 하단 패딩 */
   const Container = ({ children }: { children: React.ReactNode }) => (
     <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden mb-6 pb-6">
       <div className="bg-gradient-to-r from-[#2d4739] to-gray-800 px-6 md:px-8 py-5 md:py-6">
         <h2 className="text-xl md:text-2xl text-white mb-1.5 md:mb-2">주문 내역</h2>
-        <p className="text-gray-200 text-xs md:text-sm">주문을 최신순으로 확인하고 상세로 이동하세요</p>
+        <p className="text-gray-200 text-xs md:text-sm">
+          주문을 최신순으로 확인하고 상세로 이동하세요
+        </p>
       </div>
       <div className="p-4 md:p-6">{children}</div>
       {/* ⬇️ 컨테이너 자체 하단 패딩 확보 */}
@@ -303,12 +322,12 @@ export default function MainMypageOrdersPage() {
   const TableHeader = () => (
     <thead className="bg-gray-50 text-xs text-gray-600 font-jua">
       <tr className="border-b border-gray-200">
-        <th className="py-3 px-3 text-left">주문일</th>
-        <th className="py-3 px-3 text-left">상품사진</th>
-        <th className="py-3 px-3 text-left">상품명</th>
-        <th className="py-3 px-3 text-right">수량</th>
-        <th className="py-3 px-3 text-right">가격</th>
-        <th className="py-3 px-3 text-center">주문상세</th>
+        <th className="py-3 px-3 text-left w-2/12">주문일</th>
+        <th className="py-3 px-3 text-left w-1/12">상품사진</th>
+        <th className="py-3 px-3 text-left w-3/12">상품명</th>
+        <th className="py-3 px-3 text-right w-1/12">수량</th>
+        <th className="py-3 px-3 text-right w-2/12">가격</th>
+        <th className="py-3 px-3 text-center w-3/12">주문상세</th>
       </tr>
     </thead>
   );
@@ -322,7 +341,12 @@ export default function MainMypageOrdersPage() {
           href={`/main/product/${item.productId}`}
           className="inline-block w-16 h-16 bg-gray-100 rounded-lg overflow-hidden"
         >
-          <img src={item.image || PLACEHOLDER} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+          <img
+            src={item.image || PLACEHOLDER}
+            alt={item.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
         </a>
       </td>
       <td className="py-3 px-3 align-middle">
@@ -333,11 +357,17 @@ export default function MainMypageOrdersPage() {
           {item.name}
         </a>
       </td>
-      <td className="py-3 px-3 align-middle text-right text-sm font-jua text-gray-800">{item.qty}</td>
-      <td className="py-3 px-3 align-middle text-right text-sm font-jua text-gray-900">{formatKRW(item.price)}</td>
+      <td className="py-3 px-3 align-middle text-right text-sm font-jua text-gray-800">
+        {item.qty}
+      </td>
+      <td className="py-3 px-3 align-middle text-right text-sm font-jua text-gray-900">
+        {formatKRW(item.price)}
+      </td>
       <td className="py-3 px-3 align-middle">
         <div className="flex justify-center items-center gap-3">
-          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium font-jua ${statusBadgeCls(item.status)}`}>
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium font-jua ${statusBadgeCls(item.status)}`}
+          >
             {statusLabel(item.status)}
           </span>
           <a
@@ -353,8 +383,16 @@ export default function MainMypageOrdersPage() {
   );
 
   /** 섹션 타이틀 */
-  const SectionTitle = ({ icon, title, desc }: { icon: "progress" | "all"; title: string; desc: string }) => {
-    const Icon = icon === "progress" ? Truck : ShoppingBag;
+  const SectionTitle = ({
+    icon,
+    title,
+    desc,
+  }: {
+    icon: 'progress' | 'all';
+    title: string;
+    desc: string;
+  }) => {
+    const Icon = icon === 'progress' ? Truck : ShoppingBag;
     return (
       <div className="mb-3">
         <div className="flex items-center gap-2">
@@ -367,7 +405,10 @@ export default function MainMypageOrdersPage() {
   };
 
   return (
-    <div className="min-h-screen font-jua" style={{ background: "linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)" }}>
+    <div
+      className="min-h-screen font-jua"
+      style={{ background: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)' }}
+    >
       <Header />
       <Mainnavbar />
 
@@ -377,7 +418,9 @@ export default function MainMypageOrdersPage() {
           <div className="px-4 py-3 flex items-center gap-3">
             <button
               type="button"
-              onClick={() => (history.length > 1 ? history.back() : (window.location.href = "/main/mypage"))}
+              onClick={() =>
+                history.length > 1 ? history.back() : (window.location.href = '/main/mypage')
+              }
               className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -395,7 +438,11 @@ export default function MainMypageOrdersPage() {
 
             {/* 진행중 섹션 - 모바일 카드 / 데스크탑 테이블 */}
             <div className="mt-6">
-              <SectionTitle icon="progress" title="배송 중인 주문 내역" desc="현재 진행중인 주문을 최신순으로 보여드려요" />
+              <SectionTitle
+                icon="progress"
+                title="배송 중인 주문 내역"
+                desc="현재 진행중인 주문을 최신순으로 보여드려요"
+              />
 
               {/* 데스크톱 표 */}
               <div className="hidden md:block rounded-lg border border-gray-200 overflow-hidden">
@@ -403,24 +450,44 @@ export default function MainMypageOrdersPage() {
                   <TableHeader />
                   <tbody>
                     {loading && (
-                      <tr><td colSpan={6} className="p-6 text-center text-gray-500">불러오는 중…</td></tr>
+                      <tr>
+                        <td colSpan={6} className="p-6 text-center text-gray-500">
+                          불러오는 중…
+                        </td>
+                      </tr>
                     )}
                     {errorMsg && (
-                      <tr><td colSpan={6} className="p-6">
-                        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-rose-700">{errorMsg}</div>
-                      </td></tr>
+                      <tr>
+                        <td colSpan={6} className="p-6">
+                          <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-rose-700">
+                            {errorMsg}
+                          </div>
+                        </td>
+                      </tr>
                     )}
                     {unauthorized && !loading && !errorMsg && (
-                      <tr><td colSpan={6} className="p-6">
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-700">
-                          로그인 후 주문 내역을 확인할 수 있습니다.
-                        </div>
-                      </td></tr>
+                      <tr>
+                        <td colSpan={6} className="p-6">
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-700">
+                            로그인 후 주문 내역을 확인할 수 있습니다.
+                          </div>
+                        </td>
+                      </tr>
                     )}
                     {!loading && !errorMsg && inProgressOrders.length === 0 && (
-                      <tr><td colSpan={6} className="p-6"><EmptyState icon="progress" title="진행중 주문이 없습니다" desc="새로운 주문을 만들어보세요." /></td></tr>
+                      <tr>
+                        <td colSpan={6} className="p-6">
+                          <EmptyState
+                            icon="progress"
+                            title="진행중 주문이 없습니다"
+                            desc="새로운 주문을 만들어보세요."
+                          />
+                        </td>
+                      </tr>
                     )}
-                    {!loading && !errorMsg && inProgressOrders.map((it) => <TableRow key={it.orderNo} item={it} />)}
+                    {!loading &&
+                      !errorMsg &&
+                      inProgressOrders.map((it) => <TableRow key={it.orderNo} item={it} />)}
                   </tbody>
                 </table>
               </div>
@@ -428,7 +495,11 @@ export default function MainMypageOrdersPage() {
               {/* 모바일 카드 */}
               <div className="md:hidden space-y-4">
                 {!loading && !errorMsg && inProgressOrders.length === 0 ? (
-                  <EmptyState icon="progress" title="진행중 주문이 없습니다" desc="새로운 주문을 만들어보세요." />
+                  <EmptyState
+                    icon="progress"
+                    title="진행중 주문이 없습니다"
+                    desc="새로운 주문을 만들어보세요."
+                  />
                 ) : (
                   inProgressOrders.map((it) => <OrderCardMobile key={it.orderNo} item={it} />)
                 )}
@@ -437,27 +508,45 @@ export default function MainMypageOrdersPage() {
 
             {/* 전체 섹션 - 모바일 카드 / 데스크탑 테이블 */}
             <div className="mt-10">
-              <SectionTitle icon="all" title="전체 주문 내역" desc="내가 주문한 모든 내역을 최신순으로 보여드려요" />
+              <SectionTitle
+                icon="all"
+                title="완료된 주문 내역"
+                desc="내 주문 중 처리 완료된 전체 내역을 최신순으로 보여드려요"
+              />
 
               {/* 데스크톱 표 */}
               <div className="hidden md:block rounded-lg border border-gray-200 overflow-hidden">
                 <table className="w-full text-sm">
                   <TableHeader />
                   <tbody>
-                    {!loading && !errorMsg && allOrders.length === 0 && (
-                      <tr><td colSpan={6} className="p-6"><EmptyState icon="all" title="주문 내역이 없습니다" desc="상품을 둘러보고 주문해 보세요." /></td></tr>
+                    {!loading && !errorMsg && otherOrders.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="p-6">
+                          <EmptyState
+                            icon="all"
+                            title="주문 내역이 없습니다"
+                            desc="상품을 둘러보고 주문해 보세요."
+                          />
+                        </td>
+                      </tr>
                     )}
-                    {!loading && !errorMsg && allOrders.map((it) => <TableRow key={it.orderNo} item={it} />)}
+                    {!loading &&
+                      !errorMsg &&
+                      otherOrders.map((it) => <TableRow key={it.orderNo} item={it} />)}
                   </tbody>
                 </table>
               </div>
 
               {/* 모바일 카드 */}
               <div className="md:hidden space-y-4">
-                {!loading && !errorMsg && allOrders.length === 0 ? (
-                  <EmptyState icon="all" title="주문 내역이 없습니다" desc="상품을 둘러보고 주문해 보세요." />
+                {!loading && !errorMsg && otherOrders.length === 0 ? (
+                  <EmptyState
+                    icon="all"
+                    title="주문 내역이 없습니다"
+                    desc="상품을 둘러보고 주문해 보세요."
+                  />
                 ) : (
-                  allOrders.map((it) => <OrderCardMobile key={it.orderNo} item={it} />)
+                  otherOrders.map((it) => <OrderCardMobile key={it.orderNo} item={it} />)
                 )}
               </div>
             </div>
@@ -473,34 +562,62 @@ export default function MainMypageOrdersPage() {
         <MypageSidenavbar>
           <div className="mx-auto w-full max-w-[1440px] px-0">
             <Container>
-              <SearchBar defaultValue={q} onSubmit={handleSearchSubmit} onClear={handleSearchClear} />
+              <SearchBar
+                defaultValue={q}
+                onSubmit={handleSearchSubmit}
+                onClear={handleSearchClear}
+              />
 
               {/* 진행중 섹션 */}
               <div className="mt-6">
-                <SectionTitle icon="progress" title="배송 중인 주문 내역" desc="현재 진행중인 주문을 최신순으로 보여드려요" />
+                <SectionTitle
+                  icon="progress"
+                  title="배송 중인 주문 내역"
+                  desc="현재 진행중인 주문을 최신순으로 보여드려요"
+                />
                 <div className="hidden md:block rounded-lg border border-gray-200 overflow-hidden">
                   <table className="w-full text-sm">
                     <TableHeader />
                     <tbody>
                       {loading && (
-                        <tr><td colSpan={6} className="p-6 text-center text-gray-500">불러오는 중…</td></tr>
+                        <tr>
+                          <td colSpan={6} className="p-6 text-center text-gray-500">
+                            불러오는 중…
+                          </td>
+                        </tr>
                       )}
                       {errorMsg && (
-                        <tr><td colSpan={6} className="p-6">
-                          <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-rose-700">{errorMsg}</div>
-                        </td></tr>
+                        <tr>
+                          <td colSpan={6} className="p-6">
+                            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-rose-700">
+                              {errorMsg}
+                            </div>
+                          </td>
+                        </tr>
                       )}
                       {unauthorized && !loading && !errorMsg && (
-                        <tr><td colSpan={6} className="p-6">
-                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-700">
-                            로그인 후 주문 내역을 확인할 수 있습니다.
-                          </div>
-                        </td></tr>
+                        <tr>
+                          <td colSpan={6} className="p-6">
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-700">
+                              로그인 후 주문 내역을 확인할 수 있습니다.
+                            </div>
+                          </td>
+                        </tr>
                       )}
                       {!loading && !errorMsg && inProgressOrders.length === 0 && (
-                        <tr><td colSpan={6} className="p-6"><EmptyState icon="progress" title="진행중 주문이 없습니다" desc="새로운 주문을 만들어보세요." /></td></tr>
+                        <tr>
+                          <td colSpan={6} className="p-6">
+                            <EmptyState
+                              icon="progress"
+                              title="진행중 주문이 없습니다"
+                              desc="새로운 주문을 만들어보세요."
+                            />
+                          </td>
+                        </tr>
                       )}
-                      {!loading && !errorMsg && inProgressOrders.map((it) => <TableRow key={it.orderNo} item={it} />)}
+                      {!loading &&
+                        !errorMsg &&
+                        inProgressOrders.map((it) => <TableRow key={it.orderNo} item={it} />)}
                     </tbody>
                   </table>
                 </div>
@@ -508,7 +625,11 @@ export default function MainMypageOrdersPage() {
                 {/* 모바일 카드 */}
                 <div className="md:hidden space-y-4">
                   {!loading && !errorMsg && inProgressOrders.length === 0 ? (
-                    <EmptyState icon="progress" title="진행중 주문이 없습니다" desc="새로운 주문을 만들어보세요." />
+                    <EmptyState
+                      icon="progress"
+                      title="진행중 주문이 없습니다"
+                      desc="새로운 주문을 만들어보세요."
+                    />
                   ) : (
                     inProgressOrders.map((it) => <OrderCardMobile key={it.orderNo} item={it} />)
                   )}
@@ -517,25 +638,43 @@ export default function MainMypageOrdersPage() {
 
               {/* 전체 섹션 */}
               <div className="mt-10">
-                <SectionTitle icon="all" title="전체 주문 내역" desc="내가 주문한 모든 내역을 최신순으로 보여드려요" />
+                <SectionTitle
+                  icon="all"
+                  title="완료된 주문 내역"
+                  desc="내 주문 중 처리 완료된 전체 내역을 최신순으로 보여드려요"
+                />
                 <div className="hidden md:block rounded-lg border border-gray-200 overflow-hidden">
                   <table className="w-full text-sm">
                     <TableHeader />
                     <tbody>
-                      {!loading && !errorMsg && allOrders.length === 0 && (
-                        <tr><td colSpan={6} className="p-6"><EmptyState icon="all" title="주문 내역이 없습니다" desc="상품을 둘러보고 주문해 보세요." /></td></tr>
+                      {!loading && !errorMsg && otherOrders.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="p-6">
+                            <EmptyState
+                              icon="all"
+                              title="주문 내역이 없습니다"
+                              desc="상품을 둘러보고 주문해 보세요."
+                            />
+                          </td>
+                        </tr>
                       )}
-                      {!loading && !errorMsg && allOrders.map((it) => <TableRow key={it.orderNo} item={it} />)}
+                      {!loading &&
+                        !errorMsg &&
+                        otherOrders.map((it) => <TableRow key={it.orderNo} item={it} />)}
                     </tbody>
                   </table>
                 </div>
 
                 {/* 모바일 카드 */}
                 <div className="md:hidden space-y-4">
-                  {!loading && !errorMsg && allOrders.length === 0 ? (
-                    <EmptyState icon="all" title="주문 내역이 없습니다" desc="상품을 둘러보고 주문해 보세요." />
+                  {!loading && !errorMsg && otherOrders.length === 0 ? (
+                    <EmptyState
+                      icon="all"
+                      title="주문 내역이 없습니다"
+                      desc="상품을 둘러보고 주문해 보세요."
+                    />
                   ) : (
-                    allOrders.map((it) => <OrderCardMobile key={it.orderNo} item={it} />)
+                    otherOrders.map((it) => <OrderCardMobile key={it.orderNo} item={it} />)
                   )}
                 </div>
               </div>
@@ -550,8 +689,9 @@ export default function MainMypageOrdersPage() {
 /** 응답 방어 */
 function extractArray<T>(res: unknown): T[] {
   const asEnv = res as Partial<ApiEnvelope<T[]>>;
-  if (asEnv && typeof asEnv === "object") {
-    if (asEnv.status === 401) throw Object.assign(new Error("Unauthorized"), { response: { status: 401 } });
+  if (asEnv && typeof asEnv === 'object') {
+    if (asEnv.status === 401)
+      throw Object.assign(new Error('Unauthorized'), { response: { status: 401 } });
     if (Array.isArray(asEnv.data)) return asEnv.data;
   }
   if (Array.isArray(res)) return res as T[];
@@ -559,8 +699,16 @@ function extractArray<T>(res: unknown): T[] {
 }
 
 /** 빈 상태 */
-function EmptyState({ icon, title, desc }: { icon: "progress" | "all"; title: string; desc: string }) {
-  const Icon = icon === "progress" ? Truck : Package;
+function EmptyState({
+  icon,
+  title,
+  desc,
+}: {
+  icon: 'progress' | 'all';
+  title: string;
+  desc: string;
+}) {
+  const Icon = icon === 'progress' ? Truck : Package;
   return (
     <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
       <div className="flex flex-col items-center">

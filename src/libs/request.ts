@@ -1,4 +1,4 @@
-import api, { legacyApi } from '@src/libs/apiService';
+import api, { legacyApi, fastApi } from '@src/libs/apiService';
 import type { ApiResponse } from '@src/libs/apiResponse';
 import type { AxiosResponse } from 'axios';
 
@@ -95,5 +95,37 @@ export async function legacyPatch<T>(url: string, data?: object): Promise<T> {
 /** DELETE 요청 (Legacy) */
 export async function legacyDel<T>(url: string): Promise<T> {
   const response: AxiosResponse<T> = await legacyApi.delete(url);
+  return response.data;
+}
+
+// ====================== FastAPI Functions (토큰 불필요) ======================
+
+/** GET 요청 (FastAPI) */
+export async function fastApiGet<T>(url: string, params?: object): Promise<T> {
+  const response: AxiosResponse<T> = await fastApi.get(url, { params });
+  return response.data;
+}
+
+/** POST 요청 (FastAPI) */
+export async function fastApiPost<T>(url: string, data?: object): Promise<T> {
+  const response: AxiosResponse<T> = await fastApi.post(url, data);
+  return response.data;
+}
+
+/** PUT 요청 (FastAPI) */
+export async function fastApiPut<T>(url: string, data?: object): Promise<T> {
+  const response: AxiosResponse<T> = await fastApi.put(url, data);
+  return response.data;
+}
+
+/** PATCH 요청 (FastAPI) */
+export async function fastApiPatch<T>(url: string, data?: object): Promise<T> {
+  const response: AxiosResponse<T> = await fastApi.patch(url, data);
+  return response.data;
+}
+
+/** DELETE 요청 (FastAPI) */
+export async function fastApiDel<T>(url: string): Promise<T> {
+  const response: AxiosResponse<T> = await fastApi.delete(url);
   return response.data;
 }

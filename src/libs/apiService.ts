@@ -5,6 +5,7 @@ import { logOut } from '@src/shared/util/LegacyNavigate';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''; // 예: '/api'
 const API_LEGACY_URL = import.meta.env.VITE_API_LEGACY_URL ?? ''; // Legacy URL
+const fastApiUrl = import.meta.env.VITE_API_FASTAPI_URL ?? ''; // fastapi Url
 
 // ====================== JWT helpers (Spring Boot용) ======================
 export const decodeToken = (token: string): JWTPayload | null => {
@@ -205,6 +206,34 @@ legacyApi.interceptors.response.use(
   }
 );
 
+// ====================== FASTAPI API 인스턴스 (세션 기반, JWT 없음) ======================
+const fastApi = axios.create({
+  baseURL: fastApiUrl, // 'http://localhost/ai/'
+  withCredentials: false, // FastAPI는 토큰 불필요하므로 쿠키 포함 안 함
+});
+
+// ---------------------- Request Interceptor (FastAPI용) ----------------------
+fastApi.interceptors.request.use(
+  (config) => {
+    // FormData면 Content-Type 제거 (브라우저가 boundary 포함해서 자동 설정)
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      delete (config.headers as any)['Content-Type'];
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// ---------------------- Response Interceptor (FastAPI용) ----------------------
+fastApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('FastAPI 요청 오류:', error);
+    return Promise.reject(error);
+  }
+);
+
 // ====================== Export ======================
 export default api; // Spring Boot API (기존 호환성 유지)
 export { legacyApi }; // Legacy API
+export { fastApi }; // Fast API

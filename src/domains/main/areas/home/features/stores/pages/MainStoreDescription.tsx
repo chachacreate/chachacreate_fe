@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   CheckCircle2,
@@ -9,19 +9,18 @@ import {
   ShieldCheck,
   Truck,
   Sparkles,
-} from "lucide-react";
+} from 'lucide-react';
 
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import StoresSubnavbar from "@src/shared/areas/navigation/features/subnavbar/stores/StoresSubnavbar";
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import StoresSubnavbar from '@src/shared/areas/navigation/features/subnavbar/stores/StoresSubnavbar';
+import { isPersonalSeller } from '@src/shared/util/roleAuth';
 
 /** 개인판매자만 버튼 노출 (데모) */
 // const getIsPersonalSeller = (): boolean => {
 //   const role = (typeof window !== "undefined" && localStorage.getItem("role")) || "";
 //   return role === "personal";
 // };
-
-const getIsPersonalSeller = (): boolean => true; // 항상 활성화
 
 type Step = {
   title: string;
@@ -32,44 +31,44 @@ type Step = {
 
 const STEPS: Step[] = [
   {
-    title: "STEP 1 · 개인 판매 메뉴에서 개설 시작",
+    title: 'STEP 1 · 개인 판매 메뉴에서 개설 시작',
     body: "회원가입 및 로그인 후, 개인 판매 메뉴에서 '스토어 개설'을 클릭하세요.",
-    img: "https://picsum.photos/seed/step1/1200/700",
-    caption: "대시보드 > 개인 판매 > 스토어 개설",
+    img: 'https://picsum.photos/seed/step1/1200/700',
+    caption: '대시보드 > 개인 판매 > 스토어 개설',
   },
   {
-    title: "STEP 2 · 스토어 이름과 소개 등록",
-    body: "브랜드 스토리/운영 철학을 간단히 적고, 소개 이미지를 준비해 두면 좋아요.",
-    img: "https://picsum.photos/seed/step2/1200/700",
-    caption: "스토어 기본 정보 입력",
+    title: 'STEP 2 · 스토어 이름과 소개 등록',
+    body: '브랜드 스토리/운영 철학을 간단히 적고, 소개 이미지를 준비해 두면 좋아요.',
+    img: 'https://picsum.photos/seed/step2/1200/700',
+    caption: '스토어 기본 정보 입력',
   },
   {
-    title: "STEP 3 · 상품 등록 및 상세 정보 기입",
-    body: "가격·옵션·배송 안내를 빠짐없이 작성해 주세요. 한 번 등록하면 1일 이내 노출 가능(검수 없음).",
-    img: "https://picsum.photos/seed/step3/1200/700",
-    caption: "상품 등록/옵션/배송 안내",
+    title: 'STEP 3 · 상품 등록 및 상세 정보 기입',
+    body: '가격·옵션·배송 안내를 빠짐없이 작성해 주세요. 한 번 등록하면 1일 이내 노출 가능(검수 없음).',
+    img: 'https://picsum.photos/seed/step3/1200/700',
+    caption: '상품 등록/옵션/배송 안내',
   },
   {
-    title: "STEP 4 · 결제/정산 세팅",
-    body: "결제 수단 연결과 정산 계정을 설정하세요. 완료 즉시 판매 시작!",
-    img: "https://picsum.photos/seed/step4/1200/700",
-    caption: "결제/정산 연동",
+    title: 'STEP 4 · 결제/정산 세팅',
+    body: '결제 수단 연결과 정산 계정을 설정하세요. 완료 즉시 판매 시작!',
+    img: 'https://picsum.photos/seed/step4/1200/700',
+    caption: '결제/정산 연동',
   },
   {
-    title: "STEP 5 · 자동 정산 및 배송 관리",
-    body: "주문이 들어오면 정산/배송 처리는 자동으로 관리됩니다. 대시보드에서 현황을 확인하세요.",
-    img: "https://picsum.photos/seed/step5/1200/700",
-    caption: "정산/배송 자동화",
+    title: 'STEP 5 · 자동 정산 및 배송 관리',
+    body: '주문이 들어오면 정산/배송 처리는 자동으로 관리됩니다. 대시보드에서 현황을 확인하세요.',
+    img: 'https://picsum.photos/seed/step5/1200/700',
+    caption: '정산/배송 자동화',
   },
 ];
 
 const MainStoreDescription: React.FC = () => {
-  const isPersonal = getIsPersonalSeller();
+  const isPersonal = isPersonalSeller();
 
   /** --- Reveal 애니메이션 플래그 --- */
   const [mounted, setMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  
+
   useEffect(() => {
     const t = setTimeout(() => {
       setMounted(true);
@@ -112,10 +111,10 @@ const MainStoreDescription: React.FC = () => {
       setIndex((i) => (i + 1) % len);
     } else {
       if (trackRef.current) {
-        trackRef.current.style.transition = "transform 300ms ease";
+        trackRef.current.style.transition = 'transform 300ms ease';
         trackRef.current.style.transform = `translateX(${-index * 100}%)`;
         setTimeout(() => {
-          if (trackRef.current) trackRef.current.style.transition = "";
+          if (trackRef.current) trackRef.current.style.transition = '';
         }, 310);
       }
     }
@@ -127,23 +126,23 @@ const MainStoreDescription: React.FC = () => {
     isDragging.current = true;
     startX.current = e.clientX;
     currentX.current = e.clientX;
-    if (trackRef.current) trackRef.current.style.transition = "";
+    if (trackRef.current) trackRef.current.style.transition = '';
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
-  
+
   const onPointerMove = (e: React.PointerEvent) => {
     if (!isDragging.current) return;
     currentX.current = e.clientX;
     setTransform(currentX.current - startX.current);
   };
-  
+
   const onPointerUp = (e: React.PointerEvent) => {
     (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
     endDrag();
   };
 
-  const go = (dir: "prev" | "next") => {
-    setIndex((i) => (dir === "prev" ? (i - 1 + len) % len : (i + 1) % len));
+  const go = (dir: 'prev' | 'next') => {
+    setIndex((i) => (dir === 'prev' ? (i - 1 + len) % len : (i + 1) % len));
   };
 
   const ProgressDots = useMemo(
@@ -155,9 +154,9 @@ const MainStoreDescription: React.FC = () => {
             aria-label={`Go to step ${i + 1}`}
             onClick={() => setIndex(i)}
             className={[
-              "h-2.5 rounded-full transition-all duration-300",
-              i === index ? "w-8 bg-[#2d4739]" : "w-4 bg-gray-300 hover:bg-gray-400",
-            ].join(" ")}
+              'h-2.5 rounded-full transition-all duration-300',
+              i === index ? 'w-8 bg-[#2d4739]' : 'w-4 bg-gray-300 hover:bg-gray-400',
+            ].join(' ')}
           />
         ))}
       </div>
@@ -166,10 +165,8 @@ const MainStoreDescription: React.FC = () => {
   );
 
   const goToOpenForm = () => {
-    window.location.href = "/main/store/openform"; // 새 탭에서 열기
+    window.location.href = '/main/store/openform'; // 새 탭에서 열기
   };
-
-  
 
   return (
     <>
@@ -234,9 +231,15 @@ const MainStoreDescription: React.FC = () => {
         {/* Floating geometric shapes - 수공예 따뜻한 색감 */}
         <div className="absolute top-10 right-10 w-32 h-32 bg-gradient-to-br from-amber-300/15 to-orange-300/15 rounded-full blur-xl animate-pulse" />
         <div className="absolute top-1/3 left-10 w-24 h-24 bg-gradient-to-br from-emerald-300/20 to-green-400/20 rounded-lg rotate-45 blur-lg animate-floaty" />
-        <div className="absolute bottom-20 right-1/4 w-40 h-40 bg-gradient-to-br from-teal-300/12 to-emerald-300/12 rounded-full blur-2xl animate-floaty" style={{ animationDelay: "2s" }} />
-        <div className="absolute bottom-1/3 left-1/3 w-16 h-16 bg-gradient-to-br from-yellow-300/18 to-amber-400/18 rounded-full blur-md animate-pulse" style={{ animationDelay: "1s" }} />
-        
+        <div
+          className="absolute bottom-20 right-1/4 w-40 h-40 bg-gradient-to-br from-teal-300/12 to-emerald-300/12 rounded-full blur-2xl animate-floaty"
+          style={{ animationDelay: '2s' }}
+        />
+        <div
+          className="absolute bottom-1/3 left-1/3 w-16 h-16 bg-gradient-to-br from-yellow-300/18 to-amber-400/18 rounded-full blur-md animate-pulse"
+          style={{ animationDelay: '1s' }}
+        />
+
         <Header />
         <Mainnavbar />
         <StoresSubnavbar />
@@ -244,19 +247,24 @@ const MainStoreDescription: React.FC = () => {
         {/* 🔶 240px padding + max 1440 */}
         <div className="px-4 sm:px-6 xl:px-[240px] relative z-10">
           <div className="w-full max-w-[1440px] mx-auto py-6 md:py-10">
-
             {/* --- HERO --- */}
             <section
               className={[
-                "relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500",
-                "px-6 md:px-10 py-8 md:py-12",
-                mounted ? "reveal" : "opacity-0",
-              ].join(" ")}
+                'relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500',
+                'px-6 md:px-10 py-8 md:py-12',
+                mounted ? 'reveal' : 'opacity-0',
+              ].join(' ')}
             >
               {/* Modern geometric decorations */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-100/60 to-purple-100/60 rounded-full blur-3xl transform translate-x-32 -translate-y-32 animate-floaty" />
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-emerald-100/60 to-cyan-100/60 rounded-full blur-2xl transform -translate-x-24 translate-y-24 animate-floaty" style={{ animationDelay: "1.5s" }} />
-              <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-gradient-to-r from-pink-100/40 to-rose-100/40 rounded-lg rotate-12 blur-xl transform -translate-x-16 -translate-y-16 animate-floaty" style={{ animationDelay: "3s" }} />
+              <div
+                className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-emerald-100/60 to-cyan-100/60 rounded-full blur-2xl transform -translate-x-24 translate-y-24 animate-floaty"
+                style={{ animationDelay: '1.5s' }}
+              />
+              <div
+                className="absolute top-1/2 left-1/2 w-32 h-32 bg-gradient-to-r from-pink-100/40 to-rose-100/40 rounded-lg rotate-12 blur-xl transform -translate-x-16 -translate-y-16 animate-floaty"
+                style={{ animationDelay: '3s' }}
+              />
 
               <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                 <div>
@@ -264,7 +272,7 @@ const MainStoreDescription: React.FC = () => {
                     <span className="text-3xl md:text-4xl">🏠</span>
                     나만의 스토어를 런칭하세요
                   </h1>
-                  <p 
+                  <p
                     className="text-gray-700 mt-2 opacity-0 animate-fade-in-slide"
                     style={{ animationDelay: '0.2s' }}
                   >
@@ -273,19 +281,19 @@ const MainStoreDescription: React.FC = () => {
 
                   {/* 혜택 배지 */}
                   <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <span 
+                    <span
                       className="inline-flex items-center rounded-full bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 text-xs font-semibold px-3 py-1.5 hover:from-amber-200 hover:to-yellow-200 transform hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md opacity-0 animate-fade-in-scale"
                       style={{ animationDelay: '0.4s' }}
                     >
                       수수료 0원 (한시적)
                     </span>
-                    <span 
+                    <span
                       className="inline-flex items-center rounded-full bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800 text-xs font-semibold px-3 py-1.5 hover:from-emerald-200 hover:to-green-200 transform hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md opacity-0 animate-fade-in-scale"
                       style={{ animationDelay: '0.5s' }}
                     >
                       별도 검수 없이 1일 이내 등록
                     </span>
-                    <span 
+                    <span
                       className="inline-flex items-center rounded-full bg-gradient-to-r from-sky-100 to-blue-100 text-sky-800 text-xs font-semibold px-3 py-1.5 hover:from-sky-200 hover:to-blue-200 transform hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md opacity-0 animate-fade-in-scale"
                       style={{ animationDelay: '0.6s' }}
                     >
@@ -293,30 +301,30 @@ const MainStoreDescription: React.FC = () => {
                     </span>
                   </div>
 
-                  <p 
+                  <p
                     className="text-xs md:text-sm text-gray-500 mt-3 leading-relaxed opacity-0 animate-fade-in-slide"
                     style={{ animationDelay: '0.7s' }}
                   >
-                    ※ 판매자는 상품의 내용과 배송 정보를 성실히 기재해야 하며, 허위 정보 등록 시 제재를 받을 수 있습니다.
+                    ※ 판매자는 상품의 내용과 배송 정보를 성실히 기재해야 하며, 허위 정보 등록 시
+                    제재를 받을 수 있습니다.
                   </p>
                 </div>
 
                 {/* CTA */}
                 <div className="md:text-right">
                   {/* {isPersonal ? ( */}
-                    <button
-                      onClick={goToOpenForm}
-                      className="group relative inline-flex items-center gap-2 rounded-xl 
+                  <button
+                    onClick={goToOpenForm}
+                    className="group relative inline-flex items-center gap-2 rounded-xl 
 bg-[#6B8F7D] text-white px-6 py-3 font-semibold 
 hover:bg-green-600 transform hover:scale-105 
 transition-all duration-300 shadow-md hover:shadow-lg"
-
-                    >
-                      <span className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <Sparkles className="w-4 h-4 opacity-90 group-hover:animate-spin transition-transform " />
-                      스토어 개설 신청
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </button>
+                  >
+                    <span className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <Sparkles className="w-4 h-4 opacity-90 group-hover:animate-spin transition-transform " />
+                    스토어 개설 신청
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </button>
                   {/* ) : (
                     <span 
                       className="inline-flex items-center gap-2 rounded-lg bg-gray-100/80 backdrop-blur-sm px-3 py-2 text-sm text-gray-700 opacity-0 animate-fade-in-slide"
@@ -404,13 +412,15 @@ transition-all duration-300 shadow-md hover:shadow-lg"
                               {i + 1} / {len}
                             </span>
                           </div>
-                          <h3 className="text-lg md:text-xl font-bold text-gray-900">{step.title}</h3>
+                          <h3 className="text-lg md:text-xl font-bold text-gray-900">
+                            {step.title}
+                          </h3>
                           <p className="mt-2 text-gray-700">{step.body}</p>
 
                           {i === 2 && (
                             <p className="mt-3 text-sm text-emerald-700 inline-flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4" />
-                              한 번 등록하면 1일 이내 노출 가능(검수 없음)
+                              <CheckCircle2 className="w-4 h-4" />한 번 등록하면 1일 이내 노출
+                              가능(검수 없음)
                             </p>
                           )}
 
@@ -422,7 +432,7 @@ transition-all duration-300 shadow-md hover:shadow-lg"
                                 aria-label="Prev"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  go("prev");
+                                  go('prev');
                                 }}
                                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 active:scale-95 transition"
                               >
@@ -432,7 +442,7 @@ transition-all duration-300 shadow-md hover:shadow-lg"
                                 aria-label="Next"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  go("next");
+                                  go('next');
                                 }}
                                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 active:scale-95 transition"
                               >
@@ -450,26 +460,24 @@ transition-all duration-300 shadow-md hover:shadow-lg"
 
             {/* --- 하단 CTA (개인판매자만) --- */}
             {/* {isPersonal && ( */}
-              <div 
-                className="mt-10 md:mt-14 text-center opacity-0 animate-fade-in-slide"
-                style={{ animationDelay: '0.6s' }}
-              >
-                <button
-                  onClick={goToOpenForm}
-                  className="group relative inline-flex items-center gap-2 rounded-xl 
+            <div
+              className="mt-10 md:mt-14 text-center opacity-0 animate-fade-in-slide"
+              style={{ animationDelay: '0.6s' }}
+            >
+              <button
+                onClick={goToOpenForm}
+                className="group relative inline-flex items-center gap-2 rounded-xl 
 bg-[#6B8F7D] text-white px-6 py-3 font-semibold 
 hover:bg-green-600 transform hover:scale-105 
 transition-all duration-300 shadow-md hover:shadow-lg"
-                >
-                  <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <Sparkles className="w-5 h-5 group-hover:animate-spin" />
-                  지금 바로 개설하기
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
-                </button>
-                <p className="text-sm text-gray-600 mt-3 animate-pulse">
-                  ⚡ 단 2분이면 완료됩니다
-                </p>
-              </div>
+              >
+                <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <Sparkles className="w-5 h-5 group-hover:animate-spin" />
+                지금 바로 개설하기
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
+              </button>
+              <p className="text-sm text-gray-600 mt-3 animate-pulse">⚡ 단 2분이면 완료됩니다</p>
+            </div>
             {/* )} */}
           </div>
         </div>
@@ -493,7 +501,7 @@ const Benefit = ({
   isVisible: boolean;
 }) => {
   const [cardVisible, setCardVisible] = useState(false);
-  
+
   useEffect(() => {
     if (isVisible) {
       const timer = setTimeout(() => {
@@ -511,22 +519,24 @@ const Benefit = ({
     >
       {/* Animated background gradient on hover */}
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      
+
       {/* Subtle border glow effect */}
       <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-gradient-to-br from-indigo-200/20 to-purple-200/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      
+
       <div className="relative z-10 flex items-start gap-3">
         <div className="mt-0.5 shrink-0 rounded-xl bg-gradient-to-br from-[#2d4739]/10 to-emerald-500/10 p-3 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 group-hover:shadow-lg">
-          <div className="group-hover:scale-110 transition-transform duration-300">
-            {icon}
-          </div>
+          <div className="group-hover:scale-110 transition-transform duration-300">{icon}</div>
         </div>
         <div>
-          <h4 className="font-semibold text-gray-900 group-hover:text-[#2d4739] transition-colors duration-300">{title}</h4>
-          <p className="text-sm text-gray-600 mt-1 group-hover:text-gray-700 transition-colors duration-300">{desc}</p>
+          <h4 className="font-semibold text-gray-900 group-hover:text-[#2d4739] transition-colors duration-300">
+            {title}
+          </h4>
+          <p className="text-sm text-gray-600 mt-1 group-hover:text-gray-700 transition-colors duration-300">
+            {desc}
+          </p>
         </div>
       </div>
-      
+
       {/* Decorative corner elements */}
       <div className="absolute top-0 right-0 w-8 h-8 bg-gradient-to-br from-indigo-200/30 to-purple-200/30 rounded-bl-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       <div className="absolute bottom-0 left-0 w-6 h-6 bg-gradient-to-tr from-emerald-200/30 to-cyan-200/30 rounded-tr-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />

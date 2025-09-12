@@ -4,6 +4,7 @@ import type { RouteObject } from "react-router-dom";
 // ✅ Lazy import
 const MainStoresPage = lazy(() => import("./pages/MainStoresPage"));
 const MainStoreDescription = lazy(() => import("./pages/MainStoreDescription"));
+const MainStoreOepnnForm = lazy(() => import("./pages/MainStoreOpenform"));
 
 // ✅ Suspense wrapper
 const withSuspense = (Comp: React.ComponentType<any>) =>
@@ -22,5 +23,10 @@ export const storesRoutes: RouteObject[] = [
   {
     path: "/main/store/description",
     element: withSuspense(MainStoreDescription),
+  },
+  
+  {
+    path: "/main/store/openform",
+    element: withSuspense(MainStoreOepnnForm),
   },
 ];

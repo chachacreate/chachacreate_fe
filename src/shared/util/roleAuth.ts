@@ -21,11 +21,24 @@ export function isAdmin(): boolean {
 }
 
 /**
- * 판매자인지 확인 (SELLER 또는 PERSONAL_SELLER)
+ * 판매자인지 확인 (SELLER, PERSONAL_SELLER)
  */
 export function isSeller(): boolean {
   const userInfo = getCurrentUser();
-  return userInfo?.role === ROLES.SELLER || userInfo?.role === ROLES.PERSONAL_SELLER;
+  return userInfo?.role === ROLES.SELLER;
+}
+
+export function isPersonalSeller(): boolean {
+  const userInfo = getCurrentUser();
+  return userInfo?.role === ROLES.PERSONAL_SELLER;
+}
+
+/**
+ * 유저인지 확인
+ */
+export function isUser(): boolean {
+  const userInfo = getCurrentUser();
+  return userInfo?.role === ROLES.USER;
 }
 
 /**

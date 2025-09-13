@@ -292,6 +292,8 @@ const MainProductsPage = () => {
   };
 
   const handleProductClick = (storeUrl: string, productId: string) => {
+    console.log(productId);
+    legacyGet(`/click/${productId}`);
     window.location.href = `/${storeUrl}/products/${productId}`;
   };
 

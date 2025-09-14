@@ -156,7 +156,7 @@ const MainStoresPage: React.FC = () => {
         const mapped: Store[] = storesData.map((s, idx) => ({
           id: String(s.storeId),
           name: s.storeName,
-          description: s.storeDesc,
+          description: s.storeDetail,
           image: s.logoImg || `https://picsum.photos/seed/${idx}/800/800`,
           categoriesSold: s.categoriesSold ? mapCategoriesToValue(s.categoriesSold) : [],
           orderCount: s.orderCnt ?? 0,
@@ -165,6 +165,7 @@ const MainStoresPage: React.FC = () => {
           accentColor: s.accentColor,
         }));
         setAllStores(mapped);
+        console.log('스토어 전체 조회 성공:', mapped);
       } else {
         console.error('스토어 전체 조회 실패:', response.message);
       }
@@ -472,6 +473,11 @@ const MainStoresPage: React.FC = () => {
                       </button>
                     </div>
 
+                    {/* 스토어명 */}
+                    <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2 mb-1">
+                      {s.name}
+                    </h3>
+
                     {/* 카테고리 칩 */}
                     <div className="flex flex-wrap gap-1 mb-2">
                       <span className="text-xs bg-[var(--store-accent)]/10 text-[var(--store-accent)] px-2 py-1 rounded-full">
@@ -481,11 +487,6 @@ const MainStoresPage: React.FC = () => {
                         {VALUE_TO_LABEL[repSub] ?? repSub}
                       </span>
                     </div>
-
-                    {/* 스토어명 */}
-                    <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2 mb-1">
-                      {s.name}
-                    </h3>
 
                     {/* 설명(요약) — 기본 2줄까지만 보여주고, 자세한 내용은 오버레이에서 */}
                     <p className="text-xs text-gray-600 line-clamp-2 mb-3">{s.description}</p>

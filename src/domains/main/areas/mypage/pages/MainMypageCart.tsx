@@ -7,6 +7,7 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar';
 import { legacyDel, legacyGet, legacyPut } from '@src/libs/request';
+import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 
 /** 브랜드 컬러 */
 const BRAND = '#2d4739';
@@ -674,13 +675,16 @@ export default function MainMypageCart() {
     </section>
   );
 
+  // /main 로 시작하면 Mainnavbar, 아니면 Storenavbar
+  const isMain = location.pathname.startsWith('/main');
+
   return (
     <div
       className="min-h-screen font-jua pb-12"
       style={{ background: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)' }}
     >
       <Header />
-      <Mainnavbar />
+      {isMain ? <Mainnavbar /> : <Storenavbar />}
 
       {/* 📱 모바일: 독립 페이지 느낌 (뒤로가기 포함) */}
       <div className="lg:hidden">

@@ -36,22 +36,23 @@ export const isTokenExpired = (token: string): boolean => {
 };
 
 // localStorage에서 Access Token을 가져올 때 만료 체크
-const getAccessToken = () => {
+const getAccessToken = async () => {
   const token = localStorage.getItem('accessToken');
   if (token && isTokenExpired(token)) {
     console.warn('Access Token이 만료되었습니다.');
     localStorage.removeItem('accessToken');
-    logOut();
+    await logOut();
     return null;
   }
   return token;
 };
 
-export const getUserInfoFromToken = (token?: string): JWTPayload | null => {
-  const t = token || getAccessToken();
+export const getUserInfoFromToken = async (token?: string): Promise<JWTPayload | null> => {
+  const t = token || await getAccessToken();
   if (!t) return null;
   if (isTokenExpired(t)) {
     localStorage.removeItem('accessToken');
+    await logOut();
     return null;
   }
   return decodeToken(t);
@@ -80,12 +81,12 @@ const api = axios.create({
 
 // ---------------------- Request Interceptor (Boot용) ----------------------
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
     // 1) URL 정리
     if (config.url) config.url = normalizeUrl(config.url);
 
     // 2) Authorization (JWT처럼 보일 때만)
-    const token = getAccessToken();
+    const token = await getAccessToken();
     config.headers = config.headers ?? {};
     if (isLikelyJwt(token)) {
       (config.headers as any).Authorization = `Bearer ${token}`;
@@ -155,7 +156,7 @@ api.interceptors.response.use(
         // 인스턴스로 재시도
         return api(original);
       } catch (e) {
-        logOut();
+        await logOut();
         console.error('토큰 갱신 실패:', e);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('email');

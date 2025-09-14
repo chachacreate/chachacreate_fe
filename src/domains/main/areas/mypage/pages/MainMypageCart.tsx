@@ -1,26 +1,19 @@
 // src/domains/main/areas/mypage/pages/MainMypageCart.tsx
-import React, { use, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import {
-  ChevronLeft,
-  Minus,
-  Plus,
-  Trash2,
-  ShoppingCart,
-  Store,
-} from "lucide-react";
+import React, { use, useEffect, useMemo, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ChevronLeft, Minus, Plus, Trash2, ShoppingCart, Store } from 'lucide-react';
 
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import MypageSidenavbar from "@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar";
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar';
+import { legacyDel, legacyGet, legacyPut } from '@src/libs/request';
 
 /** 브랜드 컬러 */
-const BRAND = "#2d4739";
-
+const BRAND = '#2d4739';
 
 /** 이미지 없을 때 placeholder */
 const PLACEHOLDER =
-  "data:image/svg+xml;utf8," +
+  'data:image/svg+xml;utf8,' +
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480">
        <rect width="100%" height="100%" fill="#f3f4f6"/>
@@ -33,63 +26,29 @@ const PLACEHOLDER =
 
 /** 타입 */
 type CartItem = {
-  id: number;
-  storeUrl?: string | null;
-  storeName: string;
+  cartId: number;
+  memberId: number;
   productId: number;
-  image?: string | null;
-  name: string;
-  desc?: string;
-  price: number; // 단가
-  qty: number;
+  productName: string;
+  price: number;
+  productCnt: number;
+  stock: number;
+  storeId: number;
+  storeName: string | null;
+  storeUrl: string;
+  pimgUrl?: string | null;
+  productDetail?: string;
 };
 
 type Params = { storeUrl?: string };
 
 /** KRW 포맷 */
 const toKRW = (v: number) =>
-  new Intl.NumberFormat("ko-KR", {
-    style: "currency",
-    currency: "KRW",
+  new Intl.NumberFormat('ko-KR', {
+    style: 'currency',
+    currency: 'KRW',
     maximumFractionDigits: 0,
   }).format(v);
-
-/** ✅ 목데이터 (실서버 붙일 때 교체) */
-const MOCK: CartItem[] = [
-  {
-    id: 1,
-    storeUrl: "casa-coffee",
-    storeName: "카사 커피",
-    productId: 101,
-    image: null,
-    name: "핸드드립 케냐 AA 200g",
-    desc: "상큼한 산미와 깔끔한 바디감",
-    price: 14000,
-    qty: 1,
-  },
-  {
-    id: 2,
-    storeUrl: "casa-coffee",
-    storeName: "카사 커피",
-    productId: 102,
-    image: null,
-    name: "콜드브루 보틀 500ml",
-    desc: "진하게 내린 원액 콜드브루",
-    price: 12000,
-    qty: 2,
-  },
-  {
-    id: 3,
-    storeUrl: "handmade-lab",
-    storeName: "핸드메이드랩",
-    productId: 201,
-    image: null,
-    name: "천연 비누 세트",
-    desc: "라벤더/시트러스 2종",
-    price: 18000,
-    qty: 1,
-  },
-];
 
 /** 스토어당 배송비 (선택된 동일 스토어 품목이 하나라도 있으면 1회 부과) */
 const SHIPPING_FEE_PER_STORE = 3000;
@@ -132,8 +91,27 @@ function QtyStepper({
 export default function MainMypageCart() {
   const { storeUrl } = useParams<Params>();
 
-  const [items, setItems] = useState<CartItem[]>(MOCK);
+  const [items, setItems] = useState<CartItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+
+  useEffect(() => {
+    const fetchCart = async () => {
+      try {
+        const response = await legacyGet<{ status: number; message: string; data: CartItem[] }>(
+          '/main/mypage/cart'
+        );
+        // console.log('장바구니 데이터:', response);
+        if (response.status === 200) {
+          setItems(response.data);
+        } else {
+          console.error('장바구니 데이터 조회 실패: ', response.message);
+        }
+      } catch (error) {
+        console.error('API 요청 실패: ', error);
+      }
+    };
+    fetchCart();
+  }, []);
 
   /** 파생: 현재 스토어/나머지 스토어 구분
    * - storeUrl가 있으면 해당 스토어만 "현재 스토어 장바구니"로 보여주고, 나머지는 "전체 스토어 장바구니"
@@ -157,16 +135,14 @@ export default function MainMypageCart() {
   }, [items, storeUrl]);
 
   /** 전체 선택(현재 장바구니의 모든 아이템) 체크 상태 */
-  const allChecked =
-    allItems.length > 0 && allItems.every((it) => selectedIds.has(it.id));
-  const someChecked =
-    allItems.length > 0 && allItems.some((it) => selectedIds.has(it.id));
+  const allChecked = allItems.length > 0 && allItems.every((item) => selectedIds.has(item.cartId));
+  const someChecked = allItems.length > 0 && allItems.some((item) => selectedIds.has(item.cartId));
 
   /** 전체 선택/해제 */
   const toggleAll = (checked: boolean) => {
     setSelectedIds(() => {
       if (!checked) return new Set();
-      return new Set(allItems.map((it) => it.id));
+      return new Set(allItems.map((item) => item.cartId));
     });
   };
 
@@ -184,92 +160,136 @@ export default function MainMypageCart() {
   const toggleSectionAll = (list: CartItem[], checked: boolean) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      list.forEach((it) => {
-        if (checked) next.add(it.id);
-        else next.delete(it.id);
+      list.forEach((item) => {
+        if (checked) next.add(item.cartId);
+        else next.delete(item.cartId);
       });
       return next;
     });
   };
 
   /** 수량 변경 */
-  const changeQty = (id: number, qty: number) => {
-    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, qty } : it)));
+  const changeQty = async (cartId: number, productCnt: number) => {
+    try {
+      const response = await legacyPut<{ status: number; message: string; data: null }>(
+        '/main/mypage/cart',
+        {
+          cartId,
+          productCnt,
+        }
+      );
+      if (response.status === 200) {
+        setItems((prev) =>
+          prev.map((item) => (item.cartId === cartId ? { ...item, productCnt } : item))
+        );
+      } else {
+        console.error('수량 수정 실패: ', response.message);
+      }
+    } catch (error) {
+      console.error('API 요청 실패: ', error);
+    }
   };
 
-  /** 품목 제거 */
-  const removeItem = (id: number) => {
-    setItems((prev) => prev.filter((it) => it.id !== id));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  };
+  async function removeCartItems(
+    ids: number[],
+    urlBuilder?: (cartId: number) => string,
+    confirmMessage?: string
+  ) {
+    if (ids.length === 0) {
+      alert('삭제할 상품을 선택해주세요.');
+      return;
+    }
 
-  /** 장바구니 비우기 (전체) */
-  const clearCart = () => {
-    if (!confirm("장바구니의 모든 상품을 삭제할까요?")) return;
-    setItems([]);
-    setSelectedIds(new Set());
-  };
+    if (confirmMessage && !confirm(confirmMessage)) return;
 
-const clearCurrentStore = () => {
-  const selectedCurrentItems = currentStoreItems.filter((it) => selectedIds.has(it.id));
-  if (selectedCurrentItems.length === 0) {
-    alert("삭제할 상품을 선택해주세요.");
-    return;
+    try {
+      // 단건 삭제 반복 처리
+      if (urlBuilder) {
+        await Promise.all(
+          ids.map((cartId) =>
+            legacyDel<{ status: number; message: string; data: null }>(urlBuilder(cartId))
+          )
+        );
+      }
+
+      // 상태 업데이트
+      const idsSet = new Set(ids);
+      setItems((prev) => prev.filter((item) => !idsSet.has(item.cartId)));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        ids.forEach((cartId) => next.delete(cartId));
+        return next;
+      });
+    } catch (err) {
+      console.error('API 요청 실패:', err);
+    }
   }
-  if (!confirm(`현재 스토어 장바구니에서 선택된 ${selectedCurrentItems.length}개 상품을 삭제할까요?`)) return;
-  
-  const selectedCurrentIds = new Set(selectedCurrentItems.map((it) => it.id));
-  setItems((prev) => prev.filter((it) => !selectedCurrentIds.has(it.id)));
-  setSelectedIds((prev) => {
-    const next = new Set(prev);
-    selectedCurrentIds.forEach((id) => next.delete(id));
-    return next;
-  });
-};
 
-/** 전체 스토어 장바구니에서 선택된 상품 삭제 */
-const clearOtherStores = () => {
-  const selectedOtherItems = otherStoreItems.filter((it) => selectedIds.has(it.id));
-  if (selectedOtherItems.length === 0) {
-    alert("삭제할 상품을 선택해주세요.");
-    return;
-  }
-  if (!confirm(`전체 스토어 장바구니에서 선택된 ${selectedOtherItems.length}개 상품을 삭제할까요?`)) return;
-  
-  const selectedOtherIds = new Set(selectedOtherItems.map((it) => it.id));
-  setItems((prev) => prev.filter((it) => !selectedOtherIds.has(it.id)));
-  setSelectedIds((prev) => {
-    const next = new Set(prev);
-    selectedOtherIds.forEach((id) => next.delete(id));
-    return next;
-  });
-};
+  // 단건 삭제
+  const removeItem = (cartId: number) =>
+    removeCartItems([cartId], (id) => `/main/mypage/cart/delete/${id}`);
+
+  // 전체 삭제
+  const clearCart = async () => {
+    if (!confirm('장바구니의 모든 상품을 삭제할까요?')) return;
+    try {
+      const response = await legacyDel<{ status: number; message: string; data: null }>(
+        '/main/mypage/cart/deleteAll'
+      );
+      if (response.status === 200) {
+        setItems([]);
+        setSelectedIds(new Set());
+      } else {
+        console.error('전체 삭제 실패: ', response.message);
+      }
+    } catch (error) {
+      console.error('API 요청 실패: ', error);
+    }
+  };
+
+  // 현재 스토어 선택 삭제
+  const clearCurrentStore = () => {
+    const selectedCurrentIds = currentStoreItems
+      .filter((i) => selectedIds.has(i.cartId))
+      .map((i) => i.cartId);
+    removeCartItems(
+      selectedCurrentIds,
+      (id) => `/main/mypage/cart/delete/${id}`,
+      `현재 스토어 장바구니에서 선택된 ${selectedCurrentIds.length}개 상품을 삭제할까요?`
+    );
+  };
+
+  // 다른 스토어 선택 삭제
+  const clearOtherStores = () => {
+    const selectedOtherIds = otherStoreItems
+      .filter((i) => selectedIds.has(i.cartId))
+      .map((i) => i.cartId);
+    removeCartItems(
+      selectedOtherIds,
+      (id) => `/main/mypage/cart/delete/${id}`,
+      `전체 스토어 장바구니에서 선택된 ${selectedOtherIds.length}개 상품을 삭제할까요?`
+    );
+  };
 
   /** 합계 계산 (선택된 항목 대상) */
   const calcSummary = useMemo(() => {
-    const selected = items.filter((x) => selectedIds.has(x.id));
+    const selected = items.filter((x) => selectedIds.has(x.cartId));
     const count = selected.length;
 
-    const subtotal = selected.reduce((sum, it) => sum + it.price * it.qty, 0);
+    const subtotal = selected.reduce((sum, item) => sum + item.price * item.productCnt, 0);
 
     // 스토어별 중복 제거 후 배송비 합산
-    const storesInSelection = Array.from(
-      new Set(selected.map((x) => x.storeUrl || x.storeName))
-    );
+    const storesInSelection = Array.from(new Set(selected.map((x) => x.storeUrl || x.storeName)));
     const shipping = storesInSelection.length * SHIPPING_FEE_PER_STORE;
 
     const total = subtotal + (count > 0 ? shipping : 0);
 
     return {
       count,
-      lines: selected.map((it) => ({
-        id: it.id,
-        name: it.name,
-        lineTotal: it.price * it.qty,
+      lines: selected.map((item) => ({
+        id: item.cartId,
+        name: item.productName,
+        lineTotal: item.price * item.productCnt,
       })),
       subtotal,
       shipping: count > 0 ? shipping : 0,
@@ -278,32 +298,31 @@ const clearOtherStores = () => {
   }, [items, selectedIds]);
 
   // 결제 naivgate
-const naivgate = useNavigate();
-
+  const naivgate = useNavigate();
 
   const handleCheckout = () => {
-    const selected = items.filter((x) => selectedIds.has(x.id));
-    if (selected.length === 0) {  
-      alert("결제할 상품을 선택해주세요.");
+    const selected = items.filter((x) => selectedIds.has(x.cartId));
+    if (selected.length === 0) {
+      alert('결제할 상품을 선택해주세요.');
       return;
     }
 
-    const orderItems = selected.map((it) => ({
-      productId: it.productId,
-      productName: it.name,
-      productDetail: it.desc ?? "",
-      productCnt: it.qty,
-      price: it.price,
-      pimgUrl: it.image || "",
-      storeName: it.storeName,
-      storeUrl: it.storeUrl ?? "main",
-      cartId: it.id, // 장바구니 주문 표식
+    const orderItems = selected.map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      productDetail: item.productDetail ?? '',
+      productCnt: item.productCnt,
+      price: item.price,
+      pimgUrl: item.pimgUrl || '',
+      storeName: item.storeName || '뜨락상회',
+      storeUrl: item.storeUrl ?? 'main',
+      cartId: item.cartId, // 장바구니 주문 표식
     }));
 
     // 주문 정보 세션스토리지에 저장
-    sessionStorage.setItem("orderItems", JSON.stringify(orderItems));
+    sessionStorage.setItem('orderItems', JSON.stringify(orderItems));
     // 주문 페이지로 이동
-    naivgate("/main/order");
+    naivgate('/main/order');
     // naivgate("/main/order");
   };
 
@@ -335,11 +354,9 @@ const naivgate = useNavigate();
           onClick={clearCart}
           disabled={items.length === 0}
           className={[
-            "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm active:scale-95 transition",
-            items.length === 0
-              ? "opacity-50 cursor-not-allowed"
-              : "hover:bg-gray-50",
-          ].join(" ")}
+            'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm active:scale-95 transition',
+            items.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50',
+          ].join(' ')}
         >
           <Trash2 className="w-4 h-4" />
           장바구니 비우기
@@ -349,30 +366,30 @@ const naivgate = useNavigate();
   );
 
   /** 데스크톱 표 행 */
-  const TableRow = ({ it }: { it: CartItem }) => (
+  const TableRow = ({ item }: { item: CartItem }) => (
     <tr className="border-b last:border-0">
       <td className="py-3 px-3 align-middle">
         <input
           type="checkbox"
           className="h-4 w-4"
-          checked={selectedIds.has(it.id)}
-          onChange={() => toggleSelect(it.id)}
+          checked={selectedIds.has(item.cartId)}
+          onChange={() => toggleSelect(item.cartId)}
         />
       </td>
       <td className="py-3 px-3 align-middle text-sm text-gray-700 whitespace-nowrap">
         <div className="inline-flex items-center gap-1.5">
           <Store className="w-4 h-4 text-gray-500" />
-          {it.storeName}
+          {item.storeName || '뜨락상회'}
         </div>
       </td>
       <td className="py-3 px-3 align-middle">
         <a
-          href={`/main/products/${it.productId}`}
+          href={`/main/products/${item.productId}`}
           className="block w-16 h-16 rounded-lg overflow-hidden bg-gray-100"
         >
           <img
-            src={it.image || PLACEHOLDER}
-            alt={it.name}
+            src={item.pimgUrl || PLACEHOLDER}
+            alt={item.productName}
             className="w-full h-full object-cover"
             loading="lazy"
           />
@@ -380,25 +397,25 @@ const naivgate = useNavigate();
       </td>
       <td className="py-3 px-3 align-middle">
         <a
-          href={`/main/products/${it.productId}`}
+          href={`/main/products/${item.productId}`}
           className="text-gray-900 font-medium hover:underline line-clamp-2"
         >
-          {it.name}
+          {item.productName}
         </a>
-        {it.desc && (
-          <p className="text-sm text-gray-500 line-clamp-1 mt-0.5">{it.desc}</p>
+        {item.productDetail && (
+          <p className="text-sm text-gray-500 line-clamp-1 mt-0.5">{item.productDetail}</p>
         )}
       </td>
       <td className="py-3 px-3 align-middle text-gray-900 font-semibold whitespace-nowrap">
-        {toKRW(it.price)}
+        {toKRW(item.price)}
       </td>
       <td className="py-3 px-3 align-middle">
-        <QtyStepper value={it.qty} onChange={(v) => changeQty(it.id, v)} />
+        <QtyStepper value={item.productCnt} onChange={(v) => changeQty(item.cartId, v)} />
       </td>
       <td className="py-3 px-3 align-middle">
         <button
           type="button"
-          onClick={() => removeItem(it.id)}
+          onClick={() => removeItem(item.cartId)}
           className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm hover:bg-gray-50 active:scale-95 transition"
         >
           <Trash2 className="w-4 h-4" />
@@ -418,10 +435,8 @@ const naivgate = useNavigate();
     list: CartItem[];
     onClearSection: () => void;
   }) => {
-    const sectionAllChecked =
-      list.length > 0 && list.every((it) => selectedIds.has(it.id));
-    const sectionSomeChecked = list.some((it) => selectedIds.has(it.id));
-    
+    const sectionAllChecked = list.length > 0 && list.every((item) => selectedIds.has(item.cartId));
+    const sectionSomeChecked = list.some((item) => selectedIds.has(item.cartId));
 
     return (
       <section className="rounded-2xl border border-gray-300 bg-white overflow-hidden">
@@ -449,11 +464,9 @@ const naivgate = useNavigate();
                 onClick={onClearSection}
                 disabled={list.length === 0}
                 className={[
-                  "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm active:scale-95 transition",
-                  list.length === 0
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-gray-50",
-                ].join(" ")}
+                  'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm active:scale-95 transition',
+                  list.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50',
+                ].join(' ')}
               >
                 <Trash2 className="w-4 h-4" />
                 선택한 상품 삭제
@@ -479,8 +492,8 @@ const naivgate = useNavigate();
                 </tr>
               </thead>
               <tbody>
-                {list.map((it) => (
-                  <TableRow key={it.id} it={it} />
+                {list.map((item) => (
+                  <TableRow key={item.cartId} item={item} />
                 ))}
               </tbody>
             </table>
@@ -491,24 +504,24 @@ const naivgate = useNavigate();
   };
 
   /** 모바일 카드 */
-  const MobileCard = ({ it }: { it: CartItem }) => (
+  const MobileCard = ({ item }: { item: CartItem }) => (
     <li className="rounded-2xl border border-gray-200 bg-white p-4">
       <div className="flex items-start justify-between">
         <label className="inline-flex items-center gap-2">
           <input
             type="checkbox"
             className="h-4 w-4"
-            checked={selectedIds.has(it.id)}
-            onChange={() => toggleSelect(it.id)}
+            checked={selectedIds.has(item.cartId)}
+            onChange={() => toggleSelect(item.cartId)}
           />
           <span className="text-sm text-gray-700 inline-flex items-center gap-1.5">
             <Store className="w-4 h-4 text-gray-500" />
-            {it.storeName}
+            {item.storeName}
           </span>
         </label>
         <button
           type="button"
-          onClick={() => removeItem(it.id)}
+          onClick={() => removeItem(item.cartId)}
           className="inline-flex items-center gap-1 text-xs rounded-md border px-2 py-1 hover:bg-gray-50"
         >
           <Trash2 className="w-4 h-4" />
@@ -518,30 +531,30 @@ const naivgate = useNavigate();
 
       <div className="mt-3 flex gap-3">
         <a
-          href={`/main/products/${it.productId}`}
+          href={`/main/products/${item.productId}`}
           className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0"
         >
           <img
-            src={it.image || PLACEHOLDER}
-            alt={it.name}
+            src={item.pimgUrl || PLACEHOLDER}
+            alt={item.productName}
             className="w-full h-full object-cover"
             loading="lazy"
           />
         </a>
         <div className="min-w-0 flex-1">
           <a
-            href={`/main/products/${it.productId}`}
+            href={`/main/products/${item.productId}`}
             className="text-base font-semibold text-gray-900 hover:underline line-clamp-2"
           >
-            {it.name}
+            {item.productName}
           </a>
-          {it.desc && (
-            <p className="text-sm text-gray-500 line-clamp-2 mt-0.5">{it.desc}</p>
+          {item.productDetail && (
+            <p className="text-sm text-gray-500 line-clamp-2 mt-0.5">{item.productDetail}</p>
           )}
 
           <div className="mt-2 flex items-center justify-between">
-            <div className="text-gray-900 font-semibold">{toKRW(it.price)}</div>
-            <QtyStepper value={it.qty} onChange={(v) => changeQty(it.id, v)} />
+            <div className="text-gray-900 font-semibold">{toKRW(item.price)}</div>
+            <QtyStepper value={item.productCnt} onChange={(v) => changeQty(item.cartId, v)} />
           </div>
         </div>
       </div>
@@ -558,9 +571,8 @@ const naivgate = useNavigate();
     list: CartItem[];
     onClearSection: () => void;
   }) => {
-    const sectionAllChecked =
-      list.length > 0 && list.every((it) => selectedIds.has(it.id));
-    const sectionSomeChecked = list.some((it) => selectedIds.has(it.id));
+    const sectionAllChecked = list.length > 0 && list.every((item) => selectedIds.has(item.cartId));
+    const sectionSomeChecked = list.some((item) => selectedIds.has(item.cartId));
 
     return (
       <section className="rounded-2xl border border-gray-300 bg-white overflow-hidden">
@@ -588,11 +600,9 @@ const naivgate = useNavigate();
                 onClick={onClearSection}
                 disabled={list.length === 0}
                 className={[
-                  "inline-flex items-center gap-1 text-xs rounded-md border px-2 py-1 transition",
-                  list.length === 0
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-gray-50",
-                ].join(" ")}
+                  'inline-flex items-center gap-1 text-xs rounded-md border px-2 py-1 transition',
+                  list.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50',
+                ].join(' ')}
               >
                 <Trash2 className="w-3 h-3" />
                 선택 삭제
@@ -604,7 +614,7 @@ const naivgate = useNavigate();
           {list.length === 0 ? (
             <li className="text-gray-500">담긴 상품이 없습니다.</li>
           ) : (
-            list.map((it) => <MobileCard key={it.id} it={it} />)
+            list.map((item) => <MobileCard key={item.cartId} item={item} />)
           )}
         </ul>
       </section>
@@ -616,18 +626,14 @@ const naivgate = useNavigate();
     <section className="rounded-2xl border border-gray-300 bg-white overflow-hidden">
       <header className="px-6 py-5 border-b bg-white/60">
         <h3 className="text-lg font-semibold text-gray-900">주문 예상 금액</h3>
-        <p className="text-sm text-gray-500 mt-0.5">
-          선택된 {calcSummary.count}개 상품 기준
-        </p>
+        <p className="text-sm text-gray-500 mt-0.5">선택된 {calcSummary.count}개 상품 기준</p>
       </header>
       <div className="p-6 space-y-4">
         <ul className="space-y-2">
           {calcSummary.lines.map((ln) => (
             <li key={ln.id} className="flex items-center justify-between text-sm">
               <span className="text-gray-700 line-clamp-1">{ln.name}</span>
-              <span className="text-gray-900 font-medium">
-                {toKRW(ln.lineTotal)}
-              </span>
+              <span className="text-gray-900 font-medium">{toKRW(ln.lineTotal)}</span>
             </li>
           ))}
         </ul>
@@ -636,15 +642,11 @@ const naivgate = useNavigate();
 
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-600">상품 합계</span>
-          <span className="text-gray-900 font-semibold">
-            {toKRW(calcSummary.subtotal)}
-          </span>
+          <span className="text-gray-900 font-semibold">{toKRW(calcSummary.subtotal)}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-600">배송비</span>
-          <span className="text-gray-900 font-semibold">
-            {toKRW(calcSummary.shipping)}
-          </span>
+          <span className="text-gray-900 font-semibold">{toKRW(calcSummary.shipping)}</span>
         </div>
 
         <div className="h-px bg-gray-200" />
@@ -660,9 +662,9 @@ const naivgate = useNavigate();
           type="button"
           disabled={calcSummary.count === 0}
           className={[
-            "w-full h-11 rounded-xl text-white font-semibold active:scale-95 transition",
-            calcSummary.count === 0 ? "opacity-50 cursor-not-allowed" : "hover:opacity-95",
-          ].join(" ")}
+            'w-full h-11 rounded-xl text-white font-semibold active:scale-95 transition',
+            calcSummary.count === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-95',
+          ].join(' ')}
           style={{ backgroundColor: BRAND }}
           onClick={handleCheckout}
         >
@@ -675,7 +677,7 @@ const naivgate = useNavigate();
   return (
     <div
       className="min-h-screen font-jua pb-12"
-      style={{ background: "linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)" }}
+      style={{ background: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)' }}
     >
       <Header />
       <Mainnavbar />
@@ -687,7 +689,7 @@ const naivgate = useNavigate();
             <button
               type="button"
               onClick={() =>
-                history.length > 1 ? history.back() : (window.location.href = "/main/mypage")
+                history.length > 1 ? history.back() : (window.location.href = '/main/mypage')
               }
               className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
               aria-label="뒤로가기"
@@ -714,7 +716,7 @@ const naivgate = useNavigate();
 
           {/* 전체 스토어 장바구니 */}
           <MobileSection
-            title={storeUrl ? "전체 스토어 장바구니" : "장바구니"}
+            title={storeUrl ? '전체 스토어 장바구니' : '장바구니'}
             list={otherStoreItems}
             onClearSection={clearOtherStores}
           />
@@ -755,11 +757,9 @@ const naivgate = useNavigate();
                   onClick={clearCart}
                   disabled={items.length === 0}
                   className={[
-                    "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm active:scale-95 transition",
-                    items.length === 0
-                      ? "opacity-50 cursor-not-allowed"
-                      : "hover:bg-gray-50",
-                  ].join(" ")}
+                    'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm active:scale-95 transition',
+                    items.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50',
+                  ].join(' ')}
                 >
                   <Trash2 className="w-4 h-4" />
                   장바구니 전체 비우기
@@ -776,14 +776,14 @@ const naivgate = useNavigate();
                     onClearSection={clearCurrentStore}
                   />
                 )}
-                
+
                 {/* 전체 스토어 장바구니 */}
                 <TableSection
-                  title={storeUrl ? "전체 스토어 장바구니" : "장바구니"}
+                  title={storeUrl ? '전체 스토어 장바구니' : '장바구니'}
                   list={otherStoreItems}
                   onClearSection={clearOtherStores}
                 />
-                
+
                 <Summary />
               </div>
             </div>

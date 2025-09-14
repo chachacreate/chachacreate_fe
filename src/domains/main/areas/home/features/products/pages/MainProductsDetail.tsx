@@ -2,7 +2,7 @@ import React, { useState, useEffect, type JSX } from 'react';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import { Star, ShoppingCart, CreditCard, Flag, Edit, Minus, Plus, ThumbsUp, X } from 'lucide-react';
-import { get, legacyGet } from '@src/libs/request';
+import { get, legacyGet, legacyPost } from '@src/libs/request';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 
@@ -223,28 +223,74 @@ const MainProductsDetail = () => {
     }
   };
 
-  const handleAddToCart = () => {
-    alert(`장바구니에 ${quantity}개 추가되었습니다.`);
+  const [showModal, setShowModal] = useState(false);
+
+  const handleAddToCart = async () => {
+    try {
+      const response = await legacyPost<any>('/main/mypage/cart', {
+        productId,
+        productCnt: quantity,
+      });
+
+      if (response.status === 200) {
+        setShowModal(true);
+        // alert(`장바구니에 ${quantity}개 추가되었습니다.`);
+      } else {
+        console.error('장바구니 추가 실패:', response.message);
+        alert('장바구니 추가에 실패했습니다. 다시 시도해주세요.');
+      }
+    } catch (error) {
+      console.error('API 호출 실패', error);
+      alert('장바구니 추가 중 오류가 발생했습니다.');
+    }
   };
+
+  // 장바구니 추가할 때 나타나는 모달
+  const Modal = () =>
+    showModal ? (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-lg p-6 w-80 text-center">
+          <p className="mb-4">
+            장바구니에 추가되었습니다.
+            <br />
+            장바구니로 이동하시겠습니까?
+          </p>
+          <div className="flex justify-center gap-4">
+            <button
+              onClick={() => navigate('/main/mypage/cart')}
+              className="px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#2d4739]/90"
+            >
+              예
+            </button>
+            <button
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+            >
+              아니오
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null;
 
   const handleBuyNow = () => {
-  if (!product) return;
+    if (!product) return;
 
-  const item = {
-    productId: Number(product.id) || product.id,
-    productName: product.name,
-    productDetail: "", // 옵션/선택사항이 있다면 채워주세요
-    productCnt: quantity,
-    price: product.price,
-    pimgUrl: product.thumbnailUrl || product.images?.[0] || "",
-    storeName: product.storeName,
-    storeUrl: product.storeUrl ?? "main",
-    cartId: null, // 바로결제라 장바구니 아님
+    const item = {
+      productId: Number(product.id) || product.id,
+      productName: product.name,
+      productDetail: '', // 옵션/선택사항이 있다면 채워주세요
+      productCnt: quantity,
+      price: product.price,
+      pimgUrl: product.thumbnailUrl || product.images?.[0] || '',
+      storeName: product.storeName,
+      storeUrl: product.storeUrl ?? 'main',
+      cartId: null, // 바로결제라 장바구니 아님
+    };
+
+    sessionStorage.setItem('orderItems', JSON.stringify([item]));
+    navigate('/main/order');
   };
-
-  sessionStorage.setItem("orderItems", JSON.stringify([item]));
-  navigate("/main/order");
-};
 
   const handleSubmitReview = () => {
     if (newReview.content.trim()) {
@@ -532,6 +578,7 @@ const MainProductsDetail = () => {
                     <ShoppingCart className="w-5 h-5" />
                     장바구니
                   </button>
+                  <Modal />
                   <button
                     onClick={handleBuyNow}
                     className="flex items-center justify-center gap-2 flex-1 bg-[#2d4739] hover:bg-[#1a2e20] text-white font-medium py-3 px-6 rounded-lg transition-colors"

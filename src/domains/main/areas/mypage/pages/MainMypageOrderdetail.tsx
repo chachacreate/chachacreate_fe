@@ -17,22 +17,25 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar';
 
-import { legacyGet, legacyPost } from '@src/libs/request';
+import { legacyGet, post } from '@src/libs/request';
 
 /* ======================== Types ======================== */
 type Params = { orderId?: string };
 
 interface OrderItem {
+  orderDetailId: string | number;
   productId: number;
   productName: string;
   orderCnt: number;
   orderPrice: number;
   pimgUrl?: string;
   storeUrl?: string;
+  orderStatus?: string;
 }
 
 interface OrderDetail {
   orderId: string | number;
+  orderDetailId: string | number;
   orderStatus?: string;
   orderName: string;
   orderPhone: string;
@@ -87,30 +90,41 @@ const MainMypageOrderdetail: React.FC = () => {
     return parts.join(' ');
   }, [detail]);
 
-  const canCancel = useMemo(() => isPreShipping(detail?.orderStatus), [detail?.orderStatus]);
+  const canCancel = useMemo(() => {
+    if (!detail || !detail.orderItems?.length) return false;
+
+    // detail의 상태를 확인 (주문완료일 때만 취소 가능)
+    return isPreShipping(detail?.orderItems?.[0]?.orderStatus);
+  }, [detail?.orderStatus, detail?.orderItems?.[0]?.orderDetailId]);
+
   const canRefund = useMemo(() => {
-    const s = detail?.orderStatus;
+    if (!detail || !detail.orderItems?.length) return false;
+
+    const s = detail.orderStatus;
     if (!s) return false;
+
+    // 발송완료 상태일 때만 환불 가능
     if (isShipping(s)) return true;
-    // 배송완료/취소완료/환불완료 등 이후에는 비활성 (정책에 맞게 조정)
+
+    // 배송완료/취소완료/환불완료 이후는 불가능
     return false;
-  }, [detail?.orderStatus]);
+  }, [detail?.orderStatus, detail?.orderItems?.[0]?.orderDetailId]);
 
   const fetchDetail = useCallback(async () => {
     if (!orderId) return;
     setLoading(true);
     setError(null);
     try {
-      // ✅ 레거시 조회 URL로 복구
-      const res = await legacyGet<any>(`/main/mypage/orderdetail/${orderId}`);
-      if (res?.status === 200 && res?.data) {
-        setDetail(res.data as OrderDetail);
+      const response = await legacyGet<any>(`/main/mypage/orderdetail/${orderId}`);
+      if (response?.status === 200 && response?.data) {
+        // console.log('주문 상세 정보:', response.data);
+        setDetail(response.data as OrderDetail);
       } else {
-        setError(res?.message ?? '주문 상세 정보를 불러오지 못했습니다.');
+        setError(response.message);
+        console.error('주문 상세 정보 조회 실패', error);
       }
-    } catch (e: any) {
-      console.error('[OrderDetail] fetch error:', e);
-      setError('서버 통신 중 오류가 발생했습니다.');
+    } catch (error: any) {
+      console.error('API 호출 실패', error);
     } finally {
       setLoading(false);
     }
@@ -129,8 +143,8 @@ const MainMypageOrderdetail: React.FC = () => {
     navigate('/main/mypage/orders');
   };
 
-  const CANCEL_URL = (oid: string | number) => `/legacy/main/mypage/orders/${oid}/cancel`;
-  const REFUND_URL = (oid: string | number) => `/legacy/main/mypage/orders/${oid}/refund`;
+  const CANCEL_URL = (detailId: string | number) => `/mypage/orders/${detailId}/cancel`;
+  const REFUND_URL = (detailId: string | number) => `/mypage/orders/${detailId}/refund`;
 
   // 모달 열기 함수들
   const openCancelModal = () => {
@@ -162,14 +176,30 @@ const MainMypageOrderdetail: React.FC = () => {
 
     if (!confirm(message)) return;
 
+    const body = {
+      amount: detail.totalAmount,
+      content: reason.trim(),
+    };
+
     setSaving(true);
     try {
-      const url = isCancel ? CANCEL_URL(detail.orderId) : REFUND_URL(detail.orderId);
-      const res = await legacyPost<any>(url, { reason: reason.trim() });
+      // 수정된 부분
+      const orderDetailId = detail.orderDetailId ?? detail.orderItems?.[0]?.orderDetailId;
+      if (!orderDetailId) {
+        alert('주문 상세 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        setSaving(false);
+        return;
+      }
+
+      const url = isCancel ? CANCEL_URL(orderDetailId) : REFUND_URL(orderDetailId);
+      const res = await post<any>(url, body);
 
       if (res?.status === 200) {
-        alert(isCancel ? '주문이 취소되었습니다.' : '환불이 요청되었습니다.');
+        alert(isCancel ? '주문 취소가 요청되었습니다.' : '환불이 요청되었습니다.');
         closeModal();
+        setDetail((prev) =>
+          prev ? { ...prev, orderStatus: isCancel ? '취소 요청 완료' : '환불 요청 완료' } : prev
+        );
         await fetchDetail();
       } else {
         alert(
@@ -211,7 +241,9 @@ const MainMypageOrderdetail: React.FC = () => {
               <div className="mb-4">
                 <p className="text-sm text-gray-600 mb-2">
                   현재 주문 상태:{' '}
-                  <span className="font-medium text-gray-900">{detail?.orderStatus}</span>
+                  <span className="font-medium text-gray-900">
+                    {detail?.orderItems?.[0]?.orderStatus}
+                  </span>
                 </p>
                 <p className="text-sm text-gray-600">
                   {modalType === 'cancel' ? '주문 취소' : '환불 요청'} 사유를 입력해주세요.
@@ -287,7 +319,7 @@ const MainMypageOrderdetail: React.FC = () => {
         <>
           <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 shadow-sm">
             <p className="font-semibold text-lg">주문번호: {detail.orderId}</p>
-            <p className="text-gray-600">현재 상태: {detail.orderStatus}</p>
+            <p className="text-gray-600">현재 상태: {detail?.orderItems?.[0]?.orderStatus}</p>
           </div>
 
           {/* 주문 상품 */}

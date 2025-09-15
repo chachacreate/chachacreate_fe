@@ -1,6 +1,6 @@
 // src/shared/areas/navigation/features/subnavbar/sell/SellSubnavbar.tsx
 import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Info, PackagePlus, ClipboardList, Wallet } from "lucide-react";
 
 type Item = {
@@ -53,6 +53,14 @@ export default function SellSubnavbar({
 }: SellSubnavbarProps) {
   const { pathname } = useLocation();
 
+  /** 현재 경로 확인 함수 */
+  const isActivePath = (item: Item) => {
+    if (item.exact) {
+      return pathname === item.to;
+    }
+    return pathname.startsWith(item.to);
+  };
+
   return (
     <div
       className={[
@@ -69,26 +77,24 @@ export default function SellSubnavbar({
           className="flex items-center gap-3 md:gap-4 overflow-x-auto"
           aria-label="Sell sub navigation"
         >
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.exact}
-              className={({ isActive }) => {
-                // StoresSubnavbar와 동일한 활성 판정 로직
-                const active = item.exact ? pathname === item.to : isActive;
-                return [
+          {items.map((item) => {
+            const active = isActivePath(item);
+            return (
+              <a
+                key={item.to}
+                href={item.to}
+                className={[
                   "group inline-flex items-center gap-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
                   active
                     ? "bg-[#2d4739] text-white rounded-lg"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg",
-                ].join(" ");
-              }}
-            >
-              {item.icon && <span className="shrink-0">{item.icon}</span>}
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+                ].join(" ")}
+              >
+                {item.icon && <span className="shrink-0">{item.icon}</span>}
+                <span>{item.label}</span>
+              </a>
+            );
+          })}
         </nav>
       </div>
     </div>

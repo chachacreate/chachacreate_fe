@@ -1,6 +1,6 @@
 // src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar.tsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { NavLink, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   Home,
   ChevronDown,
@@ -59,6 +59,14 @@ export default function SellerSidenavbar({
   useEffect(() => {
     localStorage.setItem('seller-sidenav-open', JSON.stringify(openMap));
   }, [openMap]);
+
+  /** 현재 경로 확인 함수 */
+  const isActivePath = (path: string) => {
+    if (typeof window !== 'undefined') {
+      return window.location.pathname === path;
+    }
+    return false;
+  };
 
   /** 모바일에서 메뉴 클릭 시 자동 접힘 */
   const handleNavClick = () => {
@@ -180,14 +188,14 @@ export default function SellerSidenavbar({
                     <div
                       className={[expanded ? 'block' : 'hidden', 'lg:block', 'min-w-0'].join(' ')}
                     >
-                      <NavLink
-                        to={`${base}/main`} // ✅ 절대경로 사용
+                      <a
+                        href={`${base}/main`}
                         className="block text-sm font-semibold text-gray-900 hover:underline truncate"
                         title={`${storeSegment} 관리자 홈`}
                         onClick={handleNavClick}
                       >
                         {storeSegment}
-                      </NavLink>
+                      </a>
                     </div>
                   </div>
 
@@ -211,14 +219,13 @@ export default function SellerSidenavbar({
                 <ul className="p-2">
                   {sections.map((sec) => {
                     if ((sec as any).type === 'link') {
+                      const isActive = isActivePath((sec as any).to);
                       return (
                         <li key={sec.key} className="mb-1">
-                          <NavLink
-                            to={(sec as any).to} // ✅ 절대경로
+                          <a
+                            href={(sec as any).to}
                             onClick={handleNavClick}
-                            className={({ isActive }) =>
-                              [linkBase, isActive ? linkActive : linkInactive].join(' ')
-                            }
+                            className={[linkBase, isActive ? linkActive : linkInactive].join(' ')}
                           >
                             <Home className="h-5 w-5 shrink-0" />
                             <span
@@ -230,7 +237,7 @@ export default function SellerSidenavbar({
                             >
                               {sec.label}
                             </span>
-                          </NavLink>
+                          </a>
                         </li>
                       );
                     }
@@ -315,16 +322,13 @@ export default function SellerSidenavbar({
                                     : sec.key === 'store'
                                       ? Settings
                                       : GraduationCap);
+                              const isActive = isActivePath(item.to);
                               return (
                                 <li key={idx}>
-                                  <NavLink
-                                    to={item.to} // ✅ 절대경로
+                                  <a
+                                    href={item.to}
                                     onClick={handleNavClick}
-                                    className={({ isActive }) =>
-                                      ['ml-2', linkBase, isActive ? linkActive : linkInactive].join(
-                                        ' '
-                                      )
-                                    }
+                                    className={['ml-2', linkBase, isActive ? linkActive : linkInactive].join(' ')}
                                   >
                                     <ItemIcon className="h-4 w-4 shrink-0" />
                                     <span
@@ -336,7 +340,7 @@ export default function SellerSidenavbar({
                                     >
                                       {item.label}
                                     </span>
-                                  </NavLink>
+                                  </a>
                                 </li>
                               );
                             })}

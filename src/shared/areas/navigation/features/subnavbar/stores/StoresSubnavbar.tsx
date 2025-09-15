@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { Store, Info } from 'lucide-react';
 
 type Item = {
@@ -44,6 +44,22 @@ export default function StoresSubnavbar({
 }: StoresSubnavbarProps) {
   const { pathname } = useLocation();
 
+  /** 현재 경로 확인 함수 */
+  const isActivePath = (item: Item) => {
+    if (item.to === '/main/stores') {
+      return pathname.startsWith('/main/stores');
+    }
+    if (item.exact) {
+      return pathname === item.to;
+    }
+    return pathname.startsWith(item.to);
+  };
+
+  /** 링크 클릭 핸들러 */
+  const handleClick = (to: string) => {
+    onItemClick?.(to);
+  };
+
   return (
     <div
       className={[
@@ -60,27 +76,25 @@ export default function StoresSubnavbar({
           className="flex items-center gap-3 md:gap-4 overflow-x-auto"
           aria-label="Stores sub navigation"
         >
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.exact}
-              onClick={() => onItemClick?.(item.to)}
-              className={({ isActive }) => {
-                const active =
-                  item.to === '/main/stores' ? pathname.startsWith('/main/stores') : isActive;
-                return [
+          {items.map((item) => {
+            const active = isActivePath(item);
+            return (
+              <a
+                key={item.to}
+                href={item.to}
+                onClick={() => handleClick(item.to)}
+                className={[
                   'group inline-flex items-center gap-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
                   active
                     ? 'bg-[#2d4739] text-white rounded-lg'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg',
-                ].join(' ');
-              }}
-            >
-              {item.icon && <span className="shrink-0">{item.icon}</span>}
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+                ].join(' ')}
+              >
+                {item.icon && <span className="shrink-0">{item.icon}</span>}
+                <span>{item.label}</span>
+              </a>
+            );
+          })}
         </nav>
       </div>
     </div>

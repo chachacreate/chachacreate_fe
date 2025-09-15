@@ -1,4 +1,4 @@
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Home, Search, Calendar, UserRound } from "lucide-react";
 
 type ClassSubnavbarProps = {
@@ -23,6 +23,11 @@ export default function ClassSubnavbar({
   const isHomeActive = activeSection === "home";
   const isCalendarActive = activeSection === "calendar";
   const isSearchActive = activeSection === "search";
+
+  /** 현재 경로 확인 함수 */
+  const isActivePath = (path: string) => {
+    return location.pathname === path;
+  };
 
   // Navigation handlers with smooth scroll
   const goHome = () => {
@@ -64,6 +69,8 @@ export default function ClassSubnavbar({
     align === "right"
       ? "fixed right-6 top-1/2 -translate-y-1/2"
       : "fixed left-12 top-1/2 -translate-y-1/2";
+
+  const mypageActive = isActivePath("/main/mypage/classes") || isActivePath("/main/mypage/classreserve");
 
   return (
     <>
@@ -133,27 +140,22 @@ export default function ClassSubnavbar({
 
         {/* 마이페이지 */}
         <div className="group">
-          <NavLink
-            to="/main/mypage/classes"
-            end
-            className={({ isActive }) =>
-              [
-                pill,
-                base,
-                hover,
-                isActive ? active : "",
-              ].join(" ")
-            }
+          <a
+            href="/main/mypage/classes"
+            className={[
+              pill,
+              base,
+              hover,
+              mypageActive ? active : "",
+            ].join(" ")}
           >
             <span className="grid place-items-center h-16 w-16 shrink-0">
               <UserRound
-                className={iconCls(
-                  location.pathname === "/main/mypage/classreserve"
-                )}
+                className={iconCls(mypageActive)}
               />
             </span>
             <span className={label}>마이페이지</span>
-          </NavLink>
+          </a>
         </div>
       </nav>
 
@@ -204,23 +206,16 @@ export default function ClassSubnavbar({
           </li>
 
           <li>
-            <NavLink
-              to="/main/mypage/classreserve"
-              end
-              className={({ isActive }) =>
-                [
-                  "inline-flex items-center gap-1.5 rounded-2xl px-2.5 py-2.5 text-[13px] font-medium transition-colors whitespace-nowrap",
-                  isActive ? "bg-[#2D4739] text-white" : "bg-white text-[#2D4739] shadow-sm hover:bg-gray-50",
-                ].join(" ")
-              }
+            <a
+              href="/main/mypage/classreserve"
+              className={[
+                "inline-flex items-center gap-1.5 rounded-2xl px-2.5 py-2.5 text-[13px] font-medium transition-colors whitespace-nowrap",
+                isActivePath("/main/mypage/classreserve") ? "bg-[#2D4739] text-white" : "bg-white text-[#2D4739] shadow-sm hover:bg-gray-50",
+              ].join(" ")}
             >
-              {({ isActive }) => (
-                <>
-                  <UserRound className={iconCls(isActive)} />
-                  <span>마이페이지</span>
-                </>
-              )}
-            </NavLink>
+              <UserRound className={iconCls(isActivePath("/main/mypage/classreserve"))} />
+              <span>마이페이지</span>
+            </a>
           </li>
         </ul>
       </nav>

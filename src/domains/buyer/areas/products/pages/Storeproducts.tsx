@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Star, ChevronDown, AlertCircle, RefreshCw } from 'lucide-react';
+
 import { legacyGet } from '@src/libs/request';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
@@ -31,6 +33,7 @@ interface FilterOption {
   value: string;
   label: string;
 }
+
 
 type ApiEnvelope<T> = { status?: number; message?: string; data: T };
 const unwrap = <T,>(resp: T | ApiEnvelope<T>): T => {
@@ -71,6 +74,7 @@ const sortOptions: FilterOption[] = [
 
 const StoreProducts = () => {
   const { storeUrl } = useParams<{ storeUrl: string }>();
+
   const location = useLocation();
   const navigate = useNavigate();
   const didInitRef = useRef(false);
@@ -83,6 +87,7 @@ const StoreProducts = () => {
   }, [storeUrl, location.pathname]);
 
   const [storeInfo, setStoreInfo] = useState<StoreInfo>({ storeName: '', storeUrl: '' });
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,6 +99,7 @@ const StoreProducts = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
 
   // URL 동기화
   useEffect(() => {
@@ -230,11 +236,13 @@ const StoreProducts = () => {
     e.preventDefault();
     setCurrentPage(1);
     fetchProducts(1, sortBy, searchTerm, selectedCategories);
+
   };
 
   const handleSortChange = (newSort: string) => {
     setSortBy(newSort);
     setCurrentPage(1);
+
     fetchProducts(1, newSort, searchTerm, selectedCategories);
   };
 
@@ -251,6 +259,7 @@ const StoreProducts = () => {
     setSelectedCategories(prev =>
       checked ? [...new Set([...prev, ...subIds])] : prev.filter(id => !subIds.includes(id)),
     );
+
     setCurrentPage(1);
   };
 
@@ -260,10 +269,12 @@ const StoreProducts = () => {
     setSortBy('latest');
     setCurrentPage(1);
     fetchProducts(1, 'latest', '', []);
+
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+
     fetchProducts(page, sortBy, searchTerm, selectedCategories);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -298,6 +309,7 @@ const StoreProducts = () => {
     for (let i = 0; i < full; i++) {
       stars.push(<Star key={`f-${i}`} className="w-4 h-4 fill-amber-400 text-amber-400" />);
     }
+
     if (half) {
       stars.push(
         <div key="half" className="relative w-4 h-4">
@@ -305,13 +317,16 @@ const StoreProducts = () => {
           <div className="absolute top-0 left-0 overflow-hidden w-1/2">
             <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
           </div>
+
         </div>,
       );
     }
+
     const remaining = 5 - Math.ceil(rating);
     for (let i = 0; i < remaining; i++) {
       stars.push(<Star key={`e-${i}`} className="w-4 h-4 text-gray-300" />);
     }
+
     return stars;
   };
 
@@ -324,7 +339,9 @@ const StoreProducts = () => {
     const startPage = currentPageGroup * PAGE_LIMIT + 1;
     const endPage = Math.min(startPage + PAGE_LIMIT - 1, totalPages);
 
+
     // «
+
     pages.push(
       <button
         key="first"
@@ -333,10 +350,12 @@ const StoreProducts = () => {
         disabled={currentPage === 1}
       >
         &lt;
+
       </button>,
     );
 
     // numbers
+
     for (let i = startPage; i <= endPage; i++) {
       pages.push(
         <button
@@ -347,6 +366,7 @@ const StoreProducts = () => {
           }`}
         >
           {i}
+
         </button>,
       );
     }
@@ -354,6 +374,7 @@ const StoreProducts = () => {
     // »
     const nextGroupStart = startPage + PAGE_LIMIT;
     const targetPage = nextGroupStart <= totalPages ? nextGroupStart : totalPages;
+
 
     pages.push(
       <button
@@ -363,13 +384,17 @@ const StoreProducts = () => {
         disabled={currentPage === totalPages}
       >
         &gt;
+
       </button>,
+
     );
 
     return <div className="flex justify-center items-center">{pages}</div>;
   };
 
+
   // ================= 렌더링 =================
+
   if (error) {
     return (
       <div className="min-h-screen bg-white">
@@ -400,14 +425,18 @@ const StoreProducts = () => {
       <Header />
       <Storenavbar />
 
+
+
       {/* 메인 컨테이너 */}
       <div className="px-4 sm:px-6 xl:px-[240px]">
         <div className="w-full max-w-[1440px] mx-auto py-8">
           {/* 헤더 */}
           <div className="mb-8">
+
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:underline">
                 {storeInfo.storeName || '스토어'} 전체 상품
               </h1>
+
             <p className="text-gray-600">다양한 상품을 만나보세요</p>
           </div>
 
@@ -459,9 +488,11 @@ const StoreProducts = () => {
               onClick={() => setShowCategoryFilter(!showCategoryFilter)}
               className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
               disabled={loading}
+
               aria-expanded={showCategoryFilter}
             >
               카테고리별
+
               <ChevronDown className={`w-4 h-4 transition-transform ${showCategoryFilter ? 'rotate-180' : ''}`} />
             </button>
 
@@ -469,7 +500,9 @@ const StoreProducts = () => {
             {selectedCategories.length > 0 && (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <span>선택된 카테고리: {selectedCategories.length}개</span>
+
                 <button onClick={resetFilters} className="text-[#2d4739] hover:underline">
+
                   전체 해제
                 </button>
               </div>
@@ -480,9 +513,11 @@ const StoreProducts = () => {
           {showCategoryFilter && categories.length > 0 && (
             <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
               {categories.map((category) => {
+
                 const subIds = category.subcategories.map((s) => s.id);
                 const selectedSub = selectedCategories.filter((id) => subIds.includes(id));
                 const isAllSelected = subIds.length > 0 && selectedSub.length === subIds.length;
+
 
                 return (
                   <div key={category.id} className="mb-4">
@@ -510,13 +545,16 @@ const StoreProducts = () => {
                           {sub.name}
                         </label>
                       ))}
+
                       {category.subcategories.length === 0 && (
                         <span className="text-sm text-gray-500 col-span-full">하위 카테고리가 없습니다.</span>
                       )}
+
                     </div>
                   </div>
                 );
               })}
+
 
               <div className="flex justify-end">
                 <button onClick={resetFilters} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
@@ -530,7 +568,9 @@ const StoreProducts = () => {
           <div className="mb-6">
             <p className="text-gray-600">
               총 <span className="font-semibold text-[#2d4739]">{totalCount.toLocaleString()}</span>개의 상품
+
               {selectedCategories.length > 0 && <span className="text-sm text-gray-500 ml-2">(필터 적용됨)</span>}
+
             </p>
           </div>
 
@@ -542,8 +582,10 @@ const StoreProducts = () => {
                 onClick={() => handleProductClick(product.id)}
                 className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-[#2d4739]/40 hover:-translate-y-1 transition-all duration-200 cursor-pointer overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2d4739]/40"
                 tabIndex={0}
+
                 role="button"
                 aria-label={`${product.name} 상세로 이동`}
+
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
@@ -560,10 +602,12 @@ const StoreProducts = () => {
                     loading="lazy"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
+
                       target.src = '/placeholder-image.jpg';
                     }}
                   />
                   {/* 레이팅 배지 (옵션) */}
+
                   {product.rating && (
                     <div className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-black/60 text-white text-xs px-2 py-1 backdrop-blur-sm">
                       <span className="flex">{renderStars(product.rating)}</span>
@@ -574,13 +618,16 @@ const StoreProducts = () => {
 
                 {/* 카드 본문 */}
                 <div className="p-4">
+
                   <div className="flex flex-wrap gap-1 mb-2">
                     {product.categories.slice(0, 2).map((category, index) => (
                       <span key={index} className="text-xs bg-[#2d4739]/10 text-[#2d4739] px-2 py-1 rounded-full">
+
                         {category}
                       </span>
                     ))}
                     {product.categories.length > 2 && (
+
                       <span className="text-xs text-gray-400 px-1">+{product.categories.length - 2}</span>
                     )}
                   </div>
@@ -597,6 +644,7 @@ const StoreProducts = () => {
 
                   <div className="flex items-center justify-between">
                     <p className="text-lg font-extrabold text-[#2d4739]">{formatPrice(product.price)}원</p>
+
                   </div>
                 </div>
               </div>
@@ -620,7 +668,9 @@ const StoreProducts = () => {
               <h3 className="text-xl font-semibold text-gray-900 mb-2">검색 결과가 없습니다</h3>
               <p className="text-gray-600 mb-4">다른 검색어나 필터를 시도해보세요</p>
               {(searchTerm || selectedCategories.length > 0) && (
+
                 <button onClick={resetFilters} className="px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#2d4739]/90">
+
                   필터 초기화
                 </button>
               )}
@@ -628,7 +678,9 @@ const StoreProducts = () => {
           )}
 
           {/* 페이지네이션 */}
+
           {!loading && allProducts.length > 0 && <div className="mt-8">{renderPagination()}</div>}
+
         </div>
       </div>
     </div>
@@ -636,3 +688,4 @@ const StoreProducts = () => {
 };
 
 export default StoreProducts;
+

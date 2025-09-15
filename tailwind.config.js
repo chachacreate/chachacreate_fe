@@ -19,6 +19,27 @@ module.exports = {
           50:  '#FDFAF2',
         }
       },
+
+      keyframes: {
+        'fade-up': {
+          '0%':   { opacity: 0, transform: 'translateY(18px)' },
+          '100%': { opacity: 1, transform: 'translateY(0)' }
+        },
+        'fade-left': {
+          '0%':   { opacity: 0, transform: 'translateX(24px)' },
+          '100%': { opacity: 1, transform: 'translateX(0)' }
+        },
+        'fade-right': {
+          '0%':   { opacity: 0, transform: 'translateX(-24px)' },
+          '100%': { opacity: 1, transform: 'translateX(0)' }
+        },
+      },
+      animation: {
+        'fade-up': 'fade-up 0.7s ease-out both',
+        'fade-left': 'fade-left 0.7s ease-out both',
+        'fade-right': 'fade-right 0.7s ease-out both',
+      },
+
     },
   },
   plugins: [],

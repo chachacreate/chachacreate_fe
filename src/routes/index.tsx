@@ -22,7 +22,7 @@ const router = createBrowserRouter([
       { path: "main/classes", element: <MainClassesPage /> },
       { path: "main/classes/:classId", element: <ClassesDetailPage /> },
 
-      { path: "stores/:store/classes", element: <StoreClassesPage /> },
+      // { path: "stores/:store/classes", element: <StoreClassesPage /> },
     ],
   },
 ]);

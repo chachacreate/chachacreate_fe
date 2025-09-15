@@ -8,10 +8,12 @@ const StoreClassesPage = lazy(
   () => import('@src/domains/buyer/areas/classes/pages/StoreClassesPage')
 );
 
+
 const StoreProducts = lazy(() => import('@src/domains/buyer/areas/products/pages/Storeproducts'));
 
 const productDetailPage = lazy(
   () => import('@src/domains/main/areas/home/features/products/pages/MainProductsDetail')
+
 );
 
 const suspense = (Comp: LazyExoticComponent<ComponentType<any>>) =>
@@ -35,10 +37,12 @@ export const buyerRoutes: RouteObject[] = [
       // 실제 페이지 연결
       {
         path: 'products',
+
         children: [
           { index: true, element: suspense(StoreProducts) }, // 상품 리스트
           { path: ':productId', element: suspense(productDetailPage) }, // 상품 상세
         ],
+
       },
       {
         path: 'classes',

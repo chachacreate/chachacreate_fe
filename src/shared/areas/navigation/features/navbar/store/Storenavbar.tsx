@@ -1,45 +1,158 @@
 // shared/areas/navigation/features/navbar/store/Storenavbar.tsx
 import { useParams, useLocation } from "react-router-dom";
-import { useEffect, useState, useRef, useMemo } from "react";
-import { Home, ShoppingCart, User, Store } from "lucide-react";
 
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Home, ShoppingCart, User, Store, Settings } from "lucide-react";
+import { getCurrentUser } from "@src/shared/util/jwtUtils";
+
+/** ===== Types ===== */
 type MenuItem = { label: string; href: string };
 
-const isActivePath = (href: string) => window.location.pathname === href;
+type StoreInfo = {
+  storeName: string;
+  logoImg: string;
+  storeOwnerId: string | number;
+};
 
-export default function Storenavbar() {
-  const params = useParams<{ store?: string; storeSlug?: string }>();
+type StorenavbarProps = {
+  /** (선택) 외부에서 사용자 ID를 넘겨주고 싶을 때 */
+  currentUserId?: string | number;
+  /** API/앱 기본 경로 접두 (예: "/create") */
+  cpath?: string;
+};
+
+/** ===== Utils ===== */
+function resolveCpath(explicit?: string) {
+  if (explicit) return explicit;
+  const meta = document.querySelector('meta[name="cpath"]') as HTMLMetaElement | null;
+  return meta?.content || "";
+}
+
+function buildUrlWithBase(pathOrUrl: string, base: string) {
+  if (!pathOrUrl) return "";
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl; // 절대 URL
+  if (pathOrUrl.startsWith("/")) return pathOrUrl;       // 사이트 루트 기준 절대경로
+  const normalizedBase = base.endsWith("/") ? base.slice(0, -1) : base;
+  return `${normalizedBase}/${pathOrUrl}`.replace(/\/{2,}/g, "/");
+}
+
+function stripCpath(pathname: string, cpath: string) {
+  const normalizedCpath = (cpath || "").replace(/\/+$/, "");
+  if (normalizedCpath && pathname.startsWith(normalizedCpath + "/")) {
+    return pathname.slice(normalizedCpath.length) || "/";
+  }
+  return pathname || "/";
+}
+
+/** ===== Component ===== */
+export default function Storenavbar({
+  currentUserId: currentUserIdProp,
+  cpath: cpathProp,
+}: StorenavbarProps) {
   const location = useLocation();
-  const storeSlug = useMemo(() => {
-    return (
-      params.store ??
-      params.storeSlug ??
-      (location.pathname.split("/")[1] || "store")
-    );
-  }, [params.store, params.storeSlug, location.pathname]);
+  const params = useParams<{ store?: string; storeSlug?: string }>();
 
-  const base = (sub: string = "") => `/${storeSlug}${sub}`;
+  /** cpath 보정 */
+  const cpath = useMemo(() => resolveCpath(cpathProp), [cpathProp]);
 
-  const DESKTOP_MENU: MenuItem[] = [
-    { label: "전체상품", href: base("/products") },
-    { label: "스토어정보", href: base("/info") },
-    { label: "클래스", href: base("/classes") },
-    { label: "공지/소식", href: base("/notices") },
-    { label: "마이페이지", href: base("/mypage") },
-    { label: "장바구니", href: base("/mypage/cart") },
-    { label: "메인 홈", href: "/main" },
-  ];
 
-  const MOBILE_TOP_MENU: MenuItem[] = [
-    { label: "전체상품", href: base("/products") },
-    { label: "스토어정보", href: base("/info") },
-    { label: "클래스", href: base("/classes") },
-    { label: "공지/소식", href: base("/notices") },
-    { label: "메인 홈", href: "/main" },
-  ];
+  /** JWT에서 현재 사용자 ID 자동 주입(외부 prop 우선) */
+const currentUserId = useMemo<string | undefined>(() => {
+  console.log("현재 유저알려줌:", currentUserIdProp);
+  if (currentUserIdProp !== undefined) return String(currentUserIdProp);
+  const id = getCurrentUser()?.memberId;
+  return id !== undefined ? String(id) : undefined;
+}, [currentUserIdProp]);
 
+
+  /** 스토어 슬러그 계산 */
+  const store = useMemo(() => {
+    const byParam = params.store ?? params.storeSlug;
+    if (byParam) return byParam;
+
+    const path = stripCpath(location.pathname, cpath);
+    const segs = path.split("/").filter(Boolean);
+
+    const RESERVED = new Set([
+      "main", "seller", "admin", "resources", "static",
+      "assets", "legacy", "create", "api"
+    ]);
+
+    if (segs.length >= 2 && RESERVED.has(segs[0]) && !RESERVED.has(segs[1])) {
+      return segs[1];
+    }
+    if (segs[0] && !RESERVED.has(segs[0])) return segs[0];
+    return "store";
+  }, [params.store, params.storeSlug, location.pathname, cpath]);
+
+  const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [safeBottom, setSafeBottom] = useState(0);
   const [scrolled, setScrolled] = useState(false);
+
+
+  /** 링크 생성: 항상 cpath 접두 */
+  const base = (sub: string = "") =>
+    `${cpath}/${store}${sub}`.replace(/\/{2,}/g, "/");
+
+  /** 오너 여부: 아이디 비교만(역할 체크 X) */
+  const isStoreOwner = useMemo(() => {
+    const id = currentUserId;
+    return !!(id && storeInfo?.storeOwnerId && String(id) === String(storeInfo.storeOwnerId));
+  }, [currentUserId, storeInfo?.storeOwnerId]);
+
+  // 스토어 정보 로드 (store/cpath 변경 시마다)
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const load = async () => {
+      try {
+        if (!store) return;
+
+        setLoading(true);
+        setErrorMsg(null);
+
+        const url = `${cpath}/legacy/${store}/info`.replace(/\/{2,}/g, "/");
+
+        const res = await fetch(url, {
+          credentials: "include",
+          signal: controller.signal,
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status} at ${url}`);
+
+        const json = await res.json();
+        const list = json?.data?.storeInfoList ?? [];
+        const storeData = list[0] ?? {};
+
+        const name = (storeData.storeName as string) ?? store;
+        const rawLogo = (storeData.logoImg as string) || "";
+
+        setStoreInfo({
+          storeName: name,
+          logoImg: buildUrlWithBase(rawLogo, cpath),
+          storeOwnerId:
+            storeData.storeOwnerId ??
+            json?.data?.storeOwnerId ??
+            json?.storeOwnerId ??
+            json?.ownerId ??
+            "",
+        });
+      } catch (e: any) {
+        if (e?.name === "AbortError") return;
+        console.error("[Storenavbar] fetch error:", e);
+        setErrorMsg(String(e?.message || e));
+        setStoreInfo((prev) => prev ?? { storeName: store, logoImg: "", storeOwnerId: "" });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+    return () => controller.abort();
+  }, [store, cpath]);
+
 
   // iOS safe-area bottom
   useEffect(() => {
@@ -60,6 +173,40 @@ export default function Storenavbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  /** 활성 메뉴 비교용 현재 경로(cpath 제거) */
+  const currentPath = useMemo(
+    () => stripCpath(location.pathname, cpath),
+    [location.pathname, cpath]
+  );
+
+  // 메뉴 구성
+  const DESKTOP_MENU = useMemo<MenuItem[]>(() => {
+    const items: MenuItem[] = [
+      { label: "전체상품", href: base("/products") },
+      { label: "스토어정보", href: base("/info") },
+      { label: "클래스", href: base("/classes") },
+      { label: "공지/소식", href: base("/notices") },
+      { label: "마이페이지", href: base("/mypage") },
+      { label: "장바구니", href: base("/mypage/cart") },
+    ];
+    if (isStoreOwner) items.push({ label: "스토어 관리", href: `${cpath}/seller/${store}/main` });
+    items.push({ label: "메인 홈", href: `${cpath}/main` });
+    return items;
+  }, [isStoreOwner, store, cpath]);
+
+  const MOBILE_TOP_MENU = useMemo<MenuItem[]>(() => {
+    const items: MenuItem[] = [
+      { label: "전체상품", href: base("/products") },
+      { label: "스토어정보", href: base("/info") },
+      { label: "클래스", href: base("/classes") },
+      { label: "공지/소식", href: base("/notices") },
+    ];
+    if (isStoreOwner) items.push({ label: "스토어 관리", href: `${cpath}/seller/${store}/main` });
+    items.push({ label: "메인 홈", href: `${cpath}/main` });
+    return items;
+  }, [isStoreOwner, store, cpath]);
+
+
   return (
     <div className="font-jua">
       {/* 상단 네비게이션 */}
@@ -78,22 +225,38 @@ export default function Storenavbar() {
         <div className="mx-auto w-full max-w-[1920px] px-4 md:px-6 xl:px-20 2xl:px-[240px]">
           {/* 데스크톱 헤더 */}
           <div className="hidden md:flex h-20 items-center justify-between">
-            {/* 좌측: 스토어명/로고 */}
-            <div className="flex items-center">
-              <a
-                href={`/${storeSlug}`}
-                className="inline-flex items-center gap-2 hover:opacity-90"
-              >
-                <span className="text-xl leading-none tracking-tight text-[#2D4739]">
-                  {storeSlug ? `${storeSlug}` : "뜨락상회 스토어"}
-                </span>
+
+            {/* 좌측: 로고 & 스토어명 */}
+            <div className="flex items-center gap-3 md:gap-6 min-w-0">
+              <a href={`${cpath}/${store}`} className="flex-shrink-0 hover:opacity-90" aria-label="스토어 홈">
+                {loading ? (
+                  <div className="h-12 md:h-16 w-16 bg-gray-200 animate-pulse rounded" />
+                ) : storeInfo?.logoImg ? (
+                  <img
+                    src={storeInfo.logoImg}
+                    alt={`${storeInfo.storeName} 로고`}
+                    className="h-12 md:h-16 w-auto object-contain"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                  />
+                ) : (
+                  <div className="h-12 md:h-16 w-16 bg-gray-100 rounded flex items-center justify-center">
+                    <Store className="h-6 w-6 text-gray-400" />
+                  </div>
+                )}
               </a>
+              <div className="min-w-0">
+                <h1 className="text-lg md:text-2xl font-bold text-[#1b2e23] truncate leading-tight">
+                  {(storeInfo?.storeName || store) + (errorMsg ? " (정보 로드 실패)" : "")}
+                </h1>
+              </div>
             </div>
 
-            {/* 데스크톱 메뉴 (Mainnavbar 스타일 매칭) */}
+            {/* 데스크톱 메뉴 */}
             <nav className="col-start-2 flex items-center w-full md:w-auto justify-between md:justify-start gap-0 md:gap-8">
               {DESKTOP_MENU.map((m) => {
-                const active = isActivePath(m.href);
+                const normalizedHref = stripCpath(m.href, cpath);
+                const active = currentPath === normalizedHref || currentPath === m.href;
+
                 return (
                   <a
                     key={m.href}
@@ -112,25 +275,30 @@ export default function Storenavbar() {
             </nav>
           </div>
 
-          {/* 모바일 상단 4-탭 */}
-          <nav className="md:hidden flex h-12 items-center justify-between">
-            {MOBILE_TOP_MENU.map((m) => {
-              const active = isActivePath(m.href);
-              return (
-                <a
-                  key={m.href}
-                  href={m.href}
-                  className={[
-                    "flex-1 text-center text-[14px] py-2 leading-none border-b-2",
-                    active
-                      ? "font-bold text-[#2D4739] border-transparent"
-                      : "text-[#2D4739] hover:text-[#1b2e23] border-transparent hover:border-[#2D4739]",
-                  ].join(" ")}
-                >
-                  {m.label}
-                </a>
-              );
-            })}
+
+          {/* 모바일 상단 메뉴 (스크롤 영역 상단) */}
+          <nav className="md:hidden flex h-12 items-center justify-between overflow-x-auto">
+            <div className="flex gap-4 min-w-max px-2">
+              {MOBILE_TOP_MENU.map((m) => {
+                const normalizedHref = stripCpath(m.href, cpath);
+                const active = currentPath === normalizedHref || currentPath === m.href;
+                return (
+                  <a
+                    key={m.href}
+                    href={m.href}
+                    className={[
+                      "text-center text-[14px] py-2 leading-none border-b-2 whitespace-nowrap px-2",
+                      active
+                        ? "font-bold text-[#2D4739] border-transparent"
+                        : "text-[#2D4739] hover:text-[#1b2e23] border-transparent hover:border-[#2D4739]",
+                    ].join(" ")}
+                  >
+                    {m.label}
+                  </a>
+                );
+              })}
+            </div>
+
           </nav>
         </div>
       </header>
@@ -142,16 +310,23 @@ export default function Storenavbar() {
         aria-label="모바일 하단 내비게이션"
       >
         <div className="mx-auto w-full max-w-[1920px] px-4">
-          <ul className="grid grid-cols-3 h-14">
+
+          <ul className={`grid h-14 ${isStoreOwner ? "grid-cols-4" : "grid-cols-3"}`}>
             <li className="flex items-center justify-center">
-              <HomeExpander storeSlug={storeSlug} />
+              <HomeExpander store={store} cpath={cpath} />
             </li>
             <li className="flex items-center justify-center">
-              <BottomItem href={base("/mypage/cart")} label="장바구니" Icon={ShoppingCart} />
+              <BottomItem href={base("/mypage/cart")} label="장바구니" Icon={ShoppingCart} currentPath={currentPath} cpath={cpath} />
             </li>
             <li className="flex items-center justify-center">
-              <BottomItem href={base("/mypage")} label="마이페이지" Icon={User} />
+              <BottomItem href={base("/mypage")} label="마이페이지" Icon={User} currentPath={currentPath} cpath={cpath} />
+
             </li>
+            {isStoreOwner && (
+              <li className="flex items-center justify-center">
+                <BottomItem href={`${cpath}/seller/${store}/main`} label="스토어 관리" Icon={Settings} currentPath={currentPath} cpath={cpath} />
+              </li>
+            )}
           </ul>
         </div>
       </nav>
@@ -162,7 +337,8 @@ export default function Storenavbar() {
   );
 }
 
-function HomeExpander({ storeSlug }: { storeSlug: string }) {
+/** ===== Sub Components ===== */
+function HomeExpander({ store, cpath }: { store: string; cpath: string }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -182,7 +358,7 @@ function HomeExpander({ storeSlug }: { storeSlug: string }) {
     };
   }, []);
 
-  const storeBase = `/${storeSlug}`;
+  const storeBase = `${cpath}/${store}`.replace(/\/{2,}/g, "/");
 
   return (
     <div ref={rootRef} className="relative">
@@ -215,7 +391,9 @@ function HomeExpander({ storeSlug }: { storeSlug: string }) {
       >
         <div className="flex items-center gap-2 h-10">
           <a
-            href="/main"
+
+            href={`${cpath}/main`.replace(/\/{2,}/g, "/")}
+
             className="flex items-center gap-2 px-3 py-1 rounded-full bg-white text-[#2D4739] text-sm font-medium hover:bg-white/90"
             onClick={() => setOpen(false)}
           >
@@ -229,7 +407,9 @@ function HomeExpander({ storeSlug }: { storeSlug: string }) {
             onClick={() => setOpen(false)}
           >
             <Store className="h-4 w-4" />
-            <span>{storeSlug}</span>
+
+            <span>{store}</span>
+
           </a>
         </div>
       </div>
@@ -241,12 +421,19 @@ function BottomItem({
   href,
   label,
   Icon,
+  currentPath,
+  cpath,
 }: {
   href: string;
   label: string;
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  currentPath: string;
+  cpath: string;
 }) {
-  const active = isActivePath(href);
+
+  const normalizedHref = stripCpath(href, cpath);
+  const active = currentPath === normalizedHref || currentPath === href;
+
   return (
     <a
       href={href}

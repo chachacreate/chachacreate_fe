@@ -1,11 +1,11 @@
 // src/domains/buyer/areas/store/features/main-landing/StoreClassesPage.tsx
-
+import storeHero from '@src/domains/buyer/areas/classes/assets/store-hero.png';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 import Searchbar from '@src/shared/areas/navigation/features/searchbar/Searchbar';
-import { get } from '@src/libs/request'; 
+import { get, legacyGet } from '@src/libs/request'; 
 
 // 서버에서 응답하는 클래스 정보 타입
 type ClassItem = {
@@ -58,7 +58,48 @@ const PLACEHOLDER =
 // 페이지 컴포넌트
 export default function StoreClassesPage() {
   const { store } = useParams<{ store: string }>();
-  const storeUrl = store ?? '';          
+  const storeUrl = store ?? '';   
+
+  const [storeName, setStoreName] = useState<string>("");
+
+  // ✅ 추가: storeName 불러오기
+  useEffect(() => {
+  const fetchStoreInfo = async () => {
+    try {
+      const res = await legacyGet<any>(`/${storeUrl}/info`);
+      const name = res?.data?.storeInfoList?.[0]?.storeName ?? '';
+      setStoreName(name);
+    } catch (err) {
+      console.error('스토어 정보 요청 실패', err);
+    }
+  };
+
+  if (storeUrl) fetchStoreInfo();
+}, [storeUrl]);
+
+
+
+  //배너 애니메이션
+  const bannerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.12, when: 'beforeChildren' },
+  },
+};
+
+const slideLeft = {
+  hidden: { opacity: 0, x: -24 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+};
+
+const slideRight = {
+  hidden: { opacity: 0, x: 24 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+};
+
+
+
 
   // 데이터 & 상태
   const [items, setItems] = useState<ClassItem[]>([]);
@@ -243,14 +284,40 @@ const handleSortChange = (key: SortKey) => {
       <Header />
       <Storenavbar />
 
-      {/* 1920 x 400 임시 배너 (디자인 유지) */}
-      <section className="w-full bg-white">
-        <div className="mx-auto w-full max-w-[1920px] h-[400px] bg-gray-100 grid place-items-center">
-          <span className="text-gray-500 text-sm sm:text-base">
-            (임시 배너) 1920 × 400 영역 — 나중에 디자인 교체
-          </span>
+     {/* 1920 x 400 배너 */}
+<section className="w-full bg-[#5B7A67] animate-fade-up">
+  <div className="mx-auto w-full max-w-[1920px] h-[400px] flex items-center">
+    {/* 내부 1440 + 좌우 20px */}
+    <div className="mx-auto w-full max-w-[1440px] px-5 h-full flex items-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full h-full items-center">
+        {/* 왼쪽: 이미지 */}
+        <div className="w-full h-full flex items-center justify-center animate-fade-right [animation-delay:120ms]">
+          <img
+            src={storeHero}
+            alt="스토어 배너 이미지"
+            className="h-[400px] w-auto object-contain"
+            loading="eager"
+          />
         </div>
-      </section>
+
+        {/* 오른쪽: 문구 */}
+        <div className="w-full h-full flex items-center animate-fade-left [animation-delay:200ms]">
+          <div className="text-left font-jua text-white">
+            {/* 글자 크기 업그레이드 */}
+            <p className="text-[40px] sm:text-[40px] lg:text-[52px] leading-tight">
+              <span className="text-white">{storeName || storeUrl}</span>의
+              <br />
+              원데이 클래스를 수강해보세요!
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
 
       <main className="w-full">
         <div className="mx-auto max-w-[1920px] px-4 sm:px-8 lg:px-12 xl:px-20 2xl:px-[240px]">

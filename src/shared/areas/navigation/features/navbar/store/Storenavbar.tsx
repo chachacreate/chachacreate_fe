@@ -1,12 +1,13 @@
 // shared/areas/navigation/features/navbar/store/Storenavbar.tsx
-import { NavLink, useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Home, ShoppingCart, User, Store } from "lucide-react";
 
-type MenuItem = { label: string; to: string };
+type MenuItem = { label: string; href: string };
+
+const isActivePath = (href: string) => window.location.pathname === href;
 
 export default function Storenavbar() {
-  // ✅ :store 를 1순위로 사용, 옛날(:storeSlug)도 대비, 마지막으로 URL 1세그먼트 fallback
   const params = useParams<{ store?: string; storeSlug?: string }>();
   const location = useLocation();
   const storeSlug = useMemo(() => {
@@ -20,24 +21,27 @@ export default function Storenavbar() {
   const base = (sub: string = "") => `/${storeSlug}${sub}`;
 
   const DESKTOP_MENU: MenuItem[] = [
-    { label: "전체상품", to: base("/products") },
-    { label: "스토어정보", to: base("/info") },
-    { label: "클래스", to: base("/classes") },
-    { label: "공지/소식", to: base("/notices") },
-    { label: "마이페이지", to: base("/mypage") },
-    { label: "장바구니", to: base("/mypage/cart") },
-    { label: "메인 홈 가기", to: "/main" },
+    { label: "전체상품", href: base("/products") },
+    { label: "스토어정보", href: base("/info") },
+    { label: "클래스", href: base("/classes") },
+    { label: "공지/소식", href: base("/notices") },
+    { label: "마이페이지", href: base("/mypage") },
+    { label: "장바구니", href: base("/mypage/cart") },
+    { label: "메인 홈", href: "/main" },
   ];
 
   const MOBILE_TOP_MENU: MenuItem[] = [
-    { label: "전체상품", to: base("/products") },
-    { label: "스토어정보", to: base("/info") },
-    { label: "클래스", to: base("/classes") },
-    { label: "공지/소식", to: base("/notices") },
-    { label: "메인 홈 가기", to: "/main" },
+    { label: "전체상품", href: base("/products") },
+    { label: "스토어정보", href: base("/info") },
+    { label: "클래스", href: base("/classes") },
+    { label: "공지/소식", href: base("/notices") },
+    { label: "메인 홈", href: "/main" },
   ];
 
   const [safeBottom, setSafeBottom] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
+
+  // iOS safe-area bottom
   useEffect(() => {
     const div = document.createElement("div");
     div.style.cssText =
@@ -48,60 +52,85 @@ export default function Storenavbar() {
     document.body.removeChild(div);
   }, []);
 
+  // 스크롤 시 반투명/블러 토글
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <>
+    <div className="font-jua">
       {/* 상단 네비게이션 */}
-      <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <header
+        data-scrolled={scrolled ? "true" : "false"}
+        className="
+          sticky top-0 z-40 w-full
+          bg-white shadow-[0_4px_8px_rgba(0,0,0,0.08)]
+          transition-[background-color,backdrop-filter,box-shadow] duration-200
+          data-[scrolled=true]:bg-white/70
+          data-[scrolled=true]:backdrop-blur
+          data-[scrolled=true]:supports-[backdrop-filter]:bg-white/50
+          data-[scrolled=true]:shadow
+        "
+      >
         <div className="mx-auto w-full max-w-[1920px] px-4 md:px-6 xl:px-20 2xl:px-[240px]">
-          <div className="flex h-16 items-center justify-between">
-            {/* 로고: 모바일 hidden */}
-            <div className="items-center hidden md:flex">
-              <NavLink to={base()} className="inline-flex items-center gap-2">
-                <span className="text-xl font-bold tracking-tight">
+          {/* 데스크톱 헤더 */}
+          <div className="hidden md:flex h-20 items-center justify-between">
+            {/* 좌측: 스토어명/로고 */}
+            <div className="flex items-center">
+              <a
+                href={`/${storeSlug}`}
+                className="inline-flex items-center gap-2 hover:opacity-90"
+              >
+                <span className="text-xl leading-none tracking-tight text-[#2D4739]">
                   {storeSlug ? `${storeSlug}` : "뜨락상회 스토어"}
                 </span>
-              </NavLink>
+              </a>
             </div>
 
-            {/* 데스크톱 메뉴 */}
-            <nav className="hidden md:flex items-center gap-6">
-              {DESKTOP_MENU.map((m) => (
-                <NavLink
-                  key={m.to}
-                  to={m.to}
-                  className={({ isActive }) =>
-                    [
-                      "text-sm transition-colors",
-                      isActive
-                        ? "font-semibold text-gray-900"
-                        : "text-gray-600 hover:text-gray-900",
-                    ].join(" ")
-                  }
-                >
-                  {m.label}
-                </NavLink>
-              ))}
+            {/* 데스크톱 메뉴 (Mainnavbar 스타일 매칭) */}
+            <nav className="col-start-2 flex items-center w-full md:w-auto justify-between md:justify-start gap-0 md:gap-8">
+              {DESKTOP_MENU.map((m) => {
+                const active = isActivePath(m.href);
+                return (
+                  <a
+                    key={m.href}
+                    href={m.href}
+                    className={[
+                      "leading-none pb-1 text-[18px] transition-colors border-b-2",
+                      active
+                        ? "font-bold text-[#2D4739] border-transparent"
+                        : "text-[#2D4739] hover:text-[#1b2e23] border-transparent hover:border-[#2D4739]",
+                    ].join(" ")}
+                  >
+                    {m.label}
+                  </a>
+                );
+              })}
             </nav>
           </div>
 
-          {/* 모바일 상단 탭 */}
-          <nav className="md:hidden flex h-11 items-center justify-between">
-            {MOBILE_TOP_MENU.map((m) => (
-              <NavLink
-                key={m.to}
-                to={m.to}
-                className={({ isActive }) =>
-                  [
-                    "flex-1 text-center text-[13px] py-2",
-                    isActive
-                      ? "font-semibold text-gray-900"
-                      : "text-gray-600 hover:text-gray-900",
-                  ].join(" ")
-                }
-              >
-                {m.label}
-              </NavLink>
-            ))}
+          {/* 모바일 상단 4-탭 */}
+          <nav className="md:hidden flex h-12 items-center justify-between">
+            {MOBILE_TOP_MENU.map((m) => {
+              const active = isActivePath(m.href);
+              return (
+                <a
+                  key={m.href}
+                  href={m.href}
+                  className={[
+                    "flex-1 text-center text-[14px] py-2 leading-none border-b-2",
+                    active
+                      ? "font-bold text-[#2D4739] border-transparent"
+                      : "text-[#2D4739] hover:text-[#1b2e23] border-transparent hover:border-[#2D4739]",
+                  ].join(" ")}
+                >
+                  {m.label}
+                </a>
+              );
+            })}
           </nav>
         </div>
       </header>
@@ -113,15 +142,15 @@ export default function Storenavbar() {
         aria-label="모바일 하단 내비게이션"
       >
         <div className="mx-auto w-full max-w-[1920px] px-4">
-          <ul className="grid grid-cols-3 h-14 relative">
-            <li className="relative flex items-center justify-center">
+          <ul className="grid grid-cols-3 h-14">
+            <li className="flex items-center justify-center">
               <HomeExpander storeSlug={storeSlug} />
             </li>
             <li className="flex items-center justify-center">
-              <BottomItem to={base("/mypage/cart")} label="장바구니" Icon={ShoppingCart} />
+              <BottomItem href={base("/mypage/cart")} label="장바구니" Icon={ShoppingCart} />
             </li>
             <li className="flex items-center justify-center">
-              <BottomItem to={base("/mypage")} label="마이페이지" Icon={User} />
+              <BottomItem href={base("/mypage")} label="마이페이지" Icon={User} />
             </li>
           </ul>
         </div>
@@ -129,7 +158,7 @@ export default function Storenavbar() {
 
       {/* 하단바 가려짐 방지 */}
       <div className="md:hidden h-14" style={{ marginBottom: safeBottom }} />
-    </>
+    </div>
   );
 }
 
@@ -164,20 +193,20 @@ function HomeExpander({ storeSlug }: { storeSlug: string }) {
         aria-controls="home-expander-panel"
         className={[
           "flex flex-col items-center justify-center gap-1 w-20 h-14",
-          open ? "text-gray-900" : "text-gray-700",
+          open ? "text-[#2D4739]" : "text-[#2D4739] opacity-90 hover:opacity-100",
           "active:scale-95 transition-transform",
         ].join(" ")}
       >
         <Home className="h-5 w-5" aria-hidden />
-        <span className="text-[11px]">홈</span>
+        <span className="text-[12px] leading-none">홈</span>
       </button>
 
       <div
         id="home-expander-panel"
         className={[
           "absolute top-1/2 -translate-y-1/2 left-full ml-2",
-          "rounded-full bg-gray-300/60 backdrop-blur px-2",
-          "overflow-hidden shadow-sm border border-gray-200",
+          "rounded-full bg-white/80 backdrop-blur px-2",
+          "overflow-hidden shadow-sm border border-[#e5e7eb]",
           "transition-all duration-200",
           open ? "w-56 opacity-100" : "w-0 opacity-0 pointer-events-none",
         ].join(" ")}
@@ -185,25 +214,23 @@ function HomeExpander({ storeSlug }: { storeSlug: string }) {
         aria-hidden={!open}
       >
         <div className="flex items-center gap-2 h-10">
-          <NavLink
-            to="/main"
-            className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/90 text-gray-900 text-sm font-medium hover:bg-white"
+          <a
+            href="/main"
+            className="flex items-center gap-2 px-3 py-1 rounded-full bg-white text-[#2D4739] text-sm font-medium hover:bg-white/90"
             onClick={() => setOpen(false)}
-            role="menuitem"
           >
             <Home className="h-4 w-4" />
             <span>뜨락상회</span>
-          </NavLink>
+          </a>
 
-          <NavLink
-            to={storeBase}
-            className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/90 text-gray-900 text-sm font-medium hover:bg-white"
+          <a
+            href={storeBase}
+            className="flex items-center gap-2 px-3 py-1 rounded-full bg-white text-[#2D4739] text-sm font-medium hover:bg-white/90"
             onClick={() => setOpen(false)}
-            role="menuitem"
           >
             <Store className="h-4 w-4" />
             <span>{storeSlug}</span>
-          </NavLink>
+          </a>
         </div>
       </div>
     </div>
@@ -211,26 +238,25 @@ function HomeExpander({ storeSlug }: { storeSlug: string }) {
 }
 
 function BottomItem({
-  to,
+  href,
   label,
   Icon,
 }: {
-  to: string;
+  href: string;
   label: string;
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }) {
+  const active = isActivePath(href);
   return (
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        [
-          "flex flex-col items-center justify-center gap-1 w-full h-full",
-          isActive ? "text-gray-900" : "text-gray-600",
-        ].join(" ")
-      }
+    <a
+      href={href}
+      className={[
+        "flex flex-col items-center justify-center gap-1 w-full h-full",
+        active ? "text-[#2D4739]" : "text-[#2D4739] opacity-90 hover:opacity-100",
+      ].join(" ")}
     >
       <Icon className="h-5 w-5" aria-hidden />
-      <span className="text-[11px]">{label}</span>
-    </NavLink>
+      <span className="text-[12px] leading-none">{label}</span>
+    </a>
   );
 }

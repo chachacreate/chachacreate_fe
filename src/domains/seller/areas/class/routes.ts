@@ -6,6 +6,7 @@ import type { RouteObject } from "react-router-dom";
 const ClassInsertPage = lazy(() => import("./features/insert/pages/ClassInsert"));
 const ClassListPage = lazy(() => import("./features/list/pages/ClassList"));
 const ClassReservationPage = lazy(() => import("./features/reservation/pages/ClassReservation"));
+const ClassEditPage = lazy(() => import("./features/edit/pages/ClassEdit"));
 
 const withSuspense = (Comp: React.ComponentType<any>) =>
   createElement(
@@ -21,6 +22,7 @@ export const classRoutes: RouteObject[] = [
       { path: "insert", element: withSuspense(ClassInsertPage) },
       { path: "list", element: withSuspense(ClassListPage) },
       { path: "reservation", element: withSuspense(ClassReservationPage) },
+      { path: ":classId/edit", element: withSuspense(ClassEditPage) },
     ],
   },
 ];

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
-import { Search, Star, ChevronDown, Store, AlertCircle, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { Search, Star, ChevronDown, AlertCircle, RefreshCw } from 'lucide-react';
 import { legacyGet } from '@src/libs/request';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
@@ -32,12 +32,33 @@ interface FilterOption {
   label: string;
 }
 
-interface ApiResponse {
-  products: Product[];
-  totalPages: number;
-  totalCount: number;
-  currentPage: number;
-}
+type ApiEnvelope<T> = { status?: number; message?: string; data: T };
+const unwrap = <T,>(resp: T | ApiEnvelope<T>): T => {
+  const anyResp = resp as any;
+  return anyResp && typeof anyResp === 'object' && 'data' in anyResp ? (anyResp.data as T) : (resp as T);
+};
+
+type HomeProductDTO = {
+  productId: number;
+  productName: string;
+  price: number;
+  pimgUrl?: string;
+  saleCnt?: number;
+  viewCnt?: number;
+  storeName?: string;
+  storeUrl?: string;
+  typeCategoryName?: string;
+  ucategoryName?: string;
+  dcategoryName?: string;
+  dcategoryId?: number;
+};
+
+type CategoryBaseResponse = {
+  uCategory: { id: number; name: string }[];
+  typeCategory: { id: number; name: string }[];
+};
+
+type DCategoryItem = { id: number; name: string };
 
 const PAGE_SIZE = 9;
 
@@ -50,12 +71,18 @@ const sortOptions: FilterOption[] = [
 
 const StoreProducts = () => {
   const { storeUrl } = useParams<{ storeUrl: string }>();
-  
-  // State 관리
-  const [storeInfo, setStoreInfo] = useState<StoreInfo>({ 
-    storeName: '', 
-    storeUrl: storeUrl || '' 
-  });
+  const location = useLocation();
+  const navigate = useNavigate();
+  const didInitRef = useRef(false);
+
+  const effectiveStoreUrl = useMemo(() => {
+    if (storeUrl && storeUrl.trim()) return storeUrl;
+    const segments = location.pathname.split('?')[0].split('/').filter(Boolean);
+    const RESERVED = new Set(['legacy', 'api']);
+    return segments.find(s => !RESERVED.has(s)) || '';
+  }, [storeUrl, location.pathname]);
+
+  const [storeInfo, setStoreInfo] = useState<StoreInfo>({ storeName: '', storeUrl: '' });
   const [categories, setCategories] = useState<Category[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -68,135 +95,162 @@ const StoreProducts = () => {
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // API 호출 함수들
-  const fetchStoreInfo = useCallback(async () => {
-    if (!storeUrl) return;
-    
-    try {
-      setError(null);
-      const data = await legacyGet<{ storeName: string }>(`/legacy/store/${storeUrl}/name`);
-      setStoreInfo(prev => ({ ...prev, storeName: data.storeName }));
-    } catch (error) {
-      console.error('스토어 정보 가져오기 실패:', error);
-      setError('스토어 정보를 불러올 수 없습니다.');
-    }
-  }, [storeUrl]);
-
-  const fetchCategories = useCallback(async () => {
-    if (!storeUrl) return;
-
-    try {
-      setError(null);
-      console.log('카테고리 요청:', `/legacy/store/${storeUrl}/categories`);
-      
-      const data = await legacyGet<Category[]>(`/legacy/store/${storeUrl}/categories`);
-      console.log('카테고리 응답:', data);
-      
-      setCategories(data || []);
-    } catch (error) {
-      console.error('카테고리 가져오기 실패:', error);
-      // 카테고리는 실패해도 상품 조회에는 영향 없도록 에러를 설정하지 않음
-      setCategories([]);
-    }
-  }, [storeUrl]);
-
-  const fetchProducts = useCallback(async (
-    page = 1, 
-    sort = 'latest', 
-    keyword = '', 
-    categoryIds: number[] = []
-  ) => {
-    if (!storeUrl) return;
-
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const params: Record<string, any> = {
-        page,
-        sort,
-        size: PAGE_SIZE,
-      };
-      
-      if (keyword.trim()) {
-        params.query = keyword.trim();
-      }
-      
-      if (categoryIds.length > 0) {
-        params.categories = categoryIds.join(',');
-      }
-
-      const data = await legacyGet<ApiResponse>(`/legacy/store/${storeUrl}/products`, params);
-      
-      setAllProducts(data.products || []);
-      setTotalPages(data.totalPages || 1);
-      setTotalCount(data.totalCount || 0);
-      setCurrentPage(data.currentPage || page);
-      
-    } catch (error) {
-      console.error('상품 불러오기 실패:', error);
-      setError('상품을 불러올 수 없습니다.');
-      setAllProducts([]);
-      setTotalPages(1);
-      setTotalCount(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [storeUrl]);
-
-  // 초기 데이터 로드
+  // URL 동기화
   useEffect(() => {
-    if (storeUrl) {
-      fetchStoreInfo();
-      fetchCategories();
+    if (effectiveStoreUrl && storeInfo.storeUrl !== effectiveStoreUrl) {
+      setStoreInfo(prev => ({ ...prev, storeUrl: effectiveStoreUrl }));
     }
-  }, [storeUrl, fetchStoreInfo, fetchCategories]);
+  }, [effectiveStoreUrl, storeInfo.storeUrl]);
 
-  // 상품 데이터 로드 (필터/정렬 변경 시)
+  // 쿼리스트링 빌드
+  const buildProductsURL = (sort: string, keyword: string, dIds: number[]) => {
+    const qs = new URLSearchParams();
+    if (sort) qs.set('sort', sort);
+    if (keyword && keyword.trim()) qs.set('keyword', keyword.trim());
+    dIds.forEach(id => qs.append('d', String(id)));
+    const q = qs.toString();
+    return `/${effectiveStoreUrl}/products${q ? `?${q}` : ''}`;
+  };
+
+  // 상품 조회
+  const fetchProducts = useCallback(
+    async (page = 1, sort = 'latest', keyword = '', dcategoryIds: number[] = []) => {
+      if (!effectiveStoreUrl) {
+        setError('상품 로드를 위해 storeUrl이 필요합니다.');
+        return;
+      }
+      setLoading(true);
+      setError(null);
+
+      try {
+        const url = buildProductsURL(sort, keyword, dcategoryIds);
+        const resp = await legacyGet<ApiEnvelope<HomeProductDTO[]>>(url);
+        const raw = unwrap<HomeProductDTO[]>(resp) ?? [];
+
+        if (!storeInfo.storeName && raw[0]?.storeName) {
+          setStoreInfo(prev => ({ ...prev, storeName: raw[0]!.storeName! }));
+        }
+
+        const mapped: Product[] = raw.map(it => ({
+          id: it.productId,
+          name: it.productName,
+          price: it.price,
+          imageUrl: it.pimgUrl || '/placeholder-image.jpg',
+          categories: [it.typeCategoryName, it.ucategoryName, it.dcategoryName].filter(Boolean) as string[],
+          orderCount: it.saleCnt ?? 0,
+          viewCount: it.viewCnt ?? 0,
+        }));
+
+        const total = mapped.length;
+        const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+        const safePage = Math.min(Math.max(1, page), pages);
+        const start = (safePage - 1) * PAGE_SIZE;
+        const end = start + PAGE_SIZE;
+
+        setAllProducts(mapped.slice(start, end));
+        setTotalCount(total);
+        setTotalPages(pages);
+        setCurrentPage(safePage);
+      } catch (err: any) {
+        console.error('상품 불러오기 실패:', err?.message ?? err);
+        setError(err?.message || '상품을 불러올 수 없습니다.');
+        setAllProducts([]);
+        setTotalPages(1);
+        setTotalCount(0);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [effectiveStoreUrl, storeInfo.storeName],
+  );
+
+  // 초기 로드: 전체상품 + 상위 u카테고리
   useEffect(() => {
-    if (storeUrl) {
-      fetchProducts(currentPage, sortBy, searchTerm, selectedCategories);
+    if (!effectiveStoreUrl) {
+      setError('스토어 주소(storeUrl)를 경로에서 찾을 수 없습니다.');
+      return;
     }
-  }, [fetchProducts, currentPage, sortBy, searchTerm, selectedCategories, storeUrl]);
+    if (didInitRef.current) return; 
+    didInitRef.current = true;
 
-  // 이벤트 핸들러들
+    fetchProducts(1, 'latest', '', []);
+
+    (async () => {
+      try {
+        const baseResp = await legacyGet<ApiEnvelope<CategoryBaseResponse> | CategoryBaseResponse>(
+          `/${effectiveStoreUrl}/categories`,
+        );
+        const base = unwrap<CategoryBaseResponse>(baseResp);
+        const uList = base?.uCategory ?? [];
+        setCategories(uList.map(u => ({ id: u.id, name: u.name, subcategories: [] })));
+      } catch (err) {
+        console.error('카테고리(상위) 로드 실패:', err);
+        setCategories([]);
+      }
+    })();
+  }, [effectiveStoreUrl, fetchProducts]);
+
+  // "카테고리별" 열었을 때 d카테고리 병렬 로드 (1회/그룹)
+  useEffect(() => {
+    if (!showCategoryFilter) return;
+    if (!effectiveStoreUrl) return;
+    const needNames = categories.filter(c => c.subcategories.length === 0).map(c => c.name);
+    if (needNames.length === 0) return;
+
+    (async () => {
+      try {
+        const tasks = needNames.map(name =>
+          legacyGet<ApiEnvelope<DCategoryItem[]> | DCategoryItem[]>(`/${effectiveStoreUrl}/categories`, {
+            uCategoryName: name,
+          })
+            .then(r => unwrap<DCategoryItem[]>(r))
+            .catch(() => [] as DCategoryItem[]),
+        );
+        const results = await Promise.all(tasks);
+        setCategories(prev =>
+          prev.map(cat => {
+            if (cat.subcategories.length > 0) return cat;
+            const idx = needNames.indexOf(cat.name);
+            const dList = results[idx] ?? [];
+            return { ...cat, subcategories: dList.map(d => ({ id: d.id, name: d.name })) };
+          }),
+        );
+      } catch (e) {
+        console.error('d카테고리 일괄 로드 실패:', e);
+      }
+    })();
+  }, [showCategoryFilter, effectiveStoreUrl, categories]);
+
+  // ================= 이벤트 핸들러 =================
+  const handleProductClick = (productId: number) => {
+    window.location.href = `/${effectiveStoreUrl}/products/${productId}`;
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1);
-    // fetchProducts는 useEffect에서 자동 호출됨
+    fetchProducts(1, sortBy, searchTerm, selectedCategories);
   };
 
   const handleSortChange = (newSort: string) => {
     setSortBy(newSort);
     setCurrentPage(1);
+    fetchProducts(1, newSort, searchTerm, selectedCategories);
   };
 
   const handleCategoryChange = (categoryId: number, checked: boolean) => {
-    setSelectedCategories(prev => {
-      const newCategories = checked 
-        ? [...prev, categoryId]
-        : prev.filter(id => id !== categoryId);
-      return newCategories;
-    });
+    setSelectedCategories(prev => (checked ? [...prev, categoryId] : prev.filter(id => id !== categoryId)));
     setCurrentPage(1);
   };
 
-  const handleSelectAllCategories = (mainCategoryId: number, checked: boolean) => {
-    const category = categories.find(cat => cat.id === mainCategoryId);
-    if (!category) return;
+  const handleSelectAllCategories = (uId: number, checked: boolean) => {
+    const cat = categories.find(c => c.id === uId);
+    if (!cat) return;
+    const subIds = cat.subcategories.map(s => s.id);
 
-    const subcategoryIds = category.subcategories.map(sub => sub.id);
-    
-    setSelectedCategories(prev => {
-      if (checked) {
-        // 중복 제거하여 추가
-        const uniqueIds = subcategoryIds.filter(id => !prev.includes(id));
-        return [...prev, ...uniqueIds];
-      } else {
-        // 해당 서브카테고리들 제거
-        return prev.filter(id => !subcategoryIds.includes(id));
-      }
-    });
+    setSelectedCategories(prev =>
+      checked ? [...new Set([...prev, ...subIds])] : prev.filter(id => !subIds.includes(id)),
+    );
     setCurrentPage(1);
   };
 
@@ -205,28 +259,36 @@ const StoreProducts = () => {
     setSearchTerm('');
     setSortBy('latest');
     setCurrentPage(1);
+    fetchProducts(1, 'latest', '', []);
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    fetchProducts(page, sortBy, searchTerm, selectedCategories);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleProductClick = (productId: number) => {
-    window.location.href = `/${storeUrl}/products/${productId}`;
   };
 
   const retryFetch = () => {
     setError(null);
-    fetchStoreInfo();
-    fetchCategories();
     fetchProducts(currentPage, sortBy, searchTerm, selectedCategories);
   };
 
-  // 유틸리티 함수들
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR').format(price);
-  };
+  // selectedCategories 첫 실행 스킵 (초기 마운트 시 중복 fetch 방지)
+  const prevSelectedRef = useRef<number[] | null>(null);
+  useEffect(() => {
+    if (!didInitRef.current) return; 
+    if (prevSelectedRef.current === null) {
+      prevSelectedRef.current = selectedCategories;
+      return; 
+    }
+    if (prevSelectedRef.current !== selectedCategories) {
+      prevSelectedRef.current = selectedCategories;
+      fetchProducts(1, sortBy, searchTerm, selectedCategories);
+    }
+  }, [selectedCategories]);
+
+  // ================= 유틸 =================
+  const formatPrice = (price: number) => new Intl.NumberFormat('ko-KR').format(price);
 
   const renderStars = (rating: number = 0) => {
     const stars = [];
@@ -236,7 +298,6 @@ const StoreProducts = () => {
     for (let i = 0; i < full; i++) {
       stars.push(<Star key={`f-${i}`} className="w-4 h-4 fill-amber-400 text-amber-400" />);
     }
-    
     if (half) {
       stars.push(
         <div key="half" className="relative w-4 h-4">
@@ -244,15 +305,13 @@ const StoreProducts = () => {
           <div className="absolute top-0 left-0 overflow-hidden w-1/2">
             <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
           </div>
-        </div>
+        </div>,
       );
     }
-    
     const remaining = 5 - Math.ceil(rating);
     for (let i = 0; i < remaining; i++) {
       stars.push(<Star key={`e-${i}`} className="w-4 h-4 text-gray-300" />);
     }
-    
     return stars;
   };
 
@@ -265,7 +324,7 @@ const StoreProducts = () => {
     const startPage = currentPageGroup * PAGE_LIMIT + 1;
     const endPage = Math.min(startPage + PAGE_LIMIT - 1, totalPages);
 
-    // 첫 페이지로
+    // «
     pages.push(
       <button
         key="first"
@@ -274,10 +333,10 @@ const StoreProducts = () => {
         disabled={currentPage === 1}
       >
         &lt;
-      </button>
+      </button>,
     );
 
-    // 숫자 버튼들
+    // numbers
     for (let i = startPage; i <= endPage; i++) {
       pages.push(
         <button
@@ -288,14 +347,14 @@ const StoreProducts = () => {
           }`}
         >
           {i}
-        </button>
+        </button>,
       );
     }
 
-    // 다음 그룹 또는 마지막 페이지로
+    // »
     const nextGroupStart = startPage + PAGE_LIMIT;
     const targetPage = nextGroupStart <= totalPages ? nextGroupStart : totalPages;
-    
+
     pages.push(
       <button
         key="last"
@@ -304,13 +363,13 @@ const StoreProducts = () => {
         disabled={currentPage === totalPages}
       >
         &gt;
-      </button>
+      </button>,
     );
 
     return <div className="flex justify-center items-center">{pages}</div>;
   };
 
-  // 에러 상태 렌더링
+  // ================= 렌더링 =================
   if (error) {
     return (
       <div className="min-h-screen bg-white">
@@ -340,15 +399,15 @@ const StoreProducts = () => {
     <div className="min-h-screen bg-white">
       <Header />
       <Storenavbar />
-      
+
       {/* 메인 컨테이너 */}
       <div className="px-4 sm:px-6 xl:px-[240px]">
         <div className="w-full max-w-[1440px] mx-auto py-8">
           {/* 헤더 */}
           <div className="mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-              {storeInfo.storeName || '스토어'} 전체 상품
-            </h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:underline">
+                {storeInfo.storeName || '스토어'} 전체 상품
+              </h1>
             <p className="text-gray-600">다양한 상품을 만나보세요</p>
           </div>
 
@@ -400,8 +459,9 @@ const StoreProducts = () => {
               onClick={() => setShowCategoryFilter(!showCategoryFilter)}
               className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
               disabled={loading}
+              aria-expanded={showCategoryFilter}
             >
-              카테고리별 
+              카테고리별
               <ChevronDown className={`w-4 h-4 transition-transform ${showCategoryFilter ? 'rotate-180' : ''}`} />
             </button>
 
@@ -409,10 +469,7 @@ const StoreProducts = () => {
             {selectedCategories.length > 0 && (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <span>선택된 카테고리: {selectedCategories.length}개</span>
-                <button
-                  onClick={resetFilters}
-                  className="text-[#2d4739] hover:underline"
-                >
+                <button onClick={resetFilters} className="text-[#2d4739] hover:underline">
                   전체 해제
                 </button>
               </div>
@@ -423,10 +480,10 @@ const StoreProducts = () => {
           {showCategoryFilter && categories.length > 0 && (
             <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
               {categories.map((category) => {
-                const subcategoryIds = category.subcategories.map(sub => sub.id);
-                const selectedSubcategories = selectedCategories.filter(id => subcategoryIds.includes(id));
-                const isAllSelected = subcategoryIds.length > 0 && selectedSubcategories.length === subcategoryIds.length;
-                
+                const subIds = category.subcategories.map((s) => s.id);
+                const selectedSub = selectedCategories.filter((id) => subIds.includes(id));
+                const isAllSelected = subIds.length > 0 && selectedSub.length === subIds.length;
+
                 return (
                   <div key={category.id} className="mb-4">
                     <div className="flex items-center gap-3 mb-2">
@@ -453,16 +510,16 @@ const StoreProducts = () => {
                           {sub.name}
                         </label>
                       ))}
+                      {category.subcategories.length === 0 && (
+                        <span className="text-sm text-gray-500 col-span-full">하위 카테고리가 없습니다.</span>
+                      )}
                     </div>
                   </div>
                 );
               })}
-              
+
               <div className="flex justify-end">
-                <button
-                  onClick={resetFilters}
-                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
-                >
+                <button onClick={resetFilters} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
                   ↻ 필터 초기화
                 </button>
               </div>
@@ -473,11 +530,7 @@ const StoreProducts = () => {
           <div className="mb-6">
             <p className="text-gray-600">
               총 <span className="font-semibold text-[#2d4739]">{totalCount.toLocaleString()}</span>개의 상품
-              {selectedCategories.length > 0 && (
-                <span className="text-sm text-gray-500 ml-2">
-                  (필터 적용됨)
-                </span>
-              )}
+              {selectedCategories.length > 0 && <span className="text-sm text-gray-500 ml-2">(필터 적용됨)</span>}
             </p>
           </div>
 
@@ -489,6 +542,8 @@ const StoreProducts = () => {
                 onClick={() => handleProductClick(product.id)}
                 className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-[#2d4739]/40 hover:-translate-y-1 transition-all duration-200 cursor-pointer overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2d4739]/40"
                 tabIndex={0}
+                role="button"
+                aria-label={`${product.name} 상세로 이동`}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
@@ -505,10 +560,10 @@ const StoreProducts = () => {
                     loading="lazy"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      target.src = '/placeholder-image.jpg'; // 기본 이미지로 대체
+                      target.src = '/placeholder-image.jpg';
                     }}
                   />
-                  {/* 레이팅 배지 */}
+                  {/* 레이팅 배지 (옵션) */}
                   {product.rating && (
                     <div className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-black/60 text-white text-xs px-2 py-1 backdrop-blur-sm">
                       <span className="flex">{renderStars(product.rating)}</span>
@@ -519,42 +574,29 @@ const StoreProducts = () => {
 
                 {/* 카드 본문 */}
                 <div className="p-4">
-                  {/* 카테고리 칩 */}
                   <div className="flex flex-wrap gap-1 mb-2">
                     {product.categories.slice(0, 2).map((category, index) => (
-                      <span
-                        key={index}
-                        className="text-xs bg-[#2d4739]/10 text-[#2d4739] px-2 py-1 rounded-full"
-                      >
+                      <span key={index} className="text-xs bg-[#2d4739]/10 text-[#2d4739] px-2 py-1 rounded-full">
                         {category}
                       </span>
                     ))}
                     {product.categories.length > 2 && (
-                      <span className="text-xs text-gray-400 px-1">
-                        +{product.categories.length - 2}
-                      </span>
+                      <span className="text-xs text-gray-400 px-1">+{product.categories.length - 2}</span>
                     )}
                   </div>
 
-                  {/* 상품명 */}
-                  <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2 mb-2">
-                    {product.name}
-                  </h3>
+                  <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2 mb-2">{product.name}</h3>
 
-                  {/* 메타 정보 */}
                   {(product.orderCount || product.viewCount) && (
                     <p className="text-xs text-gray-500 mb-3">
-                      {product.orderCount && `주문 ${product.orderCount.toLocaleString()}회`}
-                      {product.orderCount && product.viewCount && ' · '}
-                      {product.viewCount && `조회 ${product.viewCount.toLocaleString()}회`}
+                      {product.orderCount > 0 && `주문 ${product.orderCount.toLocaleString()}회`}
+                      {product.orderCount > 0 && product.viewCount > 0 && ' · '}
+                      {product.viewCount > 0 && `조회 ${product.viewCount.toLocaleString()}회`}
                     </p>
                   )}
 
-                  {/* 가격 */}
                   <div className="flex items-center justify-between">
-                    <p className="text-lg font-extrabold text-[#2d4739]">
-                      {formatPrice(product.price)}원
-                    </p>
+                    <p className="text-lg font-extrabold text-[#2d4739]">{formatPrice(product.price)}원</p>
                   </div>
                 </div>
               </div>
@@ -578,10 +620,7 @@ const StoreProducts = () => {
               <h3 className="text-xl font-semibold text-gray-900 mb-2">검색 결과가 없습니다</h3>
               <p className="text-gray-600 mb-4">다른 검색어나 필터를 시도해보세요</p>
               {(searchTerm || selectedCategories.length > 0) && (
-                <button
-                  onClick={resetFilters}
-                  className="px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#2d4739]/90"
-                >
+                <button onClick={resetFilters} className="px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#2d4739]/90">
                   필터 초기화
                 </button>
               )}
@@ -589,11 +628,7 @@ const StoreProducts = () => {
           )}
 
           {/* 페이지네이션 */}
-          {!loading && allProducts.length > 0 && (
-            <div className="mt-8">
-              {renderPagination()}
-            </div>
-          )}
+          {!loading && allProducts.length > 0 && <div className="mt-8">{renderPagination()}</div>}
         </div>
       </div>
     </div>

@@ -426,13 +426,13 @@ const MainProductsPage = () => {
                     loading="lazy"
                   />
                   {/* 레이팅 배지 */}
-                  <div
+                  {/* <div
                     className="absolute top-3 left-3 flex items-center gap-1 rounded-full
                                     bg-black/60 text-white text-xs px-2 py-1 backdrop-blur-sm"
                   >
                     <span className="flex">{renderStars(product.rating)}</span>
                     <span className="opacity-90">({product.rating})</span>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* 카드 본문 */}

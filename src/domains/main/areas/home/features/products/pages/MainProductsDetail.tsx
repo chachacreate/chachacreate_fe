@@ -125,6 +125,13 @@ const MainProductsDetail = () => {
     fetchProductDetail();
   }, [storeUrl, productId]);
 
+  // 리뷰 평균 평점 계산
+  const calculateAverageRating = (reviews: Review[]): number => {
+    if (reviews.length === 0) return 0;
+    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+    return parseFloat((sum / reviews.length).toFixed(1)); // 소수점 1자리
+  };
+
   // 리뷰 불러오기
   useEffect(() => {
     if (!productId) return;
@@ -136,7 +143,19 @@ const MainProductsDetail = () => {
 
         if (response.status === 200) {
           // console.log('배열:', Array.isArray(response.data));
-          setReviews(response.data.map(mapReview));
+          const mapped = response.data.map(mapReview);
+          setReviews(mapped);
+
+          // product.rating, product.reviewCount 업데이트
+          setProduct((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  rating: calculateAverageRating(mapped),
+                  reviewCount: mapped.length,
+                }
+              : prev
+          );
           console.log(response);
         } else {
           console.error('리뷰 조회 실패:', response.message);

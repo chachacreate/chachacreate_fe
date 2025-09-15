@@ -12,12 +12,16 @@ type Store = {
   name: string;
   description: string;
   image: string;
-  categoriesSold: string[];
+  categoriesSold?: string[];
   orderCount: number;
   viewCount: number;
   storeUrl: string;
   /** 스토어 커스텀 색상(선택): 카드 호버 테두리/칩 컬러에 사용 */
   accentColor?: string; // 예: "#2d4739"
+
+  upCategory?: string;
+  downCategory?: string;
+  typeCategory?: string;
 };
 
 type CategoryOption = {
@@ -153,17 +157,40 @@ const MainStoresPage: React.FC = () => {
       );
       if (response.status === 200) {
         const storesData = Array.isArray(response.data) ? response.data : [];
-        const mapped: Store[] = storesData.map((s, idx) => ({
-          id: String(s.storeId),
-          name: s.storeName,
-          description: s.storeDetail,
-          image: s.logoImg || `https://picsum.photos/seed/${idx}/800/800`,
-          categoriesSold: s.categoriesSold ? mapCategoriesToValue(s.categoriesSold) : [],
-          orderCount: s.orderCnt ?? 0,
-          viewCount: s.viewCnt ?? 0,
-          storeUrl: s.storeUrl,
-          accentColor: s.accentColor,
-        }));
+        const mapped: Store[] = await Promise.all(
+          storesData.map(async (s, idx) => {
+            interface StoreCategoryResponse {
+              status: number;
+              message: string;
+              data: {
+                typeCategory?: string;
+                dcategory?: string;
+                ucategory?: string;
+              };
+            }
+
+            const cResponse = await legacyGet<StoreCategoryResponse>(
+              `/main/${s.storeId}/categories`
+            );
+            const categories = cResponse.data ?? {};
+
+            return {
+              id: String(s.storeId),
+              name: s.storeName,
+              description: s.storeDetail,
+              image: s.logoImg || `https://picsum.photos/seed/${idx}/800/800`,
+              orderCount: s.orderCnt ?? 0,
+              viewCount: s.viewCnt ?? 0,
+              storeUrl: s.storeUrl,
+              accentColor: s.accentColor,
+
+              upCategory: categories.ucategory,
+              downCategory: categories.dcategory,
+              typeCategory: categories.typeCategory,
+            };
+          })
+        );
+
         setAllStores(mapped);
         console.log('스토어 전체 조회 성공:', mapped);
       } else {
@@ -181,16 +208,15 @@ const MainStoresPage: React.FC = () => {
     fetchAllStores();
   }, [fetchAllStores]);
 
-  /** 필터링 & 정렬 결과 */
+  /** 필터링 & 정렬 결과 (백엔드 카테고리 사용) */
   const filteredAll = useMemo(() => {
     return allStores
       .filter((s) => {
         const nameOk = s.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const repMain = s.categoriesSold[0] ?? 'all';
-        const repSub = getRepresentativeCategory(s.categoriesSold.slice(1));
 
-        const mainOk = mainCat === 'all' || repMain === mainCat;
-        const subOk = subCat === 'all' || repSub === subCat;
+        // 이전 categoriesSold 기반 로직 제거
+        const mainOk = mainCat === 'all' || s.upCategory === mainCat;
+        const subOk = subCat === 'all' || s.downCategory === subCat;
 
         return nameOk && mainOk && subOk;
       })
@@ -371,8 +397,6 @@ const MainStoresPage: React.FC = () => {
           {/* 스토어 그리드 */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {visibleStores.map((s) => {
-              const repMain = s.categoriesSold[0];
-              const repSub = getRepresentativeCategory(s.categoriesSold.slice(1));
               const isOpen = !!expanded[s.id];
               const accent = s.accentColor || '#2d4739';
 
@@ -477,15 +501,44 @@ const MainStoresPage: React.FC = () => {
                     <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2 mb-1">
                       {s.name}
                     </h3>
-
                     {/* 카테고리 칩 */}
                     <div className="flex flex-wrap gap-1 mb-2">
-                      <span className="text-xs bg-[var(--store-accent)]/10 text-[var(--store-accent)] px-2 py-1 rounded-full">
-                        {VALUE_TO_LABEL[repMain] ?? repMain}
-                      </span>
-                      <span className="text-xs bg-[var(--store-accent)]/10 text-[var(--store-accent)] px-2 py-1 rounded-full">
-                        {VALUE_TO_LABEL[repSub] ?? repSub}
-                      </span>
+                      {/* mainCategory */}
+                      {s.upCategory && (
+                        <span
+                          style={{
+                            backgroundColor: `${s.accentColor ?? '#2d4739'}20`, // 20 = 12~13% 투명
+                            color: s.accentColor ?? '#2d4739',
+                          }}
+                          className="text-xs px-2 py-1 rounded-full font-semibold"
+                        >
+                          {VALUE_TO_LABEL[s.upCategory] ?? s.upCategory}
+                        </span>
+                      )}
+                      {/* subCategory */}
+                      {s.downCategory && (
+                        <span
+                          style={{
+                            backgroundColor: `${s.accentColor ?? '#2d4739'}20`,
+                            color: s.accentColor ?? '#2d4739',
+                          }}
+                          className="text-xs px-2 py-1 rounded-full font-semibold"
+                        >
+                          {VALUE_TO_LABEL[s.downCategory] ?? s.downCategory}
+                        </span>
+                      )}
+                      {/* typeCategory */}
+                      {s.typeCategory && (
+                        <span
+                          style={{
+                            backgroundColor: `${s.accentColor ?? '#2d4739'}20`,
+                            color: s.accentColor ?? '#2d4739',
+                          }}
+                          className="text-xs px-2 py-1 rounded-full font-semibold"
+                        >
+                          {VALUE_TO_LABEL[s.typeCategory] ?? s.typeCategory}
+                        </span>
+                      )}
                     </div>
 
                     {/* 설명(요약) — 기본 2줄까지만 보여주고, 자세한 내용은 오버레이에서 */}

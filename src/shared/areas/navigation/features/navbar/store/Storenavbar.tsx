@@ -1,5 +1,6 @@
 // shared/areas/navigation/features/navbar/store/Storenavbar.tsx
 import { useParams, useLocation } from "react-router-dom";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Home, ShoppingCart, User, Store, Settings } from "lucide-react";
 import { getCurrentUser } from "@src/shared/util/jwtUtils";
@@ -54,6 +55,7 @@ export default function Storenavbar({
   /** cpath 보정 */
   const cpath = useMemo(() => resolveCpath(cpathProp), [cpathProp]);
 
+
   /** JWT에서 현재 사용자 ID 자동 주입(외부 prop 우선) */
 const currentUserId = useMemo<string | undefined>(() => {
   console.log("현재 유저알려줌:", currentUserIdProp);
@@ -88,6 +90,7 @@ const currentUserId = useMemo<string | undefined>(() => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [safeBottom, setSafeBottom] = useState(0);
   const [scrolled, setScrolled] = useState(false);
+
 
   /** 링크 생성: 항상 cpath 접두 */
   const base = (sub: string = "") =>
@@ -150,6 +153,7 @@ const currentUserId = useMemo<string | undefined>(() => {
     return () => controller.abort();
   }, [store, cpath]);
 
+
   // iOS safe-area bottom
   useEffect(() => {
     const div = document.createElement("div");
@@ -202,6 +206,7 @@ const currentUserId = useMemo<string | undefined>(() => {
     return items;
   }, [isStoreOwner, store, cpath]);
 
+
   return (
     <div className="font-jua">
       {/* 상단 네비게이션 */}
@@ -220,6 +225,7 @@ const currentUserId = useMemo<string | undefined>(() => {
         <div className="mx-auto w-full max-w-[1920px] px-4 md:px-6 xl:px-20 2xl:px-[240px]">
           {/* 데스크톱 헤더 */}
           <div className="hidden md:flex h-20 items-center justify-between">
+
             {/* 좌측: 로고 & 스토어명 */}
             <div className="flex items-center gap-3 md:gap-6 min-w-0">
               <a href={`${cpath}/${store}`} className="flex-shrink-0 hover:opacity-90" aria-label="스토어 홈">
@@ -250,6 +256,7 @@ const currentUserId = useMemo<string | undefined>(() => {
               {DESKTOP_MENU.map((m) => {
                 const normalizedHref = stripCpath(m.href, cpath);
                 const active = currentPath === normalizedHref || currentPath === m.href;
+
                 return (
                   <a
                     key={m.href}
@@ -267,6 +274,7 @@ const currentUserId = useMemo<string | undefined>(() => {
               })}
             </nav>
           </div>
+
 
           {/* 모바일 상단 메뉴 (스크롤 영역 상단) */}
           <nav className="md:hidden flex h-12 items-center justify-between overflow-x-auto">
@@ -290,6 +298,7 @@ const currentUserId = useMemo<string | undefined>(() => {
                 );
               })}
             </div>
+
           </nav>
         </div>
       </header>
@@ -301,6 +310,7 @@ const currentUserId = useMemo<string | undefined>(() => {
         aria-label="모바일 하단 내비게이션"
       >
         <div className="mx-auto w-full max-w-[1920px] px-4">
+
           <ul className={`grid h-14 ${isStoreOwner ? "grid-cols-4" : "grid-cols-3"}`}>
             <li className="flex items-center justify-center">
               <HomeExpander store={store} cpath={cpath} />
@@ -310,6 +320,7 @@ const currentUserId = useMemo<string | undefined>(() => {
             </li>
             <li className="flex items-center justify-center">
               <BottomItem href={base("/mypage")} label="마이페이지" Icon={User} currentPath={currentPath} cpath={cpath} />
+
             </li>
             {isStoreOwner && (
               <li className="flex items-center justify-center">
@@ -380,7 +391,9 @@ function HomeExpander({ store, cpath }: { store: string; cpath: string }) {
       >
         <div className="flex items-center gap-2 h-10">
           <a
+
             href={`${cpath}/main`.replace(/\/{2,}/g, "/")}
+
             className="flex items-center gap-2 px-3 py-1 rounded-full bg-white text-[#2D4739] text-sm font-medium hover:bg-white/90"
             onClick={() => setOpen(false)}
           >
@@ -394,7 +407,9 @@ function HomeExpander({ store, cpath }: { store: string; cpath: string }) {
             onClick={() => setOpen(false)}
           >
             <Store className="h-4 w-4" />
+
             <span>{store}</span>
+
           </a>
         </div>
       </div>
@@ -415,8 +430,10 @@ function BottomItem({
   currentPath: string;
   cpath: string;
 }) {
+
   const normalizedHref = stripCpath(href, cpath);
   const active = currentPath === normalizedHref || currentPath === href;
+
   return (
     <a
       href={href}

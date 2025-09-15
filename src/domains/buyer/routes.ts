@@ -8,6 +8,10 @@ const StoreClassesPage = lazy(
   () => import('@src/domains/buyer/areas/classes/pages/StoreClassesPage')
 );
 
+const StoreProducts = lazy(
+  () => import('@src/domains/buyer/areas/products/pages/Storeproducts')
+);
+
 const suspense = (Comp: LazyExoticComponent<ComponentType<any>>) =>
   createElement(
     Suspense,
@@ -26,10 +30,10 @@ export const buyerRoutes: RouteObject[] = [
     children: [
       { index: true, element: suspense(StoreHomePage) },
 
-      // (추후 실제 페이지 연결 시, 아래 placeholder를 lazy import로 교체하세요)
+      // 실제 페이지 연결
       {
         path: 'products',
-        element: createElement('div', { className: 'p-6' }, '상품 목록 페이지가 곧 준비됩니다.'),
+        element: suspense(StoreProducts),
       },
       {
         path: 'classes',

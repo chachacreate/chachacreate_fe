@@ -215,7 +215,7 @@ const ClassList: FC = () => {
 
   /** ===== 이동 ===== */
   const goEdit = (id: string) => {
-    navigate(`/seller/${storeUrl}/class/insert?edit=${encodeURIComponent(id)}`);
+    navigate(`/seller/${storeUrl}/class/${encodeURIComponent(id)}/edit`);
   };
   const goDetail = (row: ClassRow) => {
     if (row._disabled) return;

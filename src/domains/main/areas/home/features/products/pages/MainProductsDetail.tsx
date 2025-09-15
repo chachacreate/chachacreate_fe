@@ -70,7 +70,7 @@ const mapProduct = (api: any): Product => {
 const mapReview = (r: any): Review => ({
   id: r.id.toString(),
   userName: r.memberName,
-  createdAt: r.createdAt ?? new Date().toISOString(), // API에 없으면 현재 시간 사용
+  createdAt: r.reviewDate, // API에 없으면 현재 시간 사용
   updatedAt: r.updatedAt,
   rating: r.rating,
   content: r.content,

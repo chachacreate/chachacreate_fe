@@ -7,7 +7,7 @@ const ProductListPage   = lazy(() => import("@src/domains/seller/areas/product/f
 const ProductInsertPage = lazy(() => import("@src/domains/seller/areas/product/features/insert/pages/ProductInsert"));
 const ProductReviewPage = lazy(() => import("@src/domains/seller/areas/product/features/review/pages/ProductReview"));
 const ProductOrderPage  = lazy(() => import("@src/domains/seller/areas/product/features/order/pages/ProductOrder"));
-
+const ProductEditPage   = lazy(() => import("@src/domains/seller/areas/product/features/edit/pages/ProductEdit"));
 /** Suspense wrapper */
 const withSuspense = (Comp: ComponentType<any>) =>
   createElement(
@@ -29,6 +29,7 @@ export const productRoutes: RouteObject[] = [
       { path: "insert", element: withSuspense(ProductInsertPage) },
       { path: "review", element: withSuspense(ProductReviewPage) },
       { path: "order", element: withSuspense(ProductOrderPage) },
+      { path: ":productId/edit", element: withSuspense(ProductEditPage) },
     ],
   },
 ];

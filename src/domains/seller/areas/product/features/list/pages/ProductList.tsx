@@ -278,7 +278,7 @@ const ProductList: FC = () => {
 
   const goInsert = () => navigate(`/seller/${storeUrl}/product/insert`);
   const goEdit = (id: string) =>
-    navigate(`/seller/${storeUrl}/product/insert?edit=${encodeURIComponent(id)}`);
+  navigate(`/seller/${storeUrl}/product/${encodeURIComponent(id)}/edit`);
 
   return (
     <>

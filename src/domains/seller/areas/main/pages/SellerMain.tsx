@@ -24,23 +24,63 @@ import ClassStatsCard, {
 import { get } from '@src/libs/request';
 import React from 'react';
 
-export default function SellerMain() {
-  // --------------------- 유틸/상수 ---------------------
-  type Params = { storeUrl: string };
-  interface SalesItem {
-    ymd: string; // "2025-09-01"
-    amt: number; // 매출액
-  }
+/** ===== 타입 ===== */
+type Params = { storeUrl: string };
 
+// 매출 그래프
+interface SalesItem {
+  ymd: string; // "YYYY-MM-DD"
+  amt: number; // 매출액
+}
+
+// 리뷰 통계
+type ReviewStatsBucket = {
+  rating: number; // 0, 0.5, 1, ... 5
+  count: number; // 건수
+  percentage: number; // 비율(0~100)
+};
+type ReviewStatsPayload = {
+  totalReviews: number;
+  buckets: ReviewStatsBucket[];
+};
+
+// 리뷰 테이블 행 (서버가 다양한 키를 줄 수 있으니 인덱스 시그니처 포함)
+type ReviewRow = {
+  reviewId: number;
+  reviewCreatedAt: string; // ISO
+  productThumbnailUrl: string | null;
+  productName: string;
+  authorId: number;
+  authorName: string;
+  productId: number;
+  content: string;
+  productCreatedAt: string | null;
+
+  // 가능하면 서버가 주는 개별 평점 숫자(0~5)
+  rating?: number;
+
+  // 레거시 문자열 평점도 올 수 있음 ("3.5/5.0", "4/5", "4.0")
+  productRating?: string;
+
+  likeCount: number;
+  reviewUpdatedAt: string;
+
+  // 그 외 혹시 모를 필드들
+  [key: string]: unknown;
+};
+
+// 드롭다운 상품 옵션
+type ProductOption = { productId: number; productName: string };
+
+export default function SellerMain() {
+  /** ================= 공통 유틸 ================= */
   const BRAND = '#2D4739';
   const KRW = new Intl.NumberFormat('ko-KR');
   const fmtKRW = (v: number) => `₩ ${KRW.format(v)}`;
 
-  // 로컬 기준 YYYY-MM-DD 생성
   const ymdLocal = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-  /** ISO 주차(YYYY-Www) 구하기 */
   const getISOWeekId = (date: Date) => {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNum = d.getUTCDay() || 7; // 1..7
@@ -61,65 +101,6 @@ export default function SellerMain() {
     return res;
   };
 
-  // --------------------- 더미(리뷰용) 등 기존 그대로 ---------------------
-  const [responseData, setResponseData] = useState<any>(null);
-  type ReviewRow = {
-    id: string;
-    productId: string;
-    productName: string;
-    rating: number; // 0~5, 0.5 step
-    title: string;
-    content: string;
-    createdAt: string;
-    author: string;
-  };
-  const mockProducts = [
-    { id: 'P-1001', name: '도자기 머그컵' },
-    { id: 'P-1002', name: '라탄 트레이' },
-    { id: 'P-1003', name: '캔들 세트' },
-  ];
-  const mockReviews: ReviewRow[] = [
-    {
-      id: 'RV-1',
-      productId: 'P-1001',
-      productName: '도자기 머그컵',
-      rating: 4.5,
-      title: '색감 예뻐요',
-      content: '유약 색이 사진보다 더 고급집니다!',
-      createdAt: '2025-09-02',
-      author: '김**',
-    },
-    {
-      id: 'RV-2',
-      productId: 'P-1002',
-      productName: '라탄 트레이',
-      rating: 4.0,
-      title: '탄탄해요',
-      content: '마감이 깔끔하고 사이즈도 적당합니다.',
-      createdAt: '2025-09-01',
-      author: '박**',
-    },
-    {
-      id: 'RV-3',
-      productId: 'P-1003',
-      productName: '캔들 세트',
-      rating: 5.0,
-      title: '향이 좋아요',
-      content: '은은해서 거슬리지 않네요.',
-      createdAt: '2025-08-30',
-      author: '이**',
-    },
-    {
-      id: 'RV-4',
-      productId: 'P-1001',
-      productName: '도자기 머그컵',
-      rating: 3.5,
-      title: '괜찮습니다',
-      content: '그립감이 좋아요.',
-      createdAt: '2025-08-28',
-      author: '최**',
-    },
-  ];
   const PIE_COLORS = [
     '#ef4444',
     '#f97316',
@@ -133,27 +114,55 @@ export default function SellerMain() {
     '#8b5cf6',
     '#d946ef',
   ];
-  const ratingBuckets = Array.from({ length: 11 }).map((_, i) => i * 0.5);
-  const makeRatingDist = (productId?: string) => {
-    const rows = productId ? mockReviews.filter((r) => r.productId === productId) : mockReviews;
-    const counts = new Map<number, number>();
-    ratingBuckets.forEach((b) => counts.set(b, 0));
-    rows.forEach((r) => counts.set(r.rating, (counts.get(r.rating) || 0) + 1));
-    return ratingBuckets.map((b) => ({ name: b.toFixed(1), value: counts.get(b) || 0 }));
-  };
-  const calcAvgRating = (rows: ReviewRow[]) =>
-    rows.length ? Math.round((rows.reduce((s, r) => s + r.rating, 0) / rows.length) * 10) / 10 : 0;
-  const calcFiveStarShare = (rows: ReviewRow[]) =>
-    rows.length ? Math.round((rows.filter((r) => r.rating >= 5).length / rows.length) * 100) : 0;
 
-  // --------------------- 컴포넌트 ---------------------
-
+  /** ================= 라우팅/상태 ================= */
   const navigate = useNavigate();
   const storeUrl = useParams<Params>().storeUrl;
 
-  // 1) 주문 상태: 카드로 가로 나열 
+  // 주문 상태(카드)
+  const [orderSummary, setOrderSummary] = useState<any>(null);
+
+  // 매출 그래프
+  const [salesMode, setSalesMode] = useState<'day' | 'week' | 'month'>('day');
+  const [startDate, setStartDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 13);
+    return ymdLocal(d);
+  });
+  const [endDate, setEndDate] = useState<string>(() => ymdLocal(new Date()));
+  const [classSales, setClassSales] = useState<SalesItem[]>([]);
+  const [productSales, setProductSales] = useState<SalesItem[]>([]);
+
+  // 클래스 통계 카드
+  const [classMode, setClassMode] = useState<ClassStatsMode>('hour');
+  const [classStatsData, setClassStatsData] = useState<ClassStatsDatum[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  // ====== 리뷰/상품 섹션 ======
+  const [selectedProductId, setSelectedProductId] = useState<string>('ALL');
+  const [reviewBuckets, setReviewBuckets] = useState<ReviewStatsBucket[] | null>(null);
+  const [reviewTotalApi, setReviewTotalApi] = useState<number | null>(null);
+  const [reviews, setReviews] = useState<ReviewRow[]>([]);
+
+  /** ================= API: 주문 상태 ================= */
+  useEffect(() => {
+    if (!storeUrl) return;
+    (async () => {
+      try {
+        const response = await get(`/seller/${storeUrl}/main/status`);
+        if (response.status === 200) setOrderSummary(response.data);
+        else console.error('주문 처리 상태 조회 실패:', response.message);
+      } catch (error) {
+        console.error('API 요청 실패(주문 상태):', error);
+      }
+    })();
+  }, [storeUrl]);
+
   const orderCards = useMemo(() => {
-    const data = responseData || { newOrders: 0, delivered: 0, cancelRequests: 0, refunds: 0 };
+    const data = orderSummary || { newOrders: 0, delivered: 0, cancelRequests: 0, refunds: 0 };
     return [
       {
         key: '신규주문',
@@ -184,58 +193,25 @@ export default function SellerMain() {
         hoverBg: 'bg-amber-50',
       },
     ];
-  }, [responseData]);
+  }, [orderSummary]);
 
-  // 주문 상태 API 
+  /** ================= API: 매출 그래프 ================= */
   useEffect(() => {
     if (!storeUrl) return;
-    const fetchOrderSummary = async () => {
-      try {
-        const response = await get(`/seller/${storeUrl}/main/status`);
-        if (response.status === 200) {
-          setResponseData(response.data);
-        } else {
-          console.error('주문 처리 상태 조회 실패:', response.message);
-        }
-      } catch (error: any) {
-        console.error('API 요청 실패:', error);
-      }
-    };
-    fetchOrderSummary();
-  }, [storeUrl]);
-
-  // ====== 2) 매출 그래프: 시작/종료일 기준으로 일/주/월 모두 필터 & 집계 ======
-  const [salesMode, setSalesMode] = useState<'day' | 'week' | 'month'>('day');
-
-  // 날짜 범위 상태 
-  const [startDate, setStartDate] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 13);
-    return ymdLocal(d);
-  });
-  const [endDate, setEndDate] = useState<string>(() => ymdLocal(new Date()));
-
-  // 매출 API 호출
-  const [classSales, setClassSales] = useState<SalesItem[]>([]);
-  const [productSales, setProductSales] = useState<SalesItem[]>([]);
-  useEffect(() => {
-    if (!storeUrl) return;
-    const fetchSales = async () => {
+    (async () => {
       try {
         const [classRes, productRes] = await Promise.all([
-          get(`/seller/sales/${storeUrl}/classes`),                 // 부트(클래스)
-          get(`/seller/settlements/products/${storeUrl}/sales`),    // 레거시(상품)
+          get(`/seller/sales/${storeUrl}/classes`),
+          get(`/seller/settlements/products/${storeUrl}/sales`),
         ]);
         if (classRes.status === 200) setClassSales(classRes.data ?? []);
         if (productRes.status === 200) setProductSales(productRes.data ?? []);
-      } catch (error: any) {
+      } catch (error) {
         console.error('매출 데이터 조회 실패:', error);
       }
-    };
-    fetchSales();
+    })();
   }, [storeUrl]);
 
-  // 날짜별 합산 맵(amt 합계 + cnt=row 개수)
   const dailyAggMap = useMemo(() => {
     type Agg = { amt: number; cnt: number };
     const map = new Map<string, Agg>();
@@ -250,28 +226,21 @@ export default function SellerMain() {
     return map;
   }, [classSales, productSales]);
 
-  // 일별 데이터: 시작/종료일 범위에 맞춰 "빈 날 0값" 포함해 생성
   const dailyData = useMemo(() => {
     const days = enumerateDays(startDate, endDate);
-    // 범위가 이상하면 최근 14일
-    const safeDays = days.length ? days : enumerateDays(ymdLocal(new Date(Date.now() - 13 * 86400000)), ymdLocal(new Date()));
+    const safeDays = days.length
+      ? days
+      : enumerateDays(ymdLocal(new Date(Date.now() - 13 * 86400000)), ymdLocal(new Date()));
     return safeDays.map((ymd) => {
       const agg = dailyAggMap.get(ymd);
-      return {
-        key: ymd.slice(5, 10),     // MM-DD
-        amount: agg?.amt ?? 0,
-        orders: agg?.cnt ?? 0,
-        date: ymd,
-      };
+      return { key: ymd.slice(5, 10), amount: agg?.amt ?? 0, orders: agg?.cnt ?? 0, date: ymd };
     });
   }, [startDate, endDate, dailyAggMap]);
 
-  // 주별 데이터: 위 일자 배열 기준으로 동일 범위 집계
   const weeklyData = useMemo(() => {
     const weekAmt = new Map<string, number>();
     const weekCnt = new Map<string, number>();
     dailyData.forEach((d) => {
-      // date는 YYYY-MM-DD
       const weekId = getISOWeekId(new Date(d.date));
       weekAmt.set(weekId, (weekAmt.get(weekId) ?? 0) + d.amount);
       weekCnt.set(weekId, (weekCnt.get(weekId) ?? 0) + d.orders);
@@ -285,12 +254,11 @@ export default function SellerMain() {
       }));
   }, [dailyData]);
 
-  // 월별 데이터: 위 일자 배열 기준으로 동일 범위 집계
   const monthlyData = useMemo(() => {
     const monthAmt = new Map<string, number>();
     const monthCnt = new Map<string, number>();
     dailyData.forEach((d) => {
-      const monthId = d.date.slice(0, 7); // YYYY-MM
+      const monthId = d.date.slice(0, 7);
       monthAmt.set(monthId, (monthAmt.get(monthId) ?? 0) + d.amount);
       monthCnt.set(monthId, (monthCnt.get(monthId) ?? 0) + d.orders);
     });
@@ -303,34 +271,21 @@ export default function SellerMain() {
       }));
   }, [dailyData]);
 
-  // 차트에 바인딩할 데이터
   const salesData = useMemo(() => {
     if (salesMode === 'day') return dailyData;
     if (salesMode === 'week') return weeklyData;
     return monthlyData;
   }, [salesMode, dailyData, weeklyData, monthlyData]);
 
-  // 3) 전체 클래스 예약 통계 (공용 컴포넌트 사용) 
-  const [classMode, setClassMode] = useState<ClassStatsMode>('hour');
-  const [classStatsData, setClassStatsData] = useState<ClassStatsDatum[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
-
+  /** ================= API: 클래스 통계 카드 ================= */
   useEffect(() => {
     if (!storeUrl) return;
-
-    const fetchClassStats = async () => {
+    (async () => {
       try {
         const groupBy = classMode === 'hour' ? 'time' : 'weekday';
-        const month = Number(selectedMonth.split('-')[1]); // month를 1~12 숫자로
+        const monthNum = Number(selectedMonth.split('-')[1]);
 
-        const params = new URLSearchParams({
-          scope: 'store',
-          groupBy,
-          month: month.toString(),
-        });
+        const params = new URLSearchParams({ scope: 'store', groupBy, month: String(monthNum) });
 
         if (classMode !== 'hour') {
           const [yearStr, monthStr] = selectedMonth.split('-');
@@ -347,78 +302,221 @@ export default function SellerMain() {
           label: string;
           count: number;
         }
-
         interface ClassStatsResponse {
           items: ClassStatsItem[];
         }
 
         const response = await get(`/seller/${storeUrl}/classes/reservation/stats?${params}`);
-
         if (response.status === 200) {
-          const responseData = response.data as ClassStatsResponse;
-          const transformedData: ClassStatsDatum[] = responseData.items.map((item: any) => ({
-            key: item.label,
-            count: item.count,
-            revenue: item.count * 50000, // 가격 임시값
+          const r = response.data as ClassStatsResponse;
+          const transformed: ClassStatsDatum[] = r.items.map((it) => ({
+            key: it.label,
+            count: it.count,
+            revenue: it.count * 50000,
           }));
-          console.log('API 응답', responseData);
-          setClassStatsData(transformedData);
+          setClassStatsData(transformed);
         } else {
           console.error('전체 클래스 예약 통계 조회 실패:', response.message);
         }
-      } catch (error: any) {
-        console.error('API 요청 실패:', error);
+      } catch (error) {
+        console.error('API 요청 실패(클래스 통계):', error);
       }
-    };
-
-    fetchClassStats();
+    })();
   }, [storeUrl, classMode, selectedMonth]);
 
   const classStats: ClassStatsDatum[] = useMemo(() => {
-    if (classStatsData.length > 0) {
-      return classStatsData;
-    }
-
+    if (classStatsData.length > 0) return classStatsData;
     if (classMode === 'hour') {
       return Array.from({ length: 24 }).map((_, i) => ({
         key: `${String(i).padStart(2, '0')}:00`,
         count: 0,
         revenue: 0,
       }));
-    } else {
-      const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-      return days.map((key) => ({
-        key,
-        count: 0,
-        revenue: 0,
-      }));
     }
+    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    return days.map((key) => ({ key, count: 0, revenue: 0 }));
   }, [classStatsData, classMode]);
 
-  // 4) 리뷰 & 평점 통계
-  const [selectedProductId, setSelectedProductId] = useState<string>('ALL');
-  const ratingDist = useMemo(
-    () => (selectedProductId === 'ALL' ? makeRatingDist() : makeRatingDist(selectedProductId)),
-    [selectedProductId]
-  );
-  const latestReviews = useMemo(() => mockReviews.slice(0, 5), []);
-  const filteredForStats = useMemo(
-    () =>
-      selectedProductId === 'ALL'
-        ? mockReviews
-        : mockReviews.filter((r) => r.productId === selectedProductId),
-    [selectedProductId]
-  );
-  const avgRating = useMemo(() => calcAvgRating(filteredForStats), [filteredForStats]);
-  const totalReviews = filteredForStats.length;
-  const fiveShare = useMemo(() => calcFiveStarShare(filteredForStats), [filteredForStats]);
+  /** ================= API: 리뷰 테이블 + 드롭다운용 상품 ================= */
+  useEffect(() => {
+    if (!storeUrl) return;
+    (async () => {
+      try {
+        const res = await get<ReviewRow[]>(`/seller/${storeUrl}/review`);
+        if (res.status === 200 && Array.isArray(res.data)) {
+          setReviews(res.data);
+        } else {
+          console.error('리뷰 목록 조회 실패:', res.message);
+          setReviews([]);
+        }
+      } catch (e) {
+        console.error('리뷰 목록 API 오류:', e);
+        setReviews([]);
+      }
+    })();
+  }, [storeUrl]);
 
-  // 네비게이션
+  const productOptions: ProductOption[] = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const r of reviews) {
+      if (r.productId && r.productName) {
+        if (!map.has(r.productId)) map.set(r.productId, r.productName);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([productId, productName]) => ({ productId, productName }))
+      .sort((a, b) => a.productName.localeCompare(b.productName, 'ko'));
+  }, [reviews]);
+
+  useEffect(() => {
+    if (selectedProductId === 'ALL') return;
+    const exists = productOptions.some((p) => String(p.productId) === selectedProductId);
+    if (!exists) setSelectedProductId('ALL');
+  }, [productOptions]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** ================= API: 리뷰 통계(전체/상품별) ================= */
+  const fetchReviewStats = async (productId?: string) => {
+    try {
+      const url =
+        productId && productId !== 'ALL'
+          ? `/seller/${storeUrl}/reviews/stats/${productId}`
+          : `/seller/${storeUrl}/reviews/stats`;
+      const res = await get<ReviewStatsPayload>(url);
+      if (res.status === 200 && res.data) {
+        setReviewTotalApi(res.data.totalReviews ?? 0);
+        setReviewBuckets(res.data.buckets ?? []);
+      } else {
+        setReviewTotalApi(0);
+        setReviewBuckets([]);
+        console.error('리뷰 통계 조회 실패:', res.message);
+      }
+    } catch (e) {
+      console.error('리뷰 통계 API 오류:', e);
+      setReviewTotalApi(0);
+      setReviewBuckets([]);
+    }
+  };
+
+  useEffect(() => {
+    if (!storeUrl) return;
+    fetchReviewStats();
+  }, [storeUrl]);
+
+  useEffect(() => {
+    if (!storeUrl) return;
+    fetchReviewStats(selectedProductId);
+  }, [selectedProductId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const filteredReviews = useMemo(() => {
+    if (selectedProductId === 'ALL') return reviews;
+    const pid = Number(selectedProductId);
+    return reviews.filter((r) => Number(r.productId) === pid);
+  }, [reviews, selectedProductId]);
+
+  const ratingDist = useMemo(() => {
+    return (reviewBuckets ?? []).map((b) => ({ name: b.rating.toFixed(1), value: b.count }));
+  }, [reviewBuckets]);
+
+  const avgRating = useMemo(() => {
+    if (reviewBuckets && reviewTotalApi && reviewTotalApi > 0) {
+      const sum = reviewBuckets.reduce((s, b) => s + b.rating * b.count, 0);
+      return Math.round((sum / reviewTotalApi) * 10) / 10;
+    }
+    return 0;
+  }, [reviewBuckets, reviewTotalApi]);
+
+  const totalReviews = reviewTotalApi ?? 0;
+
+  const fiveShare = useMemo(() => {
+    if (reviewBuckets && reviewTotalApi && reviewTotalApi > 0) {
+      const b5 = reviewBuckets.find((b) => b.rating === 5);
+      return b5 ? Math.round(b5.percentage) : 0;
+    }
+    return 0;
+  }, [reviewBuckets, reviewTotalApi]);
+
+  /** ===== 평점 파싱/탐색 강化 (여기가 핵심 수정) ===== */
+  const parseRatingString = (val: string): number | null => {
+    if (!val) return null;
+    // "3.5/5" 또는 "3.5/5.0"
+    let m = val.match(/^\s*([0-5](?:\.\d+)?)\s*\/\s*5(?:\.0)?\s*$/);
+    if (m) {
+      const n = Number(m[1]);
+      if (!Number.isNaN(n)) return n;
+    }
+    // "3.5" 혹은 "4"
+    m = val.match(/^\s*([0-5](?:\.\d+)?)\s*$/);
+    if (m) {
+      const n = Number(m[1]);
+      if (!Number.isNaN(n)) return n;
+    }
+    return null;
+  };
+
+  const coerceToNumberRating = (v: unknown): number | null => {
+    if (typeof v === 'number') {
+      if (v >= 0 && v <= 5) return v;
+      return null;
+    }
+    if (typeof v === 'string') return parseRatingString(v);
+    return null;
+  };
+
+  const getRowRating = (rv: ReviewRow): number => {
+    // 1) 대표 필드 우선
+    const direct = coerceToNumberRating(rv.rating);
+    if (direct !== null) return Math.round(direct * 2) / 2;
+
+    // 2) 레거시 문자열(productRating)
+    const legacy = coerceToNumberRating(rv.productRating);
+    if (legacy !== null) return Math.round(legacy * 2) / 2;
+
+    // 3) 그 외 이름으로 올 수 있는 후보들 전수 검사
+    const candidateKeys = [
+      'reviewRating',
+      'ratingScore',
+      'rating_value',
+      'ratingValue',
+      'score',
+      'stars',
+      'star',
+      'rate',
+      'reviewScore',
+    ];
+
+    for (const key of candidateKeys) {
+      const val = (rv as any)[key];
+      const n = coerceToNumberRating(val);
+      if (n !== null) return Math.round(n * 2) / 2;
+    }
+
+    // 4) 객체 속에 들어있는 경우(meta 등)
+    const nested = (rv as any)?.meta ?? (rv as any)?.extra ?? (rv as any)?.detail;
+    if (nested && typeof nested === 'object') {
+      for (const key of Object.keys(nested)) {
+        if (
+          String(key).toLowerCase().includes('rating') ||
+          ['score', 'stars', 'star', 'rate'].includes(String(key))
+        ) {
+          const n = coerceToNumberRating((nested as any)[key]);
+          if (n !== null) return Math.round(n * 2) / 2;
+        }
+      }
+    }
+
+    // 5) 못 찾으면 0
+    return 0;
+  };
+
+  const formatRowRating = (rv: ReviewRow) => getRowRating(rv).toFixed(1);
+
+  /** ================= 이동 ================= */
   const goOrders = () => navigate(`/seller/${storeUrl}/product/order`);
   const goSettlement = () => navigate(`/seller/${storeUrl}/settlement`);
   const goClassReservation = () => navigate(`/seller/${storeUrl}/class/reservation`);
   const goReviews = () => navigate(`/seller/${storeUrl}/product/review`);
 
+  /** ================= 렌더 ================= */
   return (
     <>
       <Header />
@@ -442,7 +540,6 @@ export default function SellerMain() {
                     className="group relative overflow-hidden min-w-[180px] flex-1 rounded-xl border hover:shadow transition"
                     title="클릭하여 주문 관리로 이동"
                   >
-                    {/* 🔵 호버 배경 레이어 */}
                     <span
                       className={[
                         'absolute inset-0 w-0',
@@ -452,13 +549,16 @@ export default function SellerMain() {
                       ].join(' ')}
                       aria-hidden
                     />
-
                     <div className="relative z-10 grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3 text-left">
                       <div className="p-2 rounded-lg bg-gray-50">
                         <Icon className="w-6 h-6 text-gray-700" />
                       </div>
                       <div className="flex flex-col">
-                        <span className={`inline-flex w-fit px-2 py-0.5 rounded-full text-[11px] ${badgeCls}`}>{key}</span>
+                        <span
+                          className={`inline-flex w-fit px-2 py-0.5 rounded-full text-[11px] ${badgeCls}`}
+                        >
+                          {key}
+                        </span>
                         <span className="text-xs text-gray-500 mt-1">상태 건수</span>
                       </div>
                       <div className="text-xl font-bold tabular-nums">{count}</div>
@@ -474,7 +574,6 @@ export default function SellerMain() {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b">
               <h2 className="text-base sm:text-lg font-semibold">매출 그래프</h2>
               <div className="flex items-center gap-4">
-                {/* 시작/종료일은 모든 모드 공통으로 사용 */}
                 <div className="flex items-center gap-2">
                   <label className="text-xs sm:text-sm text-gray-600">시작일</label>
                   <input
@@ -494,26 +593,34 @@ export default function SellerMain() {
                   />
                 </div>
 
-                {/* 모드 토글 */}
                 <div className="bg-gray-100 rounded-md p-1 inline-flex">
                   <button
                     type="button"
                     onClick={() => setSalesMode('day')}
-                    className={['px-3 py-1.5 rounded text-xs sm:text-sm', salesMode === 'day' ? 'bg-white shadow' : 'text-gray-600'].join(' ')}
+                    className={[
+                      'px-3 py-1.5 rounded text-xs sm:text-sm',
+                      salesMode === 'day' ? 'bg-white shadow' : 'text-gray-600',
+                    ].join(' ')}
                   >
                     일별
                   </button>
                   <button
                     type="button"
                     onClick={() => setSalesMode('week')}
-                    className={['px-3 py-1.5 rounded text-xs sm:text-sm', salesMode === 'week' ? 'bg-white shadow' : 'text-gray-600'].join(' ')}
+                    className={[
+                      'px-3 py-1.5 rounded text-xs sm:text-sm',
+                      salesMode === 'week' ? 'bg-white shadow' : 'text-gray-600',
+                    ].join(' ')}
                   >
                     주별
                   </button>
                   <button
                     type="button"
                     onClick={() => setSalesMode('month')}
-                    className={['px-3 py-1.5 rounded text-xs sm:text-sm', salesMode === 'month' ? 'bg-white shadow' : 'text-gray-600'].join(' ')}
+                    className={[
+                      'px-3 py-1.5 rounded text-xs sm:text-sm',
+                      salesMode === 'month' ? 'bg-white shadow' : 'text-gray-600',
+                    ].join(' ')}
                   >
                     월별
                   </button>
@@ -532,29 +639,49 @@ export default function SellerMain() {
                   <LineChart data={salesData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="key" tick={{ fontSize: 12 }} />
-                    {/* 우측: 매출액 축 */}
-                    <YAxis yAxisId="amount" orientation="right" tickFormatter={(v) => KRW.format(v)} />
-                    {/* 좌측: 주문수 축 */}
+                    <YAxis
+                      yAxisId="amount"
+                      orientation="right"
+                      tickFormatter={(v) => KRW.format(v)}
+                    />
                     <YAxis yAxisId="orders" orientation="left" width={48} />
                     <Tooltip
-                      formatter={(v: number, name) => (name === '매출액' ? [fmtKRW(v), name] : [`${v} 건`, name])}
+                      formatter={(v: number, name) =>
+                        name === '매출액' ? [fmtKRW(v), name] : [`${v} 건`, name]
+                      }
                     />
                     <Legend />
-                    <Line yAxisId="amount" type="monotone" dataKey="amount" name="매출액" stroke={BRAND} strokeWidth={2} dot={false} />
-                    <Line yAxisId="orders" type="monotone" dataKey="orders" name="주문수" stroke="#8884d8" strokeWidth={2} dot={false} />
+                    <Line
+                      yAxisId="amount"
+                      type="monotone"
+                      dataKey="amount"
+                      name="매출액"
+                      stroke={BRAND}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      yAxisId="orders"
+                      type="monotone"
+                      dataKey="orders"
+                      name="주문수"
+                      stroke="#8884d8"
+                      strokeWidth={2}
+                      dot={false}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             </button>
           </section>
 
-          {/* 3) 전체 클래스 예약 통계 (공용 컴포넌트 사용) */}
+          {/* 3) 전체 클래스 예약 통계 */}
           <ClassStatsCard
             title="전체 클래스 예약 통계"
             mode={classMode}
             onModeChange={setClassMode}
-            monthValue={selectedMonth} // 기존 selectedWeek → selectedMonth
-            onMonthChange={setSelectedMonth} // 기존 setSelectedWeek → setSelectedMonth
+            monthValue={selectedMonth}
+            onMonthChange={setSelectedMonth}
             data={classStats}
             onClick={goClassReservation}
             brandColor={BRAND}
@@ -570,12 +697,12 @@ export default function SellerMain() {
                 <select
                   value={selectedProductId}
                   onChange={(e) => setSelectedProductId(e.target.value)}
-                  className="border rounded-md px-3 py-1.5 text-xs sm:text-sm"
+                  className="border rounded-md px-3 py-1.5 text-xs sm:text-sm min-w-[200px]"
                 >
                   <option value="ALL">전체</option>
-                  {mockProducts.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
+                  {productOptions.map((p) => (
+                    <option key={p.productId} value={String(p.productId)}>
+                      {p.productName}
                     </option>
                   ))}
                 </select>
@@ -643,24 +770,28 @@ export default function SellerMain() {
                       </tr>
                     </thead>
                     <tbody>
-                      {latestReviews.map((rv) => (
-                        <tr
-                          key={rv.id}
-                          onClick={goReviews}
-                          className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
-                          title="클릭하여 리뷰 관리로 이동"
-                        >
-                          <td className="px-3 py-3">{rv.createdAt}</td>
-                          <td className="px-3 py-3">{rv.productName}</td>
-                          <td className="px-3 py-3">{rv.title}</td>
-                          <td className="px-3 py-3">{rv.rating.toFixed(1)}</td>
-                          <td className="px-3 py-3">{rv.author}</td>
-                        </tr>
-                      ))}
-                      {latestReviews.length === 0 && (
+                      {filteredReviews.map((rv) => {
+                        const dateStr = rv.reviewCreatedAt?.slice(0, 10) ?? '';
+                        return (
+                          <tr
+                            key={rv.reviewId}
+                            onClick={goReviews}
+                            className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
+                            title="클릭하여 리뷰 관리로 이동"
+                          >
+                            <td className="px-3 py-3">{dateStr}</td>
+                            <td className="px-3 py-3">{rv.productName}</td>
+                            <td className="px-3 py-3">{rv.content}</td>
+                            {/* ★ 강화된 파싱/탐색으로 개별 평점 표시 */}
+                            <td className="px-3 py-3">{formatRowRating(rv)}</td>
+                            <td className="px-3 py-3">{rv.authorName}</td>
+                          </tr>
+                        );
+                      })}
+                      {filteredReviews.length === 0 && (
                         <tr>
                           <td colSpan={5} className="px-3 py-6 text-center text-gray-500">
-                            최근 리뷰가 없습니다.
+                            표시할 리뷰가 없습니다.
                           </td>
                         </tr>
                       )}

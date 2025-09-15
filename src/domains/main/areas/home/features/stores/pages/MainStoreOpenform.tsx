@@ -1,18 +1,18 @@
 // src/domains/main/areas/home/features/stores/pages/MainStoreOpenform.tsx
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // import Header from "@src/shared/areas/layout/features/header/Header";
 // import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
 // 필요하면 StoresSubnavbar도 추가하세요
 // import StoresSubnavbar from "@src/shared/areas/navigation/features/subnavbar/stores/StoresSubnavbar";
 
-import { legacyGet, legacyPost } from "@src/libs/request"; // ✅ 레거시 API 유틸
-import { goToMain } from "@src/shared/util/LegacyNavigate";
+import { legacyGet, legacyPost } from '@src/libs/request'; // ✅ 레거시 API 유틸
+import { goToMain } from '@src/shared/util/LegacyNavigate';
 // import { get, post, patch } from "@src/libs/request"; // 부트 API가 필요하면 추가
 
-type CheckState = "idle" | "checking" | "valid" | "invalid";
+type CheckState = 'idle' | 'checking' | 'valid' | 'invalid';
 
 const URL_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
 const MAX_DETAIL_LEN = 3000;
@@ -21,14 +21,14 @@ const MainStoreOpenform: React.FC = () => {
   const navigate = useNavigate();
 
   // ====== Form State ======
-  const [storeName, setStoreName] = useState("");
-  const [storeUrl, setStoreUrl] = useState("");
-  const [storeDetail, setStoreDetail] = useState("");
+  const [storeName, setStoreName] = useState('');
+  const [storeUrl, setStoreUrl] = useState('');
+  const [storeDetail, setStoreDetail] = useState('');
   const [agree, setAgree] = useState(false);
 
   // ====== URL Check ======
-  const [urlState, setUrlState] = useState<CheckState>("idle");
-  const [urlMsg, setUrlMsg] = useState<string>("");
+  const [urlState, setUrlState] = useState<CheckState>('idle');
+  const [urlMsg, setUrlMsg] = useState<string>('');
 
   // ====== Logo Upload / Preview ======
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -48,11 +48,11 @@ const MainStoreOpenform: React.FC = () => {
     const f = e.target.files?.[0];
     if (!f) return;
 
-    const allowed = ["jpg", "jpeg", "png", "gif"];
-    const ext = f.name.toLowerCase().split(".").pop() || "";
+    const allowed = ['jpg', 'jpeg', 'png', 'gif'];
+    const ext = f.name.toLowerCase().split('.').pop() || '';
     if (!allowed.includes(ext)) {
-      alert("jpg, jpeg, png, gif 형식만 업로드 가능합니다.");
-      e.target.value = "";
+      alert('jpg, jpeg, png, gif 형식만 업로드 가능합니다.');
+      e.target.value = '';
       return;
     }
     setLogoFile(f);
@@ -63,10 +63,10 @@ const MainStoreOpenform: React.FC = () => {
     e.preventDefault();
     const f = e.dataTransfer.files?.[0];
     if (!f) return;
-    const allowed = ["jpg", "jpeg", "png", "gif"];
-    const ext = f.name.toLowerCase().split(".").pop() || "";
+    const allowed = ['jpg', 'jpeg', 'png', 'gif'];
+    const ext = f.name.toLowerCase().split('.').pop() || '';
     if (!allowed.includes(ext)) {
-      alert("jpg, jpeg, png, gif 형식만 업로드 가능합니다.");
+      alert('jpg, jpeg, png, gif 형식만 업로드 가능합니다.');
       return;
     }
     setLogoFile(f);
@@ -80,45 +80,47 @@ const MainStoreOpenform: React.FC = () => {
       return;
     }
     const reader = new FileReader();
-    reader.onload = (ev) => setLogoPreview(String(ev.target?.result || ""));
+    reader.onload = (ev) => setLogoPreview(String(ev.target?.result || ''));
     reader.readAsDataURL(logoFile);
   }, [logoFile]);
 
   // ====== URL Debounced Check (Legacy GET) ======
   useEffect(() => {
     if (!storeUrl) {
-      setUrlState("idle");
-      setUrlMsg("");
+      setUrlState('idle');
+      setUrlMsg('');
       return;
     }
     if (!isUrlFormatOk) {
-      setUrlState("invalid");
-      setUrlMsg("❌ 올바른 형식이 아닙니다. (영문/숫자/언더바, 3~20자)");
+      setUrlState('invalid');
+      setUrlMsg('❌ 올바른 형식이 아닙니다. (영문/숫자/언더바, 3~20자)');
       return;
     }
 
     let alive = true;
-    setUrlState("checking");
-    setUrlMsg("중복 확인 중...");
+    setUrlState('checking');
+    setUrlMsg('중복 확인 중...');
 
     const t = setTimeout(async () => {
       try {
         // 🔧 레거시 엔드포인트 경로 확인 필요: '/legacy/main/store/checkurl' 또는 '/main/store/checkurl'
         // 프로젝트의 legacyGet 동작에 맞춰 전체/상대경로를 조정하세요.
-        const res = await legacyGet<boolean>(`/main/store/checkurl?storeUrl=${encodeURIComponent(storeUrl.trim())}`);
+        const res = await legacyGet<boolean>(
+          `/main/store/checkurl?storeUrl=${encodeURIComponent(storeUrl.trim())}`
+        );
         if (!alive) return;
 
         if (res === true) {
-          setUrlState("valid");
-          setUrlMsg("✅ 사용 가능한 URL입니다.");
+          setUrlState('valid');
+          setUrlMsg('✅ 사용 가능한 URL입니다.');
         } else {
-          setUrlState("invalid");
-          setUrlMsg("❌ 이미 사용 중인 URL입니다.");
+          setUrlState('invalid');
+          setUrlMsg('❌ 이미 사용 중인 URL입니다.');
         }
       } catch (e) {
         if (!alive) return;
-        setUrlState("invalid");
-        setUrlMsg("❌ 중복 확인 실패");
+        setUrlState('invalid');
+        setUrlMsg('❌ 중복 확인 실패');
       }
     }, 450);
 
@@ -134,20 +136,20 @@ const MainStoreOpenform: React.FC = () => {
     const url = storeUrl.trim();
     const detail = storeDetail.trim();
 
-    if (!name) return alert("스토어 이름을 입력해주세요.");
-    if (!logoFile) return alert("스토어 로고 이미지를 업로드해주세요.");
-    if (!url) return alert("스토어 URL을 입력해주세요.");
-    if (!isUrlFormatOk || urlState !== "valid") {
-      return alert("사용 가능한 스토어 URL을 입력해주세요.");
+    if (!name) return alert('스토어 이름을 입력해주세요.');
+    if (!logoFile) return alert('스토어 로고 이미지를 업로드해주세요.');
+    if (!url) return alert('스토어 URL을 입력해주세요.');
+    if (!isUrlFormatOk || urlState !== 'valid') {
+      return alert('사용 가능한 스토어 URL을 입력해주세요.');
     }
-    if (!detail) return alert("스토어 설명을 입력해주세요.");
-    if (!agree) return alert("개인정보 수집 및 이용에 동의해 주세요.");
+    if (!detail) return alert('스토어 설명을 입력해주세요.');
+    if (!agree) return alert('개인정보 수집 및 이용에 동의해 주세요.');
 
     const formData = new FormData();
-    formData.append("storeName", name);
-    formData.append("storeUrl", url);
-    formData.append("storeDetail", detail);
-    formData.append("logoImg", logoFile);
+    formData.append('storeName', name);
+    formData.append('storeUrl', url);
+    formData.append('storeDetail', detail);
+    formData.append('logoImg', logoFile);
 
     try {
       setSubmitting(true);
@@ -159,32 +161,28 @@ const MainStoreOpenform: React.FC = () => {
       // 만약 { status:200, data:{ accessToken } } 형태면:
       if (response?.status && response.status !== 200) {
         goToMain();
-        return alert("스토어 신청에 실패했습니다. 다시 시도해 주세요.");
+        return alert('스토어 신청에 실패했습니다. 다시 시도해 주세요.');
       }
       const accessToken =
-        (response?.data && (response.data.accessToken || response.data?.token)) ||
+        (response?.data && (response.data.accessToken || response.data?.accessToken)) ||
         response?.accessToken ||
         null;
-      localStorage.removeItem("accessToken");
-      console.log("accessToken:", accessToken);
+      localStorage.removeItem('accessToken');
+      console.log('accessToken:', accessToken);
       if (accessToken) {
-        console.log("New accessToken:", accessToken);
-        localStorage.setItem("accessToken", accessToken);
-        console.log(localStorage.getItem("accessToken") + "성공!");
-        alert("스토어 신청이 완료되었습니다. 여기 보려고 멈춘거라고 이자시가");
+        console.log('New accessToken:', accessToken);
+        localStorage.setItem('accessToken', accessToken);
+        console.log(localStorage.getItem('accessToken') + '성공!');
+        alert('스토어 신청이 완료되었습니다.');
       }
-
-      //${url}
-
-      alert("스토어 신청이 완료되었습니다.");
       // 스토어 메인으로 이동
       navigate(`/main/stores`);
     } catch (err: any) {
-      console.error("[openform] error:", err);
+      console.error('[openform] error:', err);
       const msg =
         err?.response?.data?.message ||
         err?.message ||
-        "오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+        '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
       alert(msg);
     } finally {
       setSubmitting(false);
@@ -209,19 +207,20 @@ const MainStoreOpenform: React.FC = () => {
                 src="/resources/images/logo.png"
                 alt="logo"
                 className="w-16 h-16 object-contain"
-                onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+                onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
               />
               <div className="flex-1">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900">스토어 개설 신청</h1>
                 <p className="text-gray-600 mt-1">
-                  나만의 스토어를 오픈해 보세요. 로고와 URL을 설정하고 간단한 소개만 작성하면 시작할 수 있어요.
+                  나만의 스토어를 오픈해 보세요. 로고와 URL을 설정하고 간단한 소개만 작성하면 시작할
+                  수 있어요.
                 </p>
               </div>
               <img
                 src="/resources/images/illustration.png"
                 alt="illustration"
                 className="hidden md:block w-40 h-24 object-contain opacity-90"
-                onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+                onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
               />
             </div>
           </div>
@@ -229,7 +228,9 @@ const MainStoreOpenform: React.FC = () => {
           {/* 폼 카드 */}
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
             <div className="px-5 sm:px-8 py-6 sm:py-8">
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">스토어 개설 신청하기</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">
+                스토어 개설 신청하기
+              </h2>
 
               {/* 스토어 이름 */}
               <div className="mb-6">
@@ -249,7 +250,9 @@ const MainStoreOpenform: React.FC = () => {
               {/* 스토어 대표사진(로고) */}
               <div className="mb-6">
                 <div className="flex items-center gap-1 mb-2">
-                  <label className="text-sm font-semibold text-gray-800">스토어 대표사진(로고)</label>
+                  <label className="text-sm font-semibold text-gray-800">
+                    스토어 대표사진(로고)
+                  </label>
                   <span className="text-red-500">*</span>
                 </div>
 
@@ -304,11 +307,11 @@ const MainStoreOpenform: React.FC = () => {
                 />
                 <div
                   className={`mt-1 text-xs ${
-                    urlState === "valid"
-                      ? "text-emerald-600"
-                      : urlState === "invalid"
-                      ? "text-red-600"
-                      : "text-gray-500"
+                    urlState === 'valid'
+                      ? 'text-emerald-600'
+                      : urlState === 'invalid'
+                        ? 'text-red-600'
+                        : 'text-gray-500'
                   }`}
                 >
                   {urlMsg}
@@ -326,7 +329,11 @@ const MainStoreOpenform: React.FC = () => {
                   <textarea
                     value={storeDetail}
                     onChange={(e) =>
-                      setStoreDetail(e.target.value.length > MAX_DETAIL_LEN ? e.target.value.slice(0, MAX_DETAIL_LEN) : e.target.value)
+                      setStoreDetail(
+                        e.target.value.length > MAX_DETAIL_LEN
+                          ? e.target.value.slice(0, MAX_DETAIL_LEN)
+                          : e.target.value
+                      )
                     }
                     placeholder="스토어를 소개해 주세요 (최대 3000자)"
                     rows={7}
@@ -378,7 +385,7 @@ const MainStoreOpenform: React.FC = () => {
                     !logoFile ||
                     !storeUrl.trim() ||
                     !isUrlFormatOk ||
-                    urlState !== "valid" ||
+                    urlState !== 'valid' ||
                     !storeDetail.trim() ||
                     !agree
                   }
@@ -386,7 +393,7 @@ const MainStoreOpenform: React.FC = () => {
                     bg-emerald-600 text-white shadow hover:bg-emerald-700 active:scale-[0.99] transition
                     disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {submitting ? "신청 중..." : "신청하기"}
+                  {submitting ? '신청 중...' : '신청하기'}
                 </button>
               </div>
             </div>

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, type JSX } from 'react';
+import React, { useState, useEffect, useMemo, type JSX } from 'react';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import { Star, ShoppingCart, CreditCard, Flag, Edit, Minus, Plus, ThumbsUp, X } from 'lucide-react';
 import { get, legacyGet, legacyPost } from '@src/libs/request';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
+import { processContent, getContentCssClasses } from '@src/shared/util/contentUtil';
 
 interface Product {
   id: string;
@@ -99,6 +100,15 @@ const MainProductsDetail = () => {
   const [loadingReviews, setLoadingReviews] = useState(true);
 
   const navigate = useNavigate();
+
+  // 콘텐츠 처리 (유틸리티 사용)
+  const { sanitizedDescription, contentType } = useMemo(() => {
+    return processContent(product?.description);
+  }, [product?.description]);
+
+  const contentCssClasses = useMemo(() => {
+    return getContentCssClasses(contentType);
+  }, [contentType]);
 
   // 상품 상세 불러오기
   useEffect(() => {
@@ -613,10 +623,19 @@ const MainProductsDetail = () => {
           {/* 상품 상세 설명 */}
           <div className="bg-white rounded-lg shadow-sm p-4 md:p-8 mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">상품 상세정보</h2>
-            <div
-              className="prose prose-gray max-w-none"
-              dangerouslySetInnerHTML={{ __html: product.description }}
-            />
+            {/* contentUtils를 사용한 콘텐츠 렌더링 */}
+            <div className="space-y-4 text-gray-700">
+              {sanitizedDescription ? (
+                <div
+                  className={`content-wrapper ${contentCssClasses}`}
+                  dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
+                />
+              ) : (
+                <div>
+                  <p>상품 설명이 없습니다.</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 리뷰 섹션 */}

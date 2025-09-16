@@ -330,7 +330,7 @@ const ProductList: FC = () => {
                   onClick={saveRepresentatives}
                   className="px-3 py-1.5 rounded-md border text-sm bg-white hover:bg-gray-50"
                 >
-                  대표 상품 수정
+                  대표 상품 저장
                 </button>
               </div>
             </div>
@@ -371,20 +371,20 @@ const ProductList: FC = () => {
           {/* 테이블 */}
           <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-fixed">
                 <thead className="bg-gray-50">
                   <tr className="text-left text-gray-600">
-                    <th className="px-3 py-3 w-12">대표</th>
-                    <th className="px-3 py-3 w-12">선택</th>
-                    <th className="px-3 py-3 w-25">대표이미지</th>
-                    <th className="px-3 py-3 min-w-[180px]">상품 이름</th>
-                    <th className="px-3 py-3 w-24 text-right">가격</th>
-                    <th className="px-3 py-3 w-24 text-right">재고</th>
-                    <th className="px-3 py-3 w-24">대분류</th>
-                    <th className="px-3 py-3 w-28">중분류</th>
-                    <th className="px-3 py-3 w-28">소분류</th>
-                    <th className="px-3 py-3 w-36">날짜</th>
-                    <th className="px-3 py-3 w-20 text-right">액션</th>
+                    <th className="px-3 py-3 w-1/12 text-center">대표</th>
+                    <th className="px-3 py-3 w-1/12 text-center">선택</th>
+                    <th className="px-3 py-3 w-1/12 text-center">대표이미지</th>
+                    <th className="px-3 py-3 w-2/12 text-center">상품 이름</th>
+                    <th className="px-3 py-3 w-1/12 text-center">가격</th>
+                    <th className="px-3 py-3 w-1/12 text-center">재고</th>
+                    <th className="px-3 py-3 w-1/12 text-center">대분류</th>
+                    <th className="px-3 py-3 w-1/12 text-center">중분류</th>
+                    <th className="px-3 py-3 w-1/12 text-center">소분류</th>
+                    <th className="px-3 py-3 w-1/12 text-center">날짜</th>
+                    <th className="px-3 py-3 w-1/12 text-center">액션</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -398,7 +398,7 @@ const ProductList: FC = () => {
                           disabled ? 'opacity-60' : 'hover:bg-gray-25',
                         ].join(' ')}
                       >
-                        <td className="px-3 py-3 align-top">
+                        <td className="px-3 py-3 align-top text-center">
                           <input
                             type="checkbox"
                             title="대표상품 선택"
@@ -408,7 +408,7 @@ const ProductList: FC = () => {
                             className="rounded"
                           />
                         </td>
-                        <td className="px-3 py-3 align-top">
+                        <td className="px-3 py-3 align-top text-center">
                           <input
                             type="checkbox"
                             title="삭제/복구 선택"
@@ -433,26 +433,26 @@ const ProductList: FC = () => {
                           </div>
                         </td>
                         <td className="px-3 py-3 align-top">
-                          <div className="font-medium text-gray-900 truncate">{r.name}</div>
-                          <div className="text-xs text-gray-500 mt-1">{r.id}</div>
+                          <div className="font-medium text-gray-900 break-words">{r.name}</div>
+                          {/* <div className="text-xs text-gray-500 mt-1">{r.id}</div> */}
                         </td>
                         <td className="px-3 py-3 align-top text-right">
                           <div className="font-bold text-[#2D4739]">₩{KRW.format(r.price)}</div>
                         </td>
-                        <td className="px-3 py-3 align-top text-right">
+                        <td className="px-3 py-3 align-top text-right text-center">
                           <span className="font-medium">{r.stock}</span>
                         </td>
-                        <td className="px-3 py-3 align-top">{r.categoryLarge}</td>
-                        <td className="px-3 py-3 align-top">{r.categoryMiddle}</td>
-                        <td className="px-3 py-3 align-top">{r.categorySmall}</td>
-                        <td className="px-3 py-3 align-top text-xs">
+                        <td className="px-3 py-3 align-top text-center">{r.categoryLarge}</td>
+                        <td className="px-3 py-3 align-top text-center">{r.categoryMiddle}</td>
+                        <td className="px-3 py-3 align-top text-center">{r.categorySmall}</td>
+                        <td className="px-3 py-3 align-top text-xs text-right">
                           <div>등록: {r.createdAt || '-'}</div>
                           <div>수정: {r.updatedAt || '-'}</div>
                           <div className={r.deletedAt ? 'text-red-600' : 'text-gray-400'}>
                             삭제: {r.deletedAt || '-'}
                           </div>
                         </td>
-                        <td className="px-3 py-3 align-top text-right">
+                        <td className="px-3 py-3 align-top text-right text-center">
                           <button
                             type="button"
                             onClick={() => goEdit(r.id)}

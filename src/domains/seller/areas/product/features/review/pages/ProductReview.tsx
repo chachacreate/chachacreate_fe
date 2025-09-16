@@ -230,30 +230,34 @@ const ProductReviewList: FC = () => {
 
             {/* 데스크톱 테이블뷰 */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-fixed">
                 <thead>
-                  <tr className="text-left text-gray-600">
-                    <th className="px-4 py-3 w-32 sticky top-0 z-20 bg-gray-50 border-b">
-                      리뷰 작성일
+                  <tr className="text-left text-gray-600 text-xs">
+                    <th className="px-4 py-3 w-1/12 sticky top-0 z-20 bg-gray-50 border-b">
+                      작성일
                     </th>
-                    <th className="px-4 py-3 w-20 sticky top-0 z-20 bg-gray-50 border-b">
-                      대표 이미지
+                    <th className="px-4 py-3 w-1/12 sticky top-0 z-20 bg-gray-50 border-b">
+                      이미지
                     </th>
-                    <th className="px-4 py-3 min-w-[200px] sticky top-0 z-20 bg-gray-50 border-b">
+                    <th className="px-4 py-3 w-3/12 sticky top-0 z-20 bg-gray-50 border-b break-words">
                       상품 이름
                     </th>
-                    <th className="px-4 py-3 w-40 sticky top-0 z-20 bg-gray-50 border-b">작성자</th>
-                    <th className="px-4 py-3 min-w-[300px] sticky top-0 z-20 bg-gray-50 border-b">
+                    <th className="px-4 py-3 w-1/12 sticky top-0 z-20 bg-gray-50 border-b">
+                      작성자
+                    </th>
+                    <th className="px-4 py-3 w-2/12 sticky top-0 z-20 bg-gray-50 border-b">
                       리뷰 내용
                     </th>
-                    <th className="px-4 py-3 w-32 sticky top-0 z-20 bg-gray-50 border-b">
-                      상품 등록일
+                    <th className="px-4 py-3 w-1/12 sticky top-0 z-20 bg-gray-50 border-b">
+                      등록일
                     </th>
-                    <th className="px-4 py-3 w-28 sticky top-0 z-20 bg-gray-50 border-b">
-                      상품 평점
+                    <th className="px-4 py-3 w-1/12 sticky top-0 z-20 bg-gray-50 border-b">평점</th>
+                    <th className="px-4 py-3 w-1/12 sticky top-0 z-20 bg-gray-50 border-b">
+                      좋아요
                     </th>
-                    <th className="px-4 py-3 w-24 sticky top-0 z-20 bg-gray-50 border-b">좋아요</th>
-                    <th className="px-4 py-3 w-32 sticky top-0 z-20 bg-gray-50 border-b">수정일</th>
+                    <th className="px-4 py-3 w-1/12 sticky top-0 z-20 bg-gray-50 border-b">
+                      수정일
+                    </th>
                   </tr>
                 </thead>
 
@@ -276,17 +280,17 @@ const ProductReviewList: FC = () => {
                       </td>
 
                       <td className="px-4 py-3 align-top">
-                        <div className="font-medium text-gray-900 truncate">{r.productName}</div>
-                        <div className="text-[11px] text-gray-500 mt-0.5">{r.productId}</div>
+                        <div className="font-medium text-gray-900 break-words">{r.productName}</div>
+                        {/* <div className="text-[11px] text-gray-500 mt-0.5">{r.productId}</div> */}
                       </td>
 
-                      <td className="px-4 py-3 align-top text-gray-800">{r.author}</td>
+                      <td className="px-4 py-3 align-top text-gray-800 text-xs">{r.author}</td>
 
                       <td className="px-4 py-3 align-top">
                         <p className="text-gray-700 leading-relaxed line-clamp-3">{r.content}</p>
                       </td>
 
-                      <td className="px-4 py-3 align-top text-xs">{r.productCreatedAt}</td>
+                      <td className="px-4 py-3 align-top text-xs">{r.createdAt}</td>
 
                       <td className="px-4 py-3 align-top">
                         <div className="inline-flex items-center gap-1.5 font-semibold text-[#2D4739]">

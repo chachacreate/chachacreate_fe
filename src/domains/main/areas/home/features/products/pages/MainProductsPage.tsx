@@ -57,12 +57,13 @@ type DCategoryItem = { id: number; name: string };
 const PAGE_SIZE = 12;
 
 const sortOptions: FilterOption[] = [
-  { value: 'latest', label: '최신순' },
-  { value: 'popular', label: '주문 많은 순' },
-  { value: 'views', label: '조회순' },
-  { value: 'price_low', label: '낮은가격순' },
-  { value: 'price_high', label: '높은가격순' },
+  { value: 'latest', label: '최신순' },      
+  { value: 'popular', label: '주문 많은 순' }, 
+  { value: 'views', label: '조회순' },        
+  { value: 'lowprice', label: '낮은가격순' }, 
+  { value: 'highprice', label: '높은가격순' }, 
 ];
+
 
 const MainProductsPage = () => {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -76,44 +77,54 @@ const MainProductsPage = () => {
 
   const [hasMore, setHasMore] = useState(false);
 
-  // 상품 조회
-  const fetchProducts = useCallback(
-    async (sort = 'latest', keyword = '', dcategoryIds: number[] = []) => {
-      setLoading(true);
-      try {
-        const qs = new URLSearchParams();
-        if (sort) qs.set('sort', sort);
-        if (keyword && keyword.trim()) qs.set('keyword', keyword.trim());
-        dcategoryIds.forEach((id) => qs.append('d', String(id)));
+// 상품 조회
+const fetchProducts = useCallback(
+  async (
+    sort = 'latest',
+    keyword = '',
+    dcategoryIds: number[] = [],
+    uIds: number[] = [],
+    typeIds: number[] = []
+  ) => {
+    setLoading(true);
+    try {
+      const qs = new URLSearchParams();
+      if (sort) qs.set('sort', sort);
+      if (keyword && keyword.trim()) qs.set('keyword', keyword.trim());
 
-        const resp = await legacyGet<ApiEnvelope<HomeProductDTO[]>>(`/main/products?${qs.toString()}`);
-        const raw = unwrap<HomeProductDTO[]>(resp) ?? [];
+      typeIds.forEach((id) => qs.append('type', String(id)));
+      uIds.forEach((id) => qs.append('u', String(id)));
+      dcategoryIds.forEach((id) => qs.append('d', String(id)));
 
-        const mapped: Product[] = raw.map((p) => ({
-          id: p.productId,
-          name: p.productName,
-          price: p.price,
-          image: p.pimgUrl || '/placeholder-image.jpg',
-          categories: [p.typeCategoryName, p.ucategoryName, p.dcategoryName].filter(Boolean) as string[],
-          orderCount: p.saleCnt ?? 0,
-          viewCount: p.viewCnt ?? 0,
-          storeName: p.storeName || '뜨락상회',
-          storeUrl: p.storeUrl || 'main',
-        }));
+      const resp = await legacyGet<ApiEnvelope<HomeProductDTO[]>>(`/main/products?${qs.toString()}`);
+      const raw = unwrap<HomeProductDTO[]>(resp) ?? [];
 
-        setAllProducts(mapped);
-        setTotalCount(mapped.length);
-        setHasMore(false);
-      } catch (err) {
-        console.error('상품 불러오기 실패:', err);
-        setAllProducts([]);
-        setTotalCount(0);
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+      const mapped: Product[] = raw.map((p) => ({
+        id: p.productId,
+        name: p.productName,
+        price: p.price,
+        image: p.pimgUrl || '/placeholder-image.jpg',
+        categories: [p.typeCategoryName, p.ucategoryName, p.dcategoryName].filter(Boolean) as string[],
+        orderCount: p.saleCnt ?? 0,
+        viewCount: p.viewCnt ?? 0,
+        storeName: p.storeName || '뜨락상회',
+        storeUrl: p.storeUrl || 'main',
+      }));
+
+      setAllProducts(mapped);
+      setTotalCount(mapped.length);
+      setHasMore(false);
+    } catch (err) {
+      console.error('상품 불러오기 실패:', err);
+      setAllProducts([]);
+      setTotalCount(0);
+    } finally {
+      setLoading(false);
+    }
+  },
+  []
+);
+
 
   // 초기 전체상품 + 카테고리 로드
   useEffect(() => {

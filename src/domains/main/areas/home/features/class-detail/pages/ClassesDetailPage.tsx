@@ -3,12 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import { get } from '@src/libs/request';
+import { processContent, getContentCssClasses } from '@src/shared/util/contentUtil';
 
 /** ===== FullCalendar ===== */
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import DOMPurify from 'dompurify';
 // type-only
 import type { DateClickArg } from '@fullcalendar/interaction';
 import type { EventClickArg, EventInput, EventSourceInput } from '@fullcalendar/core';
@@ -85,12 +85,6 @@ function pickImageSrc(item: ImageItemDTO): string {
   const badThumb =
     !thumb || thumb.endsWith('_thumb_thumb.webp') || /https?:\/\/[^/]+\/https?:\/\//i.test(thumb);
   return badThumb ? full : thumb;
-}
-
-/** ========== HTML 안전 처리 ========== */
-function sanitizeHtml(htmlString?: string): string {
-  if (!htmlString) return '';
-  return DOMPurify.sanitize(htmlString);
 }
 
 type DaySlot = { time: string; seatsLeft: number; reservable: boolean };
@@ -282,10 +276,15 @@ export default function ClassesDetailPage() {
     return toFullCalendarEvents(scheduleMap);
   }, [scheduleMap]);
 
-  /** HTML 콘텐츠 처리 */
-  const sanitizedDescription = useMemo(() => {
-    return sanitizeHtml(summary?.description);
+  /** 콘텐츠 처리 (유틸리티 사용) */
+  const { sanitizedDescription, contentType } = useMemo(() => {
+    return processContent(summary?.description);
   }, [summary?.description]);
+
+  /** 콘텐츠 CSS 클래스 */
+  const contentCssClasses = useMemo(() => {
+    return getContentCssClasses(contentType);
+  }, [contentType]);
 
   /** 액션 */
   const handleApply = () => {
@@ -546,11 +545,11 @@ export default function ClassesDetailPage() {
                     <div className="prose max-w-none">
                       <h3 className="text-xl font-semibold mb-4">클래스 상세 정보</h3>
 
-                      {/* HTML 콘텐츠 렌더링 */}
+                      {/* 콘텐츠 렌더링 (유틸리티 사용) */}
                       <div className="space-y-4 text-gray-700">
                         {sanitizedDescription ? (
                           <div
-                            className="html-content"
+                            className={`content-wrapper ${contentCssClasses}`}
                             dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
                           />
                         ) : (

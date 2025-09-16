@@ -156,17 +156,14 @@ const MainStoreOpenform: React.FC = () => {
       // 🔧 레거시 엔드포인트 경로 확인 필요: '/legacy/main/store/openform' 또는 '/main/store/openform'
       // legacyPost가 자동으로 multipart 헤더 설정을 해 주지 않는다면 headers 옵션을 추가할 수 있습니다.
       const response = await legacyPost<any>(`/main/store/openform`, formData);
-
+      console.log(response);
       // 레거시의 응답 형식에 따라 아래 로직 조정하세요.
       // 만약 { status:200, data:{ accessToken } } 형태면:
       if (response?.status && response.status !== 200) {
         goToMain();
         return alert('스토어 신청에 실패했습니다. 다시 시도해 주세요.');
       }
-      const accessToken =
-        (response?.data && (response.data.accessToken || response.data?.accessToken)) ||
-        response?.accessToken ||
-        null;
+      const accessToken = response?.data;
       localStorage.removeItem('accessToken');
       console.log('accessToken:', accessToken);
       if (accessToken) {

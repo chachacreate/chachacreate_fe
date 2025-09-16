@@ -785,7 +785,7 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
               </section>
 
               {/* 디버그 정보 */}
-              <section className="bg-gray-50 rounded-xl border border-gray-200 shadow-sm p-4">
+              {/* <section className="bg-gray-50 rounded-xl border border-gray-200 shadow-sm p-4">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">디버그 정보</h4>
                 <div className="space-y-1 text-xs text-gray-600">
                   <div>storeUrl: <code className="bg-white px-1 rounded">{legacyStore}</code></div>
@@ -793,7 +793,7 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                   <div>계좌 인증 상태: <code className="bg-white px-1 rounded">{isAccountVerified ? "인증됨" : "미인증"}</code></div>
                   <div>수정 모드: <code className="bg-white px-1 rounded">{isAccountEditing ? "수정중" : "조회"}</code></div>
                 </div>
-              </section>
+              </section> */}
             </div>
           </Container>
         </div>
@@ -1141,7 +1141,7 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                 </section>
 
                 {/* 디버그 정보 */}
-                <section className="bg-gray-50 rounded-xl border border-gray-200 shadow-sm p-6">
+                {/* <section className="bg-gray-50 rounded-xl border border-gray-200 shadow-sm p-6">
                   <h4 className="text-lg font-medium text-gray-700 mb-4">디버그 정보</h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
                     <div>
@@ -1169,7 +1169,7 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                       </div>
                     </div>
                   </div>
-                </section>
+                </section> */}
               </div>
             </Container>
           </div>

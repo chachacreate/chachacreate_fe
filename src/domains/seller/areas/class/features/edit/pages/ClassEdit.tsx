@@ -1,7 +1,6 @@
 import type { FC, ChangeEvent, MouseEvent } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
 
 import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
@@ -11,6 +10,7 @@ import EditorAPI, {
   type EditorHandle,
 } from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
 import api from '@src/libs/apiService';
+import { get, patch } from '@src/libs/request';
 
 type Params = { storeUrl: string; classId: string };
 
@@ -94,8 +94,6 @@ const createEmptyForm = (): ClassForm => ({
   reservationNotes: DEFAULT_RESERVATION_NOTES,
 });
 
-const LEGACY_BASE = `${window.location.origin}/legacy`;
-
 const ClassEdit: FC = () => {
   const navigate = useNavigate();
   const { storeUrl = '', classId = '' } = useParams<Params>();
@@ -110,85 +108,89 @@ const ClassEdit: FC = () => {
   const [deleteServerImage, setDeleteServerImage] = useState(false);
 
   // 엔드포인트 (필요시 상단만 바꿔서 매핑)
-  const ENDPOINT_DETAIL = `${LEGACY_BASE}/${storeUrl}/seller/class/${classId}`;
-  const ENDPOINT_UPDATE = `${LEGACY_BASE}/${storeUrl}/seller/class/${classId}/update`;
+  const ENDPOINT_DETAIL = `/seller/${storeUrl}/classes/${classId}`;
+  const ENDPOINT_UPDATE = `/seller/${storeUrl}/classes/${classId}`;
 
-  // 상세 불러오기
   useEffect(() => {
     (async () => {
       if (!classId) return;
       setLoading(true);
       try {
-        const res = await axios.get(ENDPOINT_DETAIL, { withCredentials: true });
-        const d = res.data?.data ?? res.data;
+        const response = await get<any>(ENDPOINT_DETAIL, { withCredentials: true });
+        const classDetail = response.data?.core ?? {};
+        // console.log('클래스 데이터', classDetail);
 
-        // 서버 필드 매핑 (필요시 맞춰 수정)
-        const title = d?.title ?? d?.classTitle ?? '';
-        const desc = d?.detail ?? d?.classDetail ?? '';
-        const capacity = typeof d?.participant === 'number' ? d.participant : '';
-        const price = typeof d?.price === 'number' ? d.price : '';
-        const postcode = d?.postNum ?? d?.postcode ?? '';
-        const address = d?.addressRoad ?? d?.address ?? '';
-        const addressDetail = d?.addressDetail ?? '';
-        const reservationNotes = d?.guideline ?? DEFAULT_RESERVATION_NOTES;
+        // 서버 필드 매핑
+        const title = classDetail?.title ?? '';
+        const desc = classDetail?.detail ?? '';
+        const capacity =
+          typeof classDetail?.participant === 'number' ? classDetail.participant : '';
+        const price = typeof classDetail?.price === 'number' ? classDetail.price : '';
+        const postcode = classDetail?.postNum ?? '';
+        const address = classDetail?.addressRoad ?? '';
+        const addressDetail = classDetail?.addressDetail ?? '';
+        const reservationNotes = classDetail?.guideline ?? DEFAULT_RESERVATION_NOTES;
 
-        // 이미지: 서버가 내려주는 썸네일
-        const thumbId = d?.thumbnailId ?? d?.thumbnail?.id;
-        const thumbUrl = d?.thumbnailUrl ?? d?.thumbnail?.url;
+        // 이미지: thumbnails 배열에서 첫 번째
+        const thumb = response.data?.thumbnails?.[0];
+        const thumbUrl = thumb?.url ?? '';
 
-        // 스케줄: 하나만 사용(필요시 다중으로 확장 가능)
-        const s = d?.schedule ?? d?.schedules?.[0] ?? {};
-        const startDate = (s?.startDate || '').slice(0, 10);
-        const endDate = (s?.endDate || '').slice(0, 10);
-
+        // 스케줄
+        const startDate = (classDetail?.startDate || '').slice(0, 10);
+        const endDate = (classDetail?.endDate || '').slice(0, 10);
         const toHHMM = (v?: string) => (v && v.length >= 5 ? v.slice(0, 5) : '');
-        const startTime = toHHMM(s?.startTime) || '10:00';
-        const endTime = toHHMM(s?.endTime) || '18:00';
-        const intervalMin = Number(s?.timeInterval ?? 60);
+        const startTime = toHHMM(classDetail?.startTime) || '10:00';
+        const endTime = toHHMM(classDetail?.endTime) || '18:00';
+        const intervalMin = Number(classDetail?.timeInterval ?? 60);
 
-        setForm({
-          id: crypto.randomUUID(),
-          title,
-          desc,
-          aiDesc: '',
-          capacity,
-          price,
-          postcode,
-          address,
-          addressDetail,
-          image: thumbUrl
-            ? {
+        if (response.status === 200) {
+          setForm({
+            id: crypto.randomUUID(),
+            title,
+            desc,
+            aiDesc: '',
+            capacity,
+            price,
+            postcode,
+            address,
+            addressDetail,
+            image: thumbUrl
+              ? {
+                  id: crypto.randomUUID(),
+                  url: thumbUrl,
+                  serverImageId: undefined, // 서버 이미지 ID는 필요 시 추가
+                }
+              : null,
+            schedules: [
+              {
                 id: crypto.randomUUID(),
-                url: thumbUrl,
-                serverImageId: Number(thumbId) || undefined,
-              }
-            : null,
-          schedules: [
-            {
-              id: crypto.randomUUID(),
-              startDate,
-              endDate,
-              startTime,
-              endTime,
-              intervalMin,
-            },
-          ],
-          holidays: Array.isArray(d?.holidays) ? d.holidays : [],
-          reservationNotes,
-        });
+                startDate,
+                endDate,
+                startTime,
+                endTime,
+                intervalMin,
+              },
+            ],
+            holidays: [], // holidays 정보가 core 안에 없으면 빈 배열
+            reservationNotes,
+          });
 
-        // 에디터 초기값
-        setTimeout(() => {
-          editorRef.current?.setMarkdown?.(desc || '');
-        }, 0);
-      } catch (e: any) {
-        console.error(e);
-        alert(e?.response?.data?.message || e?.message || '클래스 정보를 불러오지 못했습니다.');
+          // 에디터 초기값
+          setTimeout(() => {
+            editorRef.current?.setMarkdown?.(desc || '');
+          }, 0);
+        } else {
+          console.error('클래스 정보 조회 실패: ', response.message);
+        }
+      } catch (error: any) {
+        console.error('API 요청 실패: ', error);
+        alert(
+          error?.response?.data?.message || error?.message || '클래스 정보를 불러오지 못했습니다.'
+        );
       } finally {
         setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId, storeUrl]);
 
   const updateForm = <K extends keyof ClassForm>(key: K, value: ClassForm[K]) => {
@@ -293,17 +295,16 @@ const ClassEdit: FC = () => {
     }
 
     try {
-      const res = await axios.post(ENDPOINT_UPDATE, fd, { withCredentials: true });
-      if (res.status >= 200 && res.status < 300) {
-        alert('클래스 수정이 완료되었습니다.');
-        navigate(`/seller/${storeUrl}/class/list`);
-        return;
-      }
-      throw new Error(res.statusText || '클래스 수정 실패');
-    } catch (err: any) {
-      console.error(err);
+      await patch(ENDPOINT_UPDATE, fd);
+      alert('클래스 수정이 완료되었습니다.');
+      navigate(`/seller/${storeUrl}/class/list`);
+    } catch (error: any) {
+      console.error('API 요청 실패: ', error);
       const msg =
-        err?.response?.data?.message || err?.response?.data?.error || err?.message || '수정 실패';
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        '수정 실패';
       alert(msg);
     }
   };

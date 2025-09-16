@@ -419,10 +419,10 @@ const ClassList: FC = () => {
           {!isLoading && !loadError && (
             <div className="hidden lg:block rounded-2xl border border-gray-200 bg-white overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm table-fixed">
                   <thead className="bg-gray-50">
                     <tr className="text-left text-gray-600">
-                      <th className="px-4 py-3 w-12">
+                      <th className="py-3 px-3 w-1/12 text-center">
                         <input
                           type="checkbox"
                           aria-label="전체 선택"
@@ -431,15 +431,16 @@ const ClassList: FC = () => {
                           className="rounded"
                         />
                       </th>
-                      <th className="px-4 py-3 w-20">이미지</th>
-                      <th className="px-4 py-3 min-w-[160px]">클래스명</th>
-                      <th className="px-4 py-3 min-w-[200px]">장소</th>
-                      <th className="px-4 py-3 w-20">인원</th>
-                      <th className="px-4 py-3 w-24">가격</th>
-                      <th className="px-3 py-3 w-32">운영기간</th>
-                      <th className="px-3 py-3 w-16 hidden xl:table-cell">간격</th>
-                      <th className="px-3 py-3 w-24">최근 활동</th>
-                      <th className="px-3 py-3 w-28 text-right">액션</th>
+                      <th className="py-3 px-3 w-1/12 text-center">이미지</th>
+                      <th className="py-3 px-3 w-3/12 break-words text-center">클래스명</th>{' '}
+                      {/* 좁힘 */}
+                      <th className="py-3 px-3 w-1/12 text-center">장소</th>
+                      <th className="py-3 px-3 w-1/12 text-center">인원</th>
+                      <th className="py-3 px-3 w-1/12 text-center">가격</th>
+                      <th className="px-3 py-3 w-1/12 text-center">운영기간</th>
+                      <th className="px-3 py-3 w-1/12 text-center hidden xl:table-cell">간격</th>
+                      <th className="px-3 py-3 w-1/12 text-center">최근 활동</th>
+                      <th className="py-3 px-3 w-1/12 text-center">액션</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -451,7 +452,7 @@ const ClassList: FC = () => {
                           r._disabled ? 'opacity-50' : '',
                         ].join(' ')}
                       >
-                        <td className="px-4 py-4 align-top w-12">
+                        <td className="px-4 py-4 align-top w-12 text-center">
                           <input
                             type="checkbox"
                             aria-label={`${r.title} 선택`}
@@ -461,7 +462,7 @@ const ClassList: FC = () => {
                           />
                         </td>
 
-                        <td className="px-4 py-4 align-top w-20">
+                        <td className="px-4 py-4 align-top w-20 text-center">
                           <button
                             type="button"
                             onClick={() => goDetail(r)}
@@ -481,7 +482,7 @@ const ClassList: FC = () => {
                           </button>
                         </td>
 
-                        <td className="px-4 py-4 align-top min-w-[120px]">
+                        <td className="px-4 py-4 align-top min-w-[120px] break-words text-left">
                           <button
                             type="button"
                             onClick={() => goDetail(r)}
@@ -491,27 +492,27 @@ const ClassList: FC = () => {
                               r._disabled ? 'cursor-not-allowed opacity-60' : 'hover:underline',
                             ].join(' ')}
                           >
-                            <div className="font-medium text-gray-900 truncate">{r.title}</div>
+                            <div className="font-medium text-gray-900 break-words">{r.title}</div>
                           </button>
                         </td>
 
-                        <td className="px-3 py-4 align-top min-w-[160px]">
+                        <td className="px-3 py-4 align-top min-w-[160px] text-center">
                           <div className="max-w-[160px] truncate text-xs" title={r.place}>
                             {r.place}
                           </div>
                         </td>
 
-                        <td className="px-3 py-4 align-top text-left w-24">
+                        <td className="px-3 py-4 align-top text-left w-24 text-center">
                           <span className="font-medium">{r.capacity}명</span>
                         </td>
 
-                        <td className="px-3 py-4 align-top w-24">
+                        <td className="px-3 py-4 align-top w-24 text-center">
                           <div className="font-bold text-[#2D4739] text-xs">
                             ₩{KRW.format(r.price)}
                           </div>
                         </td>
 
-                        <td className="px-3 py-4 align-top w-32">
+                        <td className="px-3 py-4 align-top w-32 text-center">
                           <div className="text-xs space-y-0.5">
                             <div>{r.period.start}</div>
                             <div>{r.period.end}</div>
@@ -520,38 +521,39 @@ const ClassList: FC = () => {
 
                         <td className="px-3 py-4 align-top text-center hidden xl:table-cell w-16">
                           <span className="font-medium text-xs">{r.intervalMin}</span>
-                          <div className="text-xs text-gray-500">분</div>
+                          <span className="text-xs text-gray-500 ml-1">분</span>
                         </td>
 
-                        <td className="px-3 py-4 align-top w-24">
+                        <td className="px-3 py-4 align-top w-24 text-center">
                           <div className="text-xs text-gray-600 space-y-0.5">
                             <div>수정: {r.updatedAt}</div>
                             {r.deletedAt && <div className="text-red-500">삭제: {r.deletedAt}</div>}
                           </div>
                         </td>
-
-                        <td className="px-3 py-4 align-top text-right w-28">
-                          <button
-                            type="button"
-                            onClick={toggleDeletion}
-                            disabled={checkedCount === 0 || isToggling}
-                            className={[
-                              'mr-2 inline-flex items-center px-2 py-1 rounded-md border text-xs font-medium',
-                              checkedCount === 0 || isToggling
-                                ? 'opacity-50 cursor-not-allowed bg-gray-100'
-                                : 'bg-white hover:bg-gray-50 border-red-200 text-red-600 hover:text-red-700',
-                            ].join(' ')}
-                          >
-                            {isToggling ? '처리 중...' : '선택 삭제/복구'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => goEdit(r.id)}
-                            disabled={r._disabled}
-                            className="inline-flex items-center px-2 py-1 rounded-md border text-xs font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            수정
-                          </button>
+                        <td className="px-3 py-4 align-top w-28 text-center">
+                          <div className="flex flex-col gap-2 items-center">
+                            <button
+                              type="button"
+                              onClick={() => goEdit(r.id)}
+                              disabled={r._disabled}
+                              className="inline-flex items-center px-2 py-1 rounded-md border text-xs font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              수정
+                            </button>
+                            <button
+                              type="button"
+                              onClick={toggleDeletion}
+                              disabled={checkedCount === 0 || isToggling}
+                              className={[
+                                'inline-flex items-center px-2 py-1 rounded-md border text-xs font-medium',
+                                checkedCount === 0 || isToggling
+                                  ? 'opacity-50 cursor-not-allowed bg-gray-100'
+                                  : 'bg-white hover:bg-gray-50 border-red-200 text-red-600 hover:text-red-700',
+                              ].join(' ')}
+                            >
+                              {isToggling ? '처리 중...' : '선택 삭제/복구'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

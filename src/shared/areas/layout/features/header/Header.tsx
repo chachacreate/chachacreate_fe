@@ -105,7 +105,6 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
 
         // API 응답이 { data: {...}, message: "...", status: 200 } 형태로 래핑되어 있음
         const response = await legacyGet<{ data: StoreInfo; message: string; status: number }>(url);
-        console.log('API 응답 받음:', response);
 
         if (controller.signal.aborted) return;
 
@@ -177,8 +176,6 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
 
   // 메시지 버튼 설정
   const messageConfig = useMemo(() => {
-    console.log('messageConfig 계산:', { me, isMainPage, storeInfo, isStoreOwner });
-
     // 로그인하지 않은 경우
     if (!me) {
       return {

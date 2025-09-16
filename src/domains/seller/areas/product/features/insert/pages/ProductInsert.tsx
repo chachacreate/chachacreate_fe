@@ -11,6 +11,7 @@ import EditorAPI, {
 } from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
 import axios from 'axios';
 import { predictImage } from '../services/aiService/aiService';
+import { legacyGet, legacyPost } from '@src/libs/request';
 
 type Params = { storeUrl: string };
 type EnumItem = { id: number; name: string };
@@ -100,13 +101,10 @@ const ProductInsert: FC = () => {
   // 폼별 "에디터에 추가된 로컬 설명 이미지" 버킷: blobURL -> File
   const pendingDescImagesRef = useRef<Record<string, Map<string, File>>>({});
 
-  // Nginx로 /legacy 프록시(동일 Origin) → CORS 회피
-  const LEGACY_BASE = `${window.location.origin}/legacy`;
-
   useEffect(() => {
     (async () => {
-      const res = await axios.get(`${LEGACY_BASE}/category`, { withCredentials: true });
-      const { typeCategories = [], uCategories = [], dCategoriesByU = {} } = res.data || {};
+      const response = await legacyGet<any>(`/category`, { withCredentials: true });
+      const { typeCategories = [], uCategories = [], dCategoriesByU = {} } = response || {};
       setTypeCats(typeCategories);
       setUCats(uCategories);
       setDCatsByU(dCategoriesByU);
@@ -364,20 +362,10 @@ const ProductInsert: FC = () => {
     try {
       const fd = buildFormData();
 
-      const res = await axios.post(`${LEGACY_BASE}/${storeUrl}/seller/productinsert`, fd, {
-        withCredentials: true,
-      });
+      await legacyPost<any>(`/${storeUrl}/seller/productinsert`, fd);
 
-      // axios는 기본적으로 2xx에서만 여기로 들어옵니다.
-      // 별도 validateStatus를 쓰지 않는 한 추가 체크 불필요
-      if (res.status >= 200 && res.status < 300) {
-        alert('상품 등록 성공!');
-        navigate(`/seller/${storeUrl}/product/list`);
-        return;
-      }
-
-      // 혹시 모를 예외 상황 대비
-      throw new Error(res.statusText || '상품 등록 실패');
+      alert('상품 등록 성공!');
+      navigate(`/seller/${storeUrl}/product/list`);
     } catch (err: any) {
       console.error(err);
       const msg =

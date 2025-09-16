@@ -1,5 +1,5 @@
 // src/domains/seller/areas/product/features/edit/pages/ProductEdit.tsx
-import type { FC, ChangeEvent, MouseEvent } from 'react';
+import type { FC, MouseEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -10,8 +10,9 @@ import api from '@src/libs/apiService'; // Boot용 + FastAPI
 import EditorAPI, {
   type EditorHandle,
 } from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
-import axios from 'axios';
+
 import { predictImage } from '../../insert/services/aiService/aiService';
+import { legacyGet, legacyPost } from '@src/libs/request';
 
 // ---------------- Types ----------------
 type Params = { storeUrl: string; productId: string };
@@ -112,44 +113,43 @@ const ProductEdit: FC = () => {
   // 에디터 로컬 이미지 버킷: form.id 기준
   const pendingDescImagesRef = useRef<Record<string, Map<string, File>>>({});
 
-  // Nginx로 /legacy 프록시(동일 Origin) → CORS 회피
-  const LEGACY_BASE = `${window.location.origin}/legacy`;
-
-  // --------- 엔드포인트(필요시 프로젝트에 맞게 교체) ---------
-  // 카테고리 조회
-  const ENDPOINT_CATEGORIES = `${LEGACY_BASE}/category`;
-  // 상품 상세(수정 진입 시 현재 데이터)
-  // 예시: GET /:storeUrl/seller/product/{productId}
-  const ENDPOINT_DETAIL = `${LEGACY_BASE}/${storeUrl}/seller/product/${productId}`;
-  // 상품 수정 저장
-  // 예시: POST or PUT /:storeUrl/seller/product/${productId}/update
-  const ENDPOINT_UPDATE = `${LEGACY_BASE}/${storeUrl}/seller/product/${productId}/update`;
-
   // ---------- 초기 로딩: 카테고리 + 상품 상세 ----------
   useEffect(() => {
     (async () => {
       try {
         // 카테고리
-        const catRes = await axios.get(ENDPOINT_CATEGORIES, { withCredentials: true });
-        const { typeCategories = [], uCategories = [], dCategoriesByU = {} } = catRes.data || {};
+        const catRes = await legacyGet<any>('/category', { withCredentials: true });
+        console.log('카테고리 응답:', catRes);
+        const { typeCategories = [], uCategories = [], dCategoriesByU = {} } = catRes || {};
+        console.log('카테고리:', typeCategories, uCategories, dCategoriesByU);
+
         setTypeCats(typeCategories);
         setUCats(uCategories);
         setDCatsByU(dCategoriesByU);
-      } catch {
-        alert('카테고리 불러오기 실패');
-      }
 
-      try {
+        // 하단 inferredUId에서 dCategoriesByU를 사용하기 위해 카테고리와 상품을 하나의 시도에서 모두 처리
+
         // 상품 상세
-        const res = await axios.get(ENDPOINT_DETAIL, { withCredentials: true });
-        // 서버 응답 스키마에 맞게 매핑 필요
-        // 아래는 예시 매핑(필드명 맞춰 수정)
+        const res = await legacyGet<any>(`/${storeUrl}/seller/products/${productId}`, {
+          withCredentials: true,
+        });
+
         const p = res.data?.product ?? res.data?.data ?? res.data;
-        const images = (p?.images ?? []).slice(0, 3).map((img: any) => ({
-          id: crypto.randomUUID(),
-          url: img.url, // 서버가 내려준 정적 URL
-          serverImageId: img.id, // 서버 이미지 ID
-        })) as ProductImage[];
+
+        // 기존 이미지 3장 배열로 변환
+        const images: ProductImage[] = [p.pimgUrl1, p.pimgUrl2, p.pimgUrl3]
+          .filter(Boolean)
+          .map((url: string) => ({
+            id: crypto.randomUUID(),
+            url,
+            serverImageId: 0, // 서버 이미지 ID 없으면 0, 실제로 필요하면 API 수정
+          }));
+
+        // dCategoryId를 통해 uCategory 추론
+        const inferredUId =
+          Object.entries(dCategoriesByU).find(([uId, dCats]) =>
+            (dCats as EnumItem[]).some((d: any) => String(d.id) === String(p?.dcategoryId))
+          )?.[0] ?? '';
 
         const next: ProductForm = {
           id: crypto.randomUUID(),
@@ -162,51 +162,72 @@ const ProductEdit: FC = () => {
           images,
           stock: typeof p?.stock === 'number' ? p.stock : '',
           categoryLarge: String(p?.typeCategoryId ?? ''),
-          categoryMiddle: String(p?.uCategoryId ?? ''), // 백엔드가 내려주면 세팅
+          categoryMiddle: inferredUId,
           categorySmall: String(p?.dcategoryId ?? ''),
         };
 
+        // console.log('폼 초기값: ', next);
+
         setForm(next);
-      } catch (e: any) {
-        console.error(e);
-        alert(e?.response?.data?.message || '상품 정보를 불러오지 못했습니다.');
+      } catch (error: any) {
+        console.error('API 호출 실패: ', error);
+        alert(error?.response?.data?.message || '상품 정보를 불러오지 못했습니다.');
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId, storeUrl]);
+
+  useEffect(() => {
+    // console.log('typeCats 상태 업데이트됨:', typeCats);
+  }, [typeCats]);
+
+  // ---------- 에디터 초기값 세팅 ---------- // 기존 설명 폼 반영
+  useEffect(() => {
+    const editor = editorRefs.current[form.id];
+    if (editor && form.desc) {
+      editor.setMarkdown(form.desc); // 기존 HTML/마크다운을 에디터에 넣음
+    }
+  }, [form.id, form.desc]);
 
   // ---------- 폼 업데이트 ----------
   const updateForm = <K extends keyof ProductForm>(key: K, value: ProductForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  // ---------- 이미지 선택/삭제 ----------
-  const onPickImages = (e: ChangeEvent<HTMLInputElement>) => {
+  const onPickImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || !files.length) return;
-    const chosen = Array.from(files).slice(0, 3);
+    if (!files) return;
 
-    setForm((prev) => {
-      const remain = Math.max(0, 3 - (prev.images?.length ?? 0));
-      const toAdd = chosen.slice(0, remain).map((file) => ({
-        id: crypto.randomUUID(),
-        file,
-        url: URL.createObjectURL(file),
-      }));
-      return { ...prev, images: [...(prev.images ?? []), ...toAdd] };
-    });
+    const remainSlots = 3 - form.images.length; // form.images 기준
+    const newFiles = Array.from(files).slice(0, remainSlots);
+
+    const newImages: ProductImage[] = newFiles.map((file) => ({
+      id: crypto.randomUUID(),
+      url: URL.createObjectURL(file),
+      file,
+    }));
+
+    setForm((prev) => ({
+      ...prev,
+      images: [...prev.images, ...newImages],
+    }));
 
     e.target.value = '';
   };
 
-  const removeImage = (imageId: string) => {
-    setForm((prev) => {
-      const target = prev.images.find((i) => i.id === imageId);
-      if (target?.serverImageId) {
-        setDeletedServerImageIds((ids) => [...ids, target.serverImageId!]);
-      }
-      return { ...prev, images: prev.images.filter((i) => i.id !== imageId) };
-    });
+  const removeImage = (index: number) => {
+    const target = form.images[index];
+
+    // 기존 서버 이미지였다면 삭제 리스트에 추가
+    if (target.serverImageId) {
+      setDeletedServerImageIds((prev) => [...prev, target.serverImageId!]);
+    }
+
+    // form.images에서 제거
+    setForm((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
   };
 
   // ---------- AI 가격 ----------
@@ -316,38 +337,38 @@ const ProductEdit: FC = () => {
   function buildFormDataForUpdate() {
     const fd = new FormData();
 
+    // ----- 1. 상품 상세 설명 (에디터 본문) -----
     const rawHtml = editorRefs.current[form.id]?.getHTML?.() || form.desc || '';
     const { htmlWithCids, descFiles } = prepareDescForSubmit(rawHtml);
 
-    // 설명 본문 이미지(로컬 추가분)
-    descFiles.forEach(({ idx, file }) => {
-      fd.append(`product0_desc${idx}`, file);
+    // 설명 본문 이미지(로컬 추가분만 업로드)
+    descFiles.forEach(({ file }) => {
+      fd.append('images', file);
     });
 
-    // 썸네일(신규 업로드분만 파일로 첨부)
-    form.images.forEach((img, iIdx) => {
-      if (img.file) fd.append(`product0_image${iIdx + 1}`, img.file);
+    // 상품 썸네일/이미지
+    form.images.forEach((img) => {
+      if (img.file) {
+        fd.append('images', img.file); // 무조건 key = "images"
+      }
     });
 
-    // DTO 본문 (수정용)
-    const dtoPayload = [
-      {
-        product: {
-          productId: Number(productId), // 서버가 필요하면 사용
-          productName: form.name.trim(),
-          price: toInt(typeof form.price === 'number' ? form.price : form.aiPrice),
-          productDetail: htmlWithCids, // cid 포함
-          typeCategoryId: toInt(form.categoryLarge),
-          dcategoryId: toInt(form.categorySmall),
-          stock: toInt(form.stock),
-        },
-        descriptionImageUrls: [], // 서버에서 cid → URL 치환 후 재추출
-        // 이미지는 위 파일 파트로 전송
-        deletedServerImageIds, // 서버에 기존 이미지 삭제 지시
-      },
-    ];
+    // ----- DTO 본문 데이터 -----
+    const dtoPayload = {
+      productId: Number(productId),
+      productName: form.name.trim(),
+      price: toInt(typeof form.price === 'number' ? form.price : form.aiPrice),
+      productDetail: htmlWithCids,
+      typeCategoryId: toInt(form.categoryLarge),
+      dcategoryId: toInt(form.categorySmall),
+      stock: toInt(form.stock),
+      descriptionImageUrls: [],
+      deletedServerImageIds, // 프론트에서 삭제 시 모은 serverImageId 배열
+    };
+    console.log('전송용 DTO:', dtoPayload);
 
-    fd.append('dtoList', new Blob([JSON.stringify(dtoPayload)], { type: 'application/json' }));
+    fd.append('dto', new Blob([JSON.stringify(dtoPayload)], { type: 'application/json' }));
+        
     return fd;
   }
 
@@ -371,20 +392,16 @@ const ProductEdit: FC = () => {
     try {
       const fd = buildFormDataForUpdate();
 
-      // 백엔드에 맞게 POST/PUT 선택
-      const res = await axios.post(ENDPOINT_UPDATE, fd, { withCredentials: true });
-      if (res.status >= 200 && res.status < 300) {
-        alert('상품 수정이 완료되었습니다.');
-        navigate(`/seller/${storeUrl}/product/list`);
-        return;
-      }
-      throw new Error(res.statusText || '상품 수정 실패');
-    } catch (err: any) {
-      console.error(err);
+      await legacyPost<any>(`/${storeUrl}/seller/productupdate/${productId}`, fd);
+
+      alert('상품 수정이 완료되었습니다.');
+      navigate(`/seller/${storeUrl}/product/list`);
+    } catch (error: any) {
+      console.error('API 호출 실패:', error);
       const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
         '상품 수정 실패';
       alert(msg);
     }
@@ -428,26 +445,28 @@ const ProductEdit: FC = () => {
               <div className="grid gap-2">
                 <span className="text-sm font-medium">상품 사진 (최대 3장)</span>
                 <div className="flex flex-wrap items-center gap-2">
-                  <label className="px-3 py-2 rounded-md border text-sm cursor-pointer hover:bg-gray-50">
-                    + 사진 선택
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={onPickImages}
-                      className="hidden"
-                    />
-                  </label>
+                  {form.images.length < 3 && (
+                    <label className="px-3 py-2 rounded-md border text-sm cursor-pointer hover:bg-gray-50">
+                      + 사진 선택
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={onPickImages}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
                   <span className="text-xs text-gray-500">현재 {form.images.length}/3</span>
                 </div>
                 {form.images.length > 0 && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {form.images.map((img) => (
+                    {form.images.map((img, index) => (
                       <div key={img.id} className="relative rounded-lg overflow-hidden border">
                         <img src={img.url} alt="preview" className="w-full h-40 object-cover" />
                         <button
                           type="button"
-                          onClick={() => removeImage(img.id)}
+                          onClick={() => removeImage(index)}
                           className="absolute top-2 right-2 rounded-md bg-black/60 text-white text-xs px-2 py-1"
                         >
                           삭제
@@ -576,6 +595,7 @@ const ProductEdit: FC = () => {
               <div className="grid gap-2">
                 <span className="text-sm font-medium">상품 카테고리</span>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {/* 대분류 */}
                   <select
                     className="border rounded-md px-3 py-2"
                     value={form.categoryLarge}
@@ -589,6 +609,7 @@ const ProductEdit: FC = () => {
                     ))}
                   </select>
 
+                  {/* 중분류 */}
                   <select
                     className="border rounded-md px-3 py-2"
                     value={form.categoryMiddle}
@@ -605,6 +626,7 @@ const ProductEdit: FC = () => {
                     ))}
                   </select>
 
+                  {/* 소분류 */}
                   <select
                     className="border rounded-md px-3 py-2"
                     value={form.categorySmall}
@@ -614,7 +636,7 @@ const ProductEdit: FC = () => {
                     <option value="">
                       {form.categoryMiddle ? '소분류 선택' : '중분류 먼저 선택'}
                     </option>
-                    {(dCatsByU[form.categoryMiddle] ?? []).map((d) => (
+                    {(dCatsByU[String(form.categoryMiddle)] ?? []).map((d) => (
                       <option key={`d-${d.id}`} value={String(d.id)}>
                         {d.name}
                       </option>

@@ -68,12 +68,6 @@ const MainSellSellguide: React.FC = () => {
   const userIsUser = isUser();
   const userIsPersonalSeller = userRole === 'PERSONAL_SELLER'; // 개인판매자 직접 체크
 
-  // 디버깅용 (개발 중에만 사용)
-  console.log('Current user role:', userRole);
-  console.log('isSeller():', userIsSeller);
-  console.log('isUser():', userIsUser);
-  console.log('isPersonalSeller:', userIsPersonalSeller);
-
   /** --- Reveal 애니메이션 플래그 --- */
   const [mounted, setMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);

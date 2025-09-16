@@ -166,7 +166,7 @@ const MainProductsDetail = () => {
                 }
               : prev
           );
-          console.log(response);
+          // console.log(response);
         } else {
           console.error('리뷰 조회 실패:', response.message);
           setReviews([]);

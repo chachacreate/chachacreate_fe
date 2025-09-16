@@ -507,7 +507,7 @@ const MainMypageClassesPage: React.FC = () => {
       socketRef.current = socket;
 
       socket.onopen = () => {
-        console.log('WebSocket 연결됨: ' + chatroomId);
+        // console.log('WebSocket 연결됨: ' + chatroomId);
         setMessages([]);
         loadChatHistory(chatroomId);
       };
@@ -527,7 +527,7 @@ const MainMypageClassesPage: React.FC = () => {
       };
 
       socket.onclose = (event) => {
-        console.log('WebSocket 닫힘:', event.code, event.reason);
+        // console.log('WebSocket 닫힘:', event.code, event.reason);
         if (event.code !== 1000) console.warn('WebSocket 비정상 종료');
       };
 

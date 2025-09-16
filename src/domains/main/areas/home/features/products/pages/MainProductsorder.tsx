@@ -135,7 +135,7 @@ const MainProductsorder: React.FC = () => {
         setAddressRoad(addr.addressRoad ?? '');
         setAddressDetail(addr.addressDetail ?? '');
         setAddressExtra(addr.addressExtra ?? '');
-        console.log('DEBUG fetched addr:', addr);
+        // console.log('DEBUG fetched addr:', addr);
       } else {
         setDefaultAddrId(null);
         alert('기본 배송지를 불러오지 못했습니다.');
@@ -269,7 +269,7 @@ const MainProductsorder: React.FC = () => {
         newAddr: !useDefaultAddr, // 기본주소 미사용이면 true
       };
 
-      console.log('DEBUG sending DTO:', orderRequestDTO);
+      // console.log('DEBUG sending DTO:', orderRequestDTO);
 
       // 주문 생성 (레거시)
       const res = await legacyPost<any>('/main/order', orderRequestDTO);

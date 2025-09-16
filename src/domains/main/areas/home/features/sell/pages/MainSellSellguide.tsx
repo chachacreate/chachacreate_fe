@@ -1,5 +1,5 @@
 // src/domains/main/areas/home/features/sell/pages/MainSellSellguide.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   CheckCircle2,
@@ -11,12 +11,12 @@ import {
   Truck,
   Sparkles,
   UserPlus,
-} from "lucide-react";
+} from 'lucide-react';
 
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import SellSubnavbar from "@src/shared/areas/navigation/features/subnavbar/sell/SellSubnavbar";
-import { isSeller, isUser, getCurrentUserRole } from "@src/shared/util/roleAuth";
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import SellSubnavbar from '@src/shared/areas/navigation/features/subnavbar/sell/SellSubnavbar';
+import { isSeller, isUser, getCurrentUserRole } from '@src/shared/util/roleAuth';
 
 type Step = {
   title: string;
@@ -27,34 +27,34 @@ type Step = {
 
 const STEPS: Step[] = [
   {
-    title: "STEP 1 · 개인 판매 메뉴에서 개설 시작",
+    title: 'STEP 1 · 개인 판매 메뉴에서 개설 시작',
     body: "회원가입 및 로그인 후, 개인 판매 메뉴에서 '스토어 개설'을 클릭하세요.",
-    img: "https://picsum.photos/seed/step1/1200/700",
-    caption: "대시보드 > 개인 판매 > 스토어 개설",
+    img: 'https://picsum.photos/seed/step1/1200/700',
+    caption: '대시보드 > 개인 판매 > 스토어 개설',
   },
   {
-    title: "STEP 2 · 스토어 이름과 소개 등록",
-    body: "브랜드 스토리/운영 철학을 간단히 적고, 소개 이미지를 준비해 두면 좋아요.",
-    img: "https://picsum.photos/seed/step2/1200/700",
-    caption: "스토어 기본 정보 입력",
+    title: 'STEP 2 · 스토어 이름과 소개 등록',
+    body: '브랜드 스토리/운영 철학을 간단히 적고, 소개 이미지를 준비해 두면 좋아요.',
+    img: 'https://picsum.photos/seed/step2/1200/700',
+    caption: '스토어 기본 정보 입력',
   },
   {
-    title: "STEP 3 · 상품 등록 및 상세 정보 기입",
-    body: "가격·옵션·배송 안내를 빠짐없이 작성해 주세요. 한 번 등록하면 1일 이내 노출 가능(검수 없음).",
-    img: "https://picsum.photos/seed/step3/1200/700",
-    caption: "상품 등록/옵션/배송 안내",
+    title: 'STEP 3 · 상품 등록 및 상세 정보 기입',
+    body: '가격·옵션·배송 안내를 빠짐없이 작성해 주세요. 한 번 등록하면 1일 이내 노출 가능(검수 없음).',
+    img: 'https://picsum.photos/seed/step3/1200/700',
+    caption: '상품 등록/옵션/배송 안내',
   },
   {
-    title: "STEP 4 · 결제/정산 세팅",
-    body: "결제 수단 연결과 정산 계정을 설정하세요. 완료 즉시 판매 시작!",
-    img: "https://picsum.photos/seed/step4/1200/700",
-    caption: "결제/정산 연동",
+    title: 'STEP 4 · 결제/정산 세팅',
+    body: '결제 수단 연결과 정산 계정을 설정하세요. 완료 즉시 판매 시작!',
+    img: 'https://picsum.photos/seed/step4/1200/700',
+    caption: '결제/정산 연동',
   },
   {
-    title: "STEP 5 · 자동 정산 및 배송 관리",
-    body: "주문이 들어오면 정산/배송 처리는 자동으로 관리됩니다. 대시보드에서 현황을 확인하세요.",
-    img: "https://picsum.photos/seed/step5/1200/700",
-    caption: "정산/배송 자동화",
+    title: 'STEP 5 · 자동 정산 및 배송 관리',
+    body: '주문이 들어오면 정산/배송 처리는 자동으로 관리됩니다. 대시보드에서 현황을 확인하세요.',
+    img: 'https://picsum.photos/seed/step5/1200/700',
+    caption: '정산/배송 자동화',
   },
 ];
 
@@ -120,10 +120,10 @@ const MainSellSellguide: React.FC = () => {
       setIndex((i) => (i + 1) % len);
     } else {
       if (trackRef.current) {
-        trackRef.current.style.transition = "transform 300ms ease";
+        trackRef.current.style.transition = 'transform 300ms ease';
         trackRef.current.style.transform = `translateX(${-index * 100}%)`;
         setTimeout(() => {
-          if (trackRef.current) trackRef.current.style.transition = "";
+          if (trackRef.current) trackRef.current.style.transition = '';
         }, 310);
       }
     }
@@ -135,7 +135,7 @@ const MainSellSellguide: React.FC = () => {
     isDragging.current = true;
     startX.current = e.clientX;
     currentX.current = e.clientX;
-    if (trackRef.current) trackRef.current.style.transition = "";
+    if (trackRef.current) trackRef.current.style.transition = '';
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
 
@@ -150,8 +150,8 @@ const MainSellSellguide: React.FC = () => {
     endDrag();
   };
 
-  const go = (dir: "prev" | "next") => {
-    setIndex((i) => (dir === "prev" ? (i - 1 + len) % len : (i + 1) % len));
+  const go = (dir: 'prev' | 'next') => {
+    setIndex((i) => (dir === 'prev' ? (i - 1 + len) % len : (i + 1) % len));
   };
 
   const ProgressDots = useMemo(
@@ -163,9 +163,9 @@ const MainSellSellguide: React.FC = () => {
             aria-label={`Go to step ${i + 1}`}
             onClick={() => setIndex(i)}
             className={[
-              "h-2.5 rounded-full transition-all duration-300",
-              i === index ? "w-8 bg-[#2d4739]" : "w-4 bg-gray-300 hover:bg-gray-400",
-            ].join(" ")}
+              'h-2.5 rounded-full transition-all duration-300',
+              i === index ? 'w-8 bg-[#2d4739]' : 'w-4 bg-gray-300 hover:bg-gray-400',
+            ].join(' ')}
           />
         ))}
       </div>
@@ -174,17 +174,17 @@ const MainSellSellguide: React.FC = () => {
   );
 
   const goToOpenForm = () => {
-    window.location.href = "/main/store/openform"; // 스토어 개설 페이지 경로
+    window.location.href = '/main/store/openform'; // 스토어 개설 페이지 경로
   };
 
   const goToPersonalSellRegister = () => {
-    window.location.href = "/auth/join/seller"; // 개인판매자 등록 페이지 경로
+    window.location.href = '/auth/join/seller'; // 개인판매자 등록 페이지 경로
   };
 
   // CTA 버튼 렌더링 함수
   const renderCTAButton = () => {
-    // 개인판매자 또는 일반 판매자인 경우 → 스토어 개설 버튼
-    if (userIsSeller || userIsPersonalSeller) {
+    // 개인판매자인 경우 → 스토어 개설 버튼
+    if (userIsPersonalSeller) {
       return (
         <button
           onClick={goToOpenForm}
@@ -218,7 +218,10 @@ transition-all duration-300 shadow-md hover:shadow-lg"
     } else {
       // 로그인하지 않았거나 다른 역할인 경우
       return (
-        <span className="inline-flex items-center gap-2 rounded-lg bg-gray-100/80 backdrop-blur-sm px-3 py-2 text-sm text-gray-700 opacity-0 animate-fade-in-slide" style={{ animationDelay: "0.3s" }}>
+        <span
+          className="inline-flex items-center gap-2 rounded-lg bg-gray-100/80 backdrop-blur-sm px-3 py-2 text-sm text-gray-700 opacity-0 animate-fade-in-slide"
+          style={{ animationDelay: '0.3s' }}
+        >
           <Info className="w-4 h-4 text-gray-500 animate-pulse" />
           로그인 후 이용 가능합니다
         </span>
@@ -228,8 +231,8 @@ transition-all duration-300 shadow-md hover:shadow-lg"
 
   // 하단 CTA 버튼 렌더링 함수
   const renderBottomCTAButton = () => {
-    // 개인판매자 또는 일반 판매자인 경우 → 스토어 개설 버튼
-    if (userIsSeller || userIsPersonalSeller) {
+    // 개인판매자인 경우 → 스토어 개설 버튼
+    if (userIsPersonalSeller) {
       return (
         <button
           onClick={goToOpenForm}
@@ -298,8 +301,14 @@ transition-all duration-300 shadow-md hover:shadow-lg"
         {/* Floating geometric shapes */}
         <div className="absolute top-10 right-10 w-32 h-32 bg-gradient-to-br from-amber-300/15 to-orange-300/15 rounded-full blur-xl animate-pulse" />
         <div className="absolute top-1/3 left-10 w-24 h-24 bg-gradient-to-br from-emerald-300/20 to-green-400/20 rounded-lg rotate-45 blur-lg animate-floaty" />
-        <div className="absolute bottom-20 right-1/4 w-40 h-40 bg-gradient-to-br from-teal-300/12 to-emerald-300/12 rounded-full blur-2xl animate-floaty" style={{ animationDelay: "2s" }} />
-        <div className="absolute bottom-1/3 left-1/3 w-16 h-16 bg-gradient-to-br from-yellow-300/18 to-amber-400/18 rounded-full blur-md animate-pulse" style={{ animationDelay: "1s" }} />
+        <div
+          className="absolute bottom-20 right-1/4 w-40 h-40 bg-gradient-to-br from-teal-300/12 to-emerald-300/12 rounded-full blur-2xl animate-floaty"
+          style={{ animationDelay: '2s' }}
+        />
+        <div
+          className="absolute bottom-1/3 left-1/3 w-16 h-16 bg-gradient-to-br from-yellow-300/18 to-amber-400/18 rounded-full blur-md animate-pulse"
+          style={{ animationDelay: '1s' }}
+        />
 
         <Header />
         <Mainnavbar />
@@ -311,15 +320,21 @@ transition-all duration-300 shadow-md hover:shadow-lg"
             {/* --- HERO --- */}
             <section
               className={[
-                "relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500",
-                "px-6 md:px-10 py-8 md:py-12",
-                mounted ? "reveal" : "opacity-0",
-              ].join(" ")}
+                'relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500',
+                'px-6 md:px-10 py-8 md:py-12',
+                mounted ? 'reveal' : 'opacity-0',
+              ].join(' ')}
             >
               {/* Decorations */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-100/60 to-purple-100/60 rounded-full blur-3xl transform translate-x-32 -translate-y-32 animate-floaty" />
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-emerald-100/60 to-cyan-100/60 rounded-full blur-2xl transform -translate-x-24 translate-y-24 animate-floaty" style={{ animationDelay: "1.5s" }} />
-              <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-gradient-to-r from-pink-100/40 to-rose-100/40 rounded-lg rotate-12 blur-xl transform -translate-x-16 -translate-y-16 animate-floaty" style={{ animationDelay: "3s" }} />
+              <div
+                className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-emerald-100/60 to-cyan-100/60 rounded-full blur-2xl transform -translate-x-24 translate-y-24 animate-floaty"
+                style={{ animationDelay: '1.5s' }}
+              />
+              <div
+                className="absolute top-1/2 left-1/2 w-32 h-32 bg-gradient-to-r from-pink-100/40 to-rose-100/40 rounded-lg rotate-12 blur-xl transform -translate-x-16 -translate-y-16 animate-floaty"
+                style={{ animationDelay: '3s' }}
+              />
 
               <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                 <div>
@@ -329,29 +344,29 @@ transition-all duration-300 shadow-md hover:shadow-lg"
                   </h1>
                   <p
                     className="text-gray-700 mt-2 opacity-0 animate-fade-in-slide"
-                    style={{ animationDelay: "0.2s" }}
+                    style={{ animationDelay: '0.2s' }}
                   >
-                    간단한 절차만 거치면 누구나 자신의 상품을 판매할 수 있습니다!
-                    이미 개인판매자로 등록되어 있다면 스토어 개설을 해보세요 !
+                    간단한 절차만 거치면 누구나 자신의 상품을 판매할 수 있습니다! 이미 개인판매자로
+                    등록되어 있다면 스토어 개설을 해보세요 !
                   </p>
 
                   {/* 혜택 배지 */}
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <span
                       className="inline-flex items-center rounded-full bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 text-xs font-semibold px-3 py-1.5 hover:from-amber-200 hover:to-yellow-200 transform hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md opacity-0 animate-fade-in-scale"
-                      style={{ animationDelay: "0.4s" }}
+                      style={{ animationDelay: '0.4s' }}
                     >
                       수수료 0원 (한시적)
                     </span>
                     <span
                       className="inline-flex items-center rounded-full bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800 text-xs font-semibold px-3 py-1.5 hover:from-emerald-200 hover:to-green-200 transform hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md opacity-0 animate-fade-in-scale"
-                      style={{ animationDelay: "0.5s" }}
+                      style={{ animationDelay: '0.5s' }}
                     >
                       별도 검수 없이 1일 이내 등록
                     </span>
                     <span
                       className="inline-flex items-center rounded-full bg-gradient-to-r from-sky-100 to-blue-100 text-sky-800 text-xs font-semibold px-3 py-1.5 hover:from-sky-200 hover:to-blue-200 transform hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md opacity-0 animate-fade-in-scale"
-                      style={{ animationDelay: "0.6s" }}
+                      style={{ animationDelay: '0.6s' }}
                     >
                       정산·배송 시스템 플랫폼 책임
                     </span>
@@ -359,16 +374,15 @@ transition-all duration-300 shadow-md hover:shadow-lg"
 
                   <p
                     className="text-xs md:text-sm text-gray-500 mt-3 leading-relaxed opacity-0 animate-fade-in-slide"
-                    style={{ animationDelay: "0.7s" }}
+                    style={{ animationDelay: '0.7s' }}
                   >
-                    ※ 판매자는 상품의 내용과 배송 정보를 성실히 기재해야 하며, 허위 정보 등록 시 제재를 받을 수 있습니다.
+                    ※ 판매자는 상품의 내용과 배송 정보를 성실히 기재해야 하며, 허위 정보 등록 시
+                    제재를 받을 수 있습니다.
                   </p>
                 </div>
 
                 {/* CTA */}
-                <div className="md:text-right">
-                  {renderCTAButton()}
-                </div>
+                <div className="md:text-right">{renderCTAButton()}</div>
               </div>
             </section>
 
@@ -446,13 +460,15 @@ transition-all duration-300 shadow-md hover:shadow-lg"
                               {i + 1} / {len}
                             </span>
                           </div>
-                          <h3 className="text-lg md:text-xl font-bold text-gray-900">{step.title}</h3>
+                          <h3 className="text-lg md:text-xl font-bold text-gray-900">
+                            {step.title}
+                          </h3>
                           <p className="mt-2 text-gray-700">{step.body}</p>
 
                           {i === 2 && (
                             <p className="mt-3 text-sm text-emerald-700 inline-flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4" />
-                              한 번 등록하면 1일 이내 노출 가능(검수 없음)
+                              <CheckCircle2 className="w-4 h-4" />한 번 등록하면 1일 이내 노출
+                              가능(검수 없음)
                             </p>
                           )}
 
@@ -464,7 +480,7 @@ transition-all duration-300 shadow-md hover:shadow-lg"
                                 aria-label="Prev"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  go("prev");
+                                  go('prev');
                                 }}
                                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 active:scale-95 transition"
                               >
@@ -474,7 +490,7 @@ transition-all duration-300 shadow-md hover:shadow-lg"
                                 aria-label="Next"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  go("next");
+                                  go('next');
                                 }}
                                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 active:scale-95 transition"
                               >
@@ -494,11 +510,13 @@ transition-all duration-300 shadow-md hover:shadow-lg"
             {(userIsSeller || userIsPersonalSeller || userIsUser) && (
               <div
                 className="mt-10 md:mt-14 text-center opacity-0 animate-fade-in-slide"
-                style={{ animationDelay: "0.6s" }}
+                style={{ animationDelay: '0.6s' }}
               >
                 {renderBottomCTAButton()}
                 <p className="text-sm text-gray-600 mt-3 animate-pulse">
-                  {(userIsSeller || userIsPersonalSeller) ? "⚡ 단 2분이면 완료됩니다" : "⚡ 개인판매자로 새로운 시작을 해보세요"}
+                  {userIsSeller || userIsPersonalSeller
+                    ? '⚡ 단 2분이면 완료됩니다'
+                    : '⚡ 개인판매자로 새로운 시작을 해보세요'}
                 </p>
               </div>
             )}
@@ -537,7 +555,7 @@ const Benefit = ({
   return (
     <div
       className={`group relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white/90 backdrop-blur-sm p-5 md:p-6 shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-2 hover:scale-105 ${
-        cardVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        cardVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
       }`}
     >
       {/* Hover background */}

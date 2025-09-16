@@ -68,32 +68,3 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 };
 
 export default ProtectedRoute;
-
-// 사용 예시
-/*
-// 기본 사용
-<ProtectedRoute>
-  <MyComponent />
-</ProtectedRoute>
-
-// 특정 역할만 허용
-<ProtectedRoute allowedRoles={['ADMIN', 'SELLER']}>
-  <AdminPanel />
-</ProtectedRoute>
-
-// 커스텀 리다이렉트 페이지
-<ProtectedRoute 
-  allowedRoles={['ADMIN']} 
-  redirectTo="/custom-login.jsp"
->
-  <AdminComponent />
-</ProtectedRoute>
-
-// Fallback 컴포넌트 사용 (JSP 리다이렉트 대신)
-<ProtectedRoute 
-  allowedRoles={['ADMIN']} 
-  fallbackComponent={<div>접근 권한이 없습니다.</div>}
->
-  <AdminComponent />
-</ProtectedRoute>
-*/

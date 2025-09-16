@@ -202,8 +202,12 @@ export default function SellerMain() {
           get(`/seller/sales/${storeUrl}/classes`),
           get(`/seller/settlements/products/${storeUrl}/sales`),
         ]);
-        if (classRes.status === 200) setClassSales(classRes.data ?? []);
-        if (productRes.status === 200) setProductSales(productRes.data ?? []);
+        // if (classRes.status === 200) setClassSales(classRes.data ?? []);
+        // if (productRes.status === 200) setProductSales(productRes.data ?? []);
+        if (classRes.status === 200)
+          setClassSales(Array.isArray(classRes.data) ? classRes.data : []);
+        if (productRes.status === 200)
+          setProductSales(Array.isArray(productRes.data) ? productRes.data : []);
       } catch (error) {
         console.error('매출 데이터 조회 실패:', error);
       }
@@ -756,14 +760,14 @@ export default function SellerMain() {
               {/* 최근 리뷰 테이블 */}
               <div className="lg:col-span-3">
                 <div className="overflow-x-auto rounded-xl border">
-                  <table className="w-full min-w-[640px] text-sm">
+                  <table className="w-full text-sm table-fixed">
                     <thead className="bg-gray-50 text-gray-600">
                       <tr>
-                        <th className="px-3 py-3 text-left">작성일</th>
-                        <th className="px-3 py-3 text-left">상품명</th>
-                        <th className="px-3 py-3 text-left">내용</th>
-                        <th className="px-3 py-3 text-left">평점</th>
-                        <th className="px-3 py-3 text-left">작성자</th>
+                        <th className="px-3 py-3 text-center w-2/12">작성일</th>
+                        <th className="px-3 py-3 text-center w-4/12">상품명</th>
+                        <th className="px-3 py-3 text-center w-3/12">내용</th>
+                        <th className="px-3 py-3 text-center w-1/12">평점</th>
+                        <th className="px-3 py-3 text-center w-2/12">작성자</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -776,12 +780,12 @@ export default function SellerMain() {
                             className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
                             title="클릭하여 리뷰 관리로 이동"
                           >
-                            <td className="px-3 py-3">{dateStr}</td>
-                            <td className="px-3 py-3">{rv.productName}</td>
-                            <td className="px-3 py-3">{rv.content}</td>
+                            <td className="px-3 py-3 text-center">{dateStr}</td>
+                            <td className="px-3 py-3 text-center">{rv.productName}</td>
+                            <td className="px-3 py-3 text-center">{rv.content}</td>
                             {/* ★ 강화된 파싱/탐색으로 개별 평점 표시 */}
-                            <td className="px-3 py-3">{formatRowRating(rv)}</td>
-                            <td className="px-3 py-3">{rv.authorName}</td>
+                            <td className="px-3 py-3 text-center">{formatRowRating(rv)}</td>
+                            <td className="px-3 py-3 text-center">{rv.authorName}</td>
                           </tr>
                         );
                       })}

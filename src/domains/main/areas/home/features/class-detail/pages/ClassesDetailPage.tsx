@@ -8,6 +8,7 @@ import { get } from '@src/libs/request';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import DOMPurify from 'dompurify';
 // type-only
 import type { DateClickArg } from '@fullcalendar/interaction';
 import type { EventClickArg, EventInput, EventSourceInput } from '@fullcalendar/core';
@@ -84,6 +85,12 @@ function pickImageSrc(item: ImageItemDTO): string {
   const badThumb =
     !thumb || thumb.endsWith('_thumb_thumb.webp') || /https?:\/\/[^/]+\/https?:\/\//i.test(thumb);
   return badThumb ? full : thumb;
+}
+
+/** ========== HTML 안전 처리 ========== */
+function sanitizeHtml(htmlString?: string): string {
+  if (!htmlString) return '';
+  return DOMPurify.sanitize(htmlString);
 }
 
 type DaySlot = { time: string; seatsLeft: number; reservable: boolean };
@@ -274,6 +281,11 @@ export default function ClassesDetailPage() {
   const calendarEvents = useMemo<EventSourceInput>(() => {
     return toFullCalendarEvents(scheduleMap);
   }, [scheduleMap]);
+
+  /** HTML 콘텐츠 처리 */
+  const sanitizedDescription = useMemo(() => {
+    return sanitizeHtml(summary?.description);
+  }, [summary?.description]);
 
   /** 액션 */
   const handleApply = () => {
@@ -534,19 +546,24 @@ export default function ClassesDetailPage() {
                     <div className="prose max-w-none">
                       <h3 className="text-xl font-semibold mb-4">클래스 상세 정보</h3>
 
-                      {/* 본문 텍스트 */}
+                      {/* HTML 콘텐츠 렌더링 */}
                       <div className="space-y-4 text-gray-700">
-                        <p>"{summary.title}" 클래스에 오신 것을 환영합니다.</p>
-
-                        {summary.description ? (
-                          <p>{summary.description}</p>
+                        {sanitizedDescription ? (
+                          <div
+                            className="html-content"
+                            dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
+                          />
                         ) : (
-                          <p>클래스 설명이 없습니다.</p>
+                          <div>
+                            <p>"{summary.title}" 클래스에 오신 것을 환영합니다.</p>
+                            <p>클래스 설명이 없습니다.</p>
+                          </div>
                         )}
+
                         {summary.guideline && (
-                          <div className="mt-2">
-                            <h4 className="font-semibold mb-1">주의사항</h4>
-                            <p>{summary.guideline}</p>
+                          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <h4 className="font-semibold mb-2 text-yellow-800">⚠️ 주의사항</h4>
+                            <p className="text-yellow-700">{summary.guideline}</p>
                           </div>
                         )}
                       </div>

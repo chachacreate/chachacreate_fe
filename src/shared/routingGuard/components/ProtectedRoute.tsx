@@ -22,6 +22,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // 로그인되지 않은 경우 JSP 페이지로 리다이렉트
     if (!isAuthenticated || !userInfo) {
       // 현재 페이지 정보를 쿼리 파라미터로 전달 (선택사항)
+      alert('로그인이 필요합니다!');
       const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
       window.location.href = `${redirectTo}?returnUrl=${currentPath}`;
       return;
@@ -36,7 +37,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         PERSONAL_SELLER: '/main',
         ADMIN: '/main',
       };
+      const roleNames: Record<string, string> = {
+        USER: '일반 사용자',
+        SELLER: '판매자',
+        PERSONAL_SELLER: '개인 판매자',
+        ADMIN: '관리자',
+      };
 
+      const name = roleNames[allowedRoles[0]] || '알 수 없는 사용자';
+      alert(name + '의 접근 권한이 없습니다!');
       window.location.href = roleRedirectMap[userInfo.role] || '/auth/login';
       return;
     }

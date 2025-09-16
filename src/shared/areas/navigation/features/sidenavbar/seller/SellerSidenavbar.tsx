@@ -21,6 +21,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { goToStoreMain } from '@src/shared/util/LegacyNavigate';
+import { legacyGet } from '@src/libs/request';
 
 type SellerSidenavbarProps = {
   /** 헤더 높이 보정(top sticky) */
@@ -37,7 +38,6 @@ export default function SellerSidenavbar({
   stickyOffsetPx = 0,
   storeSegmentOverride,
   children,
-  storeLogoUrl,
 }: SellerSidenavbarProps) {
   // ✅ :storeUrl(신규) 또는 :store(레거시) 모두 대응
   const { storeUrl, store } = useParams<{ storeUrl?: string; store?: string }>();
@@ -81,11 +81,37 @@ export default function SellerSidenavbar({
     handleNavClick(); // 모바일에서 사이드바 접기
   };
 
+  type StoreInfo = {
+    name: string;
+    logoUrl: string;
+  };
+
+  const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null);
+
+  useEffect(() => {
+    async function loadStoreInfo() {
+      try {
+        const res = await legacyGet<any>(`/info/store/${storeSegment}`);
+        const data = res.data;
+        console.log('스토어 정보 로딩', data);
+        setStoreInfo({
+          name: data.storeName,
+          logoUrl: data.logoImg,
+        });
+      } catch (err) {
+        console.error('스토어 정보 로딩 실패', err);
+        setStoreInfo(null);
+      }
+    }
+
+    loadStoreInfo();
+  }, [storeSegment]);
+
   const sections = useMemo(
     () => [
       {
         key: 'home',
-        label: `${storeSegment} 관리자 홈`,
+        label: '관리자 홈',
         type: 'link' as const,
         to: `${base}/main`, // 필요에 따라 `/settlement` 등으로 변경 가능
       },
@@ -148,7 +174,7 @@ export default function SellerSidenavbar({
 
   // 플레이스홀더 로고 (연회색 박스에 LOGO 텍스트)
   const logoSrc =
-    storeLogoUrl ||
+    storeInfo?.logoUrl ||
     'data:image/svg+xml;utf8,' +
       encodeURIComponent(
         `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'>
@@ -191,10 +217,10 @@ export default function SellerSidenavbar({
                       <Link
                         to={`${base}/main`}
                         className="block text-sm font-semibold text-gray-900 hover:underline truncate"
-                        title={`${storeSegment} 관리자 홈`}
+                        title={storeInfo?.name + ' 관리자 홈'}
                         onClick={handleNavClick}
                       >
-                        {storeSegment}
+                        {storeInfo?.name}
                       </Link>
                     </div>
                   </div>

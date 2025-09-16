@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { Camera, Save, Check } from 'lucide-react';
 import { legacyGet, legacyPost } from '@src/libs/request';
@@ -370,7 +369,6 @@ export default function SellerStoreInfo() {
     return (
       <>
         <Header />
-        <Mainnavbar />
         <SellerSidenavbar>
           <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
             <div className="flex items-center justify-center h-64">
@@ -385,7 +383,6 @@ export default function SellerStoreInfo() {
   return (
     <>
       <Header />
-      <Mainnavbar />
 
       <SellerSidenavbar>
         <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">

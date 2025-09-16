@@ -2,35 +2,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { CalendarDays, BarChart3, Image as ImageIcon } from 'lucide-react';
 import { get } from '@src/libs/request';
 
 // recharts: 일별 금액 바차트 표현
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 type Params = { storeUrl: string };
 
 /** 드롭다운 옵션: 스토어 내 클래스 목록 */
 type ClassOption = {
-  id: number;   // 클래스 ID
+  id: number; // 클래스 ID
   name: string; // 클래스명(표시용)
 };
 
 /** 특정 클래스의 일별 정산 응답 */
 type ClassDailySettlementResponse = {
-  classId: number;                        // 클래스 ID
-  className: string;                      // 클래스명
-  thumbnailUrl: string | null;            // 대표이미지 URL(없으면 null)
+  classId: number; // 클래스 ID
+  className: string; // 클래스명
+  thumbnailUrl: string | null; // 대표이미지 URL(없으면 null)
   daily: Array<{ date: string; amount: number }>; // 일별 결제금액 [{date, amount}]
 };
 
@@ -41,10 +32,9 @@ type StoreMonthlySettlementItem = {
   account: string;
   bank: string;
   name: string | null;
-  status: number;         // 0=정산 예정, 1=정산 완료, 그 외=보류
-  updateAt: string;       // 최근 수정일
+  status: number; // 0=정산 예정, 1=정산 완료, 그 외=보류
+  updateAt: string; // 최근 수정일
 };
-
 
 /** 로컬 기준으로 'YYYY-MM-DD' 생성 (toISOString 사용 금지: UTC 전환으로 하루 당김 방지) */
 const fmtYMD = (d: Date) => {
@@ -67,8 +57,7 @@ const toDateOnly = (s: string) => {
 const parseDate = (s: string) => new Date(`${s}${s.includes('T') ? '' : 'T00:00:00'}`);
 
 /** d + n일 */
-const addDays = (d: Date, n: number) =>
-  new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
 /** 주 시작(월요일)로 보정 */
 const startOfWeekMon = (d: Date) => {
@@ -82,18 +71,17 @@ const KRW = new Intl.NumberFormat('ko-KR');
 const fmtKRW = (v: number) => `₩ ${KRW.format(v)}`;
 
 /** 상태 숫자 → 뱃지 텍스트 */
-const statusText = (s?: number) =>
-  s === 1 ? '정산 완료' : s === 0 ? '정산 예정' : '보류';
+const statusText = (s?: number) => (s === 1 ? '정산 완료' : s === 0 ? '정산 예정' : '보류');
 
 /** 상태 숫자 → 뱃지 CSS 클래스 */
 const statusBadgeCls = (s?: number) =>
   s === 1
     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
     : s === 0
-    ? 'bg-amber-50 text-amber-700 border-amber-200'
-    : 'bg-rose-50 text-rose-700 border-rose-200';
+      ? 'bg-amber-50 text-amber-700 border-amber-200'
+      : 'bg-rose-50 text-rose-700 border-rose-200';
 
-/** 
+/**
  * 임의의 날짜 문자열을 "다음달 1일 00:00:00"로 변환
  */
 function toNextMonthFirstISO(input: string): string {
@@ -120,7 +108,6 @@ function toNextMonthFirstISO(input: string): string {
   // 파싱 실패 시 원본 유지
   return input;
 }
-
 
 const BRAND = '#2d4739';
 
@@ -153,7 +140,7 @@ export default function SellerSettlementClass() {
       setOptError(null);
       try {
         const { data, status, message } = await get<ClassOption[]>(
-          `/seller/settlements/classes/${encodeURIComponent(storeUrl)}/class-list`,
+          `/seller/settlements/classes/${encodeURIComponent(storeUrl)}/class-list`
         );
 
         if (!alive) return;
@@ -192,8 +179,8 @@ export default function SellerSettlementClass() {
       try {
         const { data, status, message } = await get<ClassDailySettlementResponse>(
           `/seller/settlements/classes/${encodeURIComponent(storeUrl)}/${encodeURIComponent(
-            selectedId,
-          )}`,
+            selectedId
+          )}`
         );
 
         if (!alive) return;
@@ -228,12 +215,12 @@ export default function SellerSettlementClass() {
       setMonthlyError(null);
       try {
         const { data, status, message } = await get<StoreMonthlySettlementItem[]>(
-          `/seller/settlements/classes/${encodeURIComponent(storeUrl)}/all`,
+          `/seller/settlements/classes/${encodeURIComponent(storeUrl)}/all`
         );
 
         if (!alive) return;
         if (status === 200) {
-          setMonthlyRows(data ?? []); 
+          setMonthlyRows(data ?? []);
         } else {
           setMonthlyError(message || '월별 정산 데이터 조회 실패');
           setMonthlyRows([]);
@@ -254,7 +241,7 @@ export default function SellerSettlementClass() {
   const [weekAnchor, setWeekAnchor] = useState<Date>(() => startOfWeekMon(new Date()));
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekAnchor, i)),
-    [weekAnchor],
+    [weekAnchor]
   );
 
   const weeklyChartData = useMemo(() => {
@@ -280,7 +267,7 @@ export default function SellerSettlementClass() {
 
   const weeklyTotal = useMemo(
     () => weeklyChartData.reduce((acc, cur) => acc + cur.amount, 0),
-    [weeklyChartData],
+    [weeklyChartData]
   );
 
   /* 정산 주기(한 달) 합계 */
@@ -311,7 +298,6 @@ export default function SellerSettlementClass() {
   return (
     <>
       <Header />
-      <Mainnavbar />
 
       <SellerSidenavbar>
         <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
@@ -322,7 +308,6 @@ export default function SellerSettlementClass() {
               클래스를 선택하면 대표 이미지 · 일별 매출 차트 · 정산 내역을 확인할 수 있어요.
             </p>
           </div>
-
           {/* 클래스 선택 영역 */}
           <div className="mt-4">
             <label htmlFor="class-select" className="block text-sm font-medium text-gray-700 mb-2">
@@ -358,7 +343,6 @@ export default function SellerSettlementClass() {
               </div>
             )}
           </div>
-
           {/* 대표 이미지 + 주간 차트 */}
           {!!selectedId && (
             <div className="mt-6 grid grid-cols-1 xl:grid-cols-5 gap-4">
@@ -389,7 +373,10 @@ export default function SellerSettlementClass() {
                       {daily?.className ?? options.find((o) => o.id === selectedId)?.name}
                     </div>
                   </div>
-                  <div className="rounded-xl border p-2" style={{ borderColor: '#e5e7eb', color: BRAND }}>
+                  <div
+                    className="rounded-xl border p-2"
+                    style={{ borderColor: '#e5e7eb', color: BRAND }}
+                  >
                     <CalendarDays className="w-5 h-5" />
                   </div>
                 </div>
@@ -435,7 +422,10 @@ export default function SellerSettlementClass() {
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={weeklyChartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+                      <BarChart
+                        data={weeklyChartData}
+                        margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="label" fontSize={12} />
                         <YAxis tickFormatter={(v) => KRW.format(v)} fontSize={12} />
@@ -451,7 +441,6 @@ export default function SellerSettlementClass() {
               </div>
             </div>
           )}
-
           /* 요약 카드: 정산 주기(한 달) 총 매출 / 이번주 매출 */
           {!!selectedId && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-6">
@@ -459,14 +448,17 @@ export default function SellerSettlementClass() {
               <SummaryCard title="이번주 매출" value={fmtKRW(weeklyTotal)} />
             </div>
           )}
-
           /* 월별 정산 테이블(스토어 전체) */
           <div className="mt-6 rounded-2xl border border-gray-200 bg-white overflow-x-auto">
             <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">정산 내역 (스토어 월별)</h2>
                 <span className="text-sm text-gray-500">
-                  {monthlyLoading ? '로딩 중…' : monthlyRows.length ? `${monthlyRows.length}건` : '데이터 없음'}
+                  {monthlyLoading
+                    ? '로딩 중…'
+                    : monthlyRows.length
+                      ? `${monthlyRows.length}건`
+                      : '데이터 없음'}
                 </span>
               </div>
 
@@ -485,17 +477,24 @@ export default function SellerSettlementClass() {
                 <tbody>
                   {monthlyError ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-rose-700 bg-rose-50 border border-rose-200 rounded-xl">
+                      <td
+                        colSpan={7}
+                        className="py-8 text-center text-rose-700 bg-rose-50 border border-rose-200 rounded-xl"
+                      >
                         {monthlyError}
                       </td>
                     </tr>
                   ) : monthlyLoading ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-gray-500">로딩 중…</td>
+                      <td colSpan={7} className="py-8 text-center text-gray-500">
+                        로딩 중…
+                      </td>
                     </tr>
                   ) : monthlyRows.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-gray-500">정산 데이터가 없습니다</td>
+                      <td colSpan={7} className="py-8 text-center text-gray-500">
+                        정산 데이터가 없습니다
+                      </td>
                     </tr>
                   ) : (
                     monthlyRows.map((s, idx) => (

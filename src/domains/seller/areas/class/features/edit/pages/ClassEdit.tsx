@@ -4,11 +4,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 
 import DaumPostcodeEmbed from 'react-daum-postcode';
-import EditorAPI, { type EditorHandle } from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
+import EditorAPI, {
+  type EditorHandle,
+} from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
 import api from '@src/libs/apiService';
 
 type Params = { storeUrl: string; classId: string };
@@ -156,7 +157,11 @@ const ClassEdit: FC = () => {
           address,
           addressDetail,
           image: thumbUrl
-            ? { id: crypto.randomUUID(), url: thumbUrl, serverImageId: Number(thumbId) || undefined }
+            ? {
+                id: crypto.randomUUID(),
+                url: thumbUrl,
+                serverImageId: Number(thumbId) || undefined,
+              }
             : null,
           schedules: [
             {
@@ -190,7 +195,11 @@ const ClassEdit: FC = () => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const updateSchedule = <K extends keyof ScheduleRow>(sid: string, key: K, value: ScheduleRow[K]) => {
+  const updateSchedule = <K extends keyof ScheduleRow>(
+    sid: string,
+    key: K,
+    value: ScheduleRow[K]
+  ) => {
     setForm((prev) => ({
       ...prev,
       schedules: prev.schedules.map((s) => (s.id === sid ? { ...s, [key]: value } : s)),
@@ -274,7 +283,7 @@ const ClassEdit: FC = () => {
       timeInterval: s?.intervalMin ?? 60,
       holidays: form.holidays ?? [],
       // 이미지 관련 플래그
-      deleteThumbnailId: deleteServerImage ? form.image?.serverImageId ?? null : null,
+      deleteThumbnailId: deleteServerImage ? (form.image?.serverImageId ?? null) : null,
     };
 
     const fd = new FormData();
@@ -302,7 +311,6 @@ const ClassEdit: FC = () => {
   return (
     <>
       <Header />
-      <Mainnavbar />
 
       <SellerSidenavbar>
         <div className="space-y-6 sm:space-y-8">
@@ -427,7 +435,9 @@ const ClassEdit: FC = () => {
                     className="border rounded-md px-3 py-2"
                     placeholder="예) 8"
                     value={form.capacity}
-                    onChange={(e) => updateForm('capacity', guardInt(e.target.value) as number | '')}
+                    onChange={(e) =>
+                      updateForm('capacity', guardInt(e.target.value) as number | '')
+                    }
                   />
                 </label>
                 <label className="grid gap-1">
@@ -505,7 +515,9 @@ const ClassEdit: FC = () => {
                       <select
                         className="border rounded-md px-3 py-2"
                         value={s.intervalMin}
-                        onChange={(e) => updateSchedule(s.id, 'intervalMin', Number(e.target.value))}
+                        onChange={(e) =>
+                          updateSchedule(s.id, 'intervalMin', Number(e.target.value))
+                        }
                       >
                         {intervalOptions.map((m) => (
                           <option key={`iv-${s.id}-${m}`} value={m}>
@@ -524,7 +536,10 @@ const ClassEdit: FC = () => {
                   <span className="text-sm font-medium">휴일</span>
                   <div className="flex flex-wrap gap-2">
                     {form.holidays.map((d) => (
-                      <span key={d} className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm">
+                      <span
+                        key={d}
+                        className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm"
+                      >
                         {d}
                       </span>
                     ))}

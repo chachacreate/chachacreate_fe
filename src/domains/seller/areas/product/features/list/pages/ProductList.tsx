@@ -5,7 +5,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 
 type Params = { storeUrl: string };
@@ -278,12 +277,11 @@ const ProductList: FC = () => {
 
   const goInsert = () => navigate(`/seller/${storeUrl}/product/insert`);
   const goEdit = (id: string) =>
-  navigate(`/seller/${storeUrl}/product/${encodeURIComponent(id)}/edit`);
+    navigate(`/seller/${storeUrl}/product/${encodeURIComponent(id)}/edit`);
 
   return (
     <>
       <Header />
-      <Mainnavbar />
 
       <SellerSidenavbar>
         <div className="space-y-4 sm:space-y-6">

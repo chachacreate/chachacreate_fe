@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 
 import api from '@src/libs/apiService'; // Boot용 + FastAPI
@@ -393,7 +392,6 @@ const ProductInsert: FC = () => {
   return (
     <>
       <Header />
-      <Mainnavbar />
 
       <SellerSidenavbar>
         <div className="space-y-6 sm:space-y-8">

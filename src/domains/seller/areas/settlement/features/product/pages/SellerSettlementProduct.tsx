@@ -1,18 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { CalendarDays, Image as ImageIcon } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { get, legacyGet } from '@src/libs/request';
 import type { ApiResponse } from '@src/libs/apiResponse';
 
@@ -39,16 +30,16 @@ type LegacyMonthlySettlementItem = {
 };
 
 type BootMonthlyMetaItem = {
-  updatedAtKey: string | null;   // "YYYY-MM-DD HH:mm:ss" | null
-  name: string | null;           // 예금주
+  updatedAtKey: string | null; // "YYYY-MM-DD HH:mm:ss" | null
+  name: string | null; // 예금주
   settlementStatus: number | null;
-  updateAt: string | null;       // (부트 updated_at, 화면에서는 사용 안 함)
+  updateAt: string | null; // (부트 updated_at, 화면에서는 사용 안 함)
 };
 
 type MergedMonthlySettlementItem = LegacyMonthlySettlementItem & {
-  name: string | null;             // 부트 예금주 (없으면 fallbackName)
+  name: string | null; // 부트 예금주 (없으면 fallbackName)
   settlementStatus: number | null; // 부트 정산상태
-  legacyUpdatedDate: string;       // 레거시 updateAt의 "YYYY-MM-DD"만
+  legacyUpdatedDate: string; // 레거시 updateAt의 "YYYY-MM-DD"만
 };
 
 // ---------- Utils ----------
@@ -57,11 +48,11 @@ const KRW = new Intl.NumberFormat('ko-KR');
 
 const parseDate = (s: string) => new Date(`${s}T00:00:00`);
 const fmtYMD = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-    d.getDate(),
-  ).padStart(2, '0')}`;
-const addDays = (d: Date, n: number) =>
-  new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(
+    2,
+    '0'
+  )}`;
+const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const startOfWeekMon = (d: Date) => {
   const day = d.getDay(); // 0=일 ~ 6=토
   const diff = day === 0 ? -6 : 1 - day;
@@ -106,7 +97,7 @@ export default function SellerSettlementProduct() {
       setOptError(null);
       try {
         const res = await legacyGet<ApiResponse<any[]>>(
-          `/seller/settlements/products/${encodeURIComponent(storeUrl)}/list`,
+          `/seller/settlements/products/${encodeURIComponent(storeUrl)}/list`
         );
         if (!alive) return;
         if (res.status === 200) {
@@ -138,7 +129,9 @@ export default function SellerSettlementProduct() {
         if (alive) setOptLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [storeUrl]);
 
   // 선택 상품 일별 정산 조회
@@ -154,8 +147,8 @@ export default function SellerSettlementProduct() {
       try {
         const res = await legacyGet<ApiResponse<ProductDailySettlementResponse>>(
           `/seller/settlements/products/${encodeURIComponent(storeUrl)}/${encodeURIComponent(
-            String(selectedId),
-          )}`,
+            String(selectedId)
+          )}`
         );
         if (!alive) return;
         if (res.status === 200 && res.data) {
@@ -169,7 +162,9 @@ export default function SellerSettlementProduct() {
         if (alive) setDailyLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [storeUrl, selectedId]);
 
   // 월별 정산(레거시 + 부트 메타) 조회/머지
@@ -182,25 +177,23 @@ export default function SellerSettlementProduct() {
       try {
         const [legacyRes, bootRes] = await Promise.all([
           legacyGet<ApiResponse<LegacyMonthlySettlementItem[]>>(
-            `/seller/settlements/products/${encodeURIComponent(storeUrl)}/all`,
+            `/seller/settlements/products/${encodeURIComponent(storeUrl)}/all`
           ),
           get<ApiResponse<BootMonthlyMetaItem[]>>(
-            `/api/seller/settlements/products/${encodeURIComponent(storeUrl)}/all`,
+            `/api/seller/settlements/products/${encodeURIComponent(storeUrl)}/all`
           ),
         ]);
         if (!alive) return;
 
-        const legacyList = legacyRes.status === 200 ? legacyRes.data ?? [] : [];
-        const bootList = bootRes.status === 200 ? bootRes.data ?? [] : [];
+        const legacyList = legacyRes.status === 200 ? (legacyRes.data ?? []) : [];
+        const bootList = bootRes.status === 200 ? (bootRes.data ?? []) : [];
 
         setLegacyMonthly(legacyList);
         setBootMonthly(bootList);
 
         const fallbackName = bootList.find((m) => m?.name)?.name ?? null;
         const byKey = new Map(
-          bootList
-            .filter((m) => m && m.updatedAtKey)
-            .map((m) => [m.updatedAtKey as string, m]),
+          bootList.filter((m) => m && m.updatedAtKey).map((m) => [m.updatedAtKey as string, m])
         );
 
         const merged = legacyList.map<MergedMonthlySettlementItem>((l) => {
@@ -225,14 +218,16 @@ export default function SellerSettlementProduct() {
         if (alive) setMonthlyLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [storeUrl]);
 
   // 주간 차트 데이터
   const [weekAnchor, setWeekAnchor] = useState<Date>(() => startOfWeekMon(new Date()));
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekAnchor, i)),
-    [weekAnchor],
+    [weekAnchor]
   );
 
   const weeklyChartData = useMemo(() => {
@@ -254,7 +249,6 @@ export default function SellerSettlementProduct() {
   return (
     <>
       <Header />
-      <Mainnavbar />
       <SellerSidenavbar>
         <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
           <div className="flex flex-col gap-1">
@@ -266,7 +260,10 @@ export default function SellerSettlementProduct() {
 
           {/* 상품 선택 */}
           <div className="mt-4">
-            <label htmlFor="product-select" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="product-select"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               상품 선택
             </label>
             {optLoading ? (
@@ -294,7 +291,7 @@ export default function SellerSettlementProduct() {
                 >
                   {options.map((opt) => (
                     <option key={opt.productId} value={opt.productId}>
-                      {opt.productName} 
+                      {opt.productName}
                     </option>
                   ))}
                 </select>
@@ -330,7 +327,10 @@ export default function SellerSettlementProduct() {
                       {options.find((o) => o.productId === selectedId)?.productName}
                     </div>
                   </div>
-                  <div className="rounded-xl border p-2" style={{ borderColor: '#e5e7eb', color: BRAND }}>
+                  <div
+                    className="rounded-xl border p-2"
+                    style={{ borderColor: '#e5e7eb', color: BRAND }}
+                  >
                     <CalendarDays className="w-5 h-5" />
                   </div>
                 </div>
@@ -371,7 +371,10 @@ export default function SellerSettlementProduct() {
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={weeklyChartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+                      <BarChart
+                        data={weeklyChartData}
+                        margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="label" fontSize={12} />
                         <YAxis tickFormatter={(v) => KRW.format(v)} fontSize={12} />
@@ -393,9 +396,7 @@ export default function SellerSettlementProduct() {
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-lg font-semibold">월별 상품 정산</h3>
               {!monthlyLoading && (
-                <div className="text-sm text-gray-500">
-                  {legacyMonthly.length}건
-                </div>
+                <div className="text-sm text-gray-500">{legacyMonthly.length}건</div>
               )}
             </div>
 
@@ -405,7 +406,9 @@ export default function SellerSettlementProduct() {
               ) : monthlyError ? (
                 <div className="p-6 text-center text-rose-700 bg-rose-50">{monthlyError}</div>
               ) : mergedMonthly.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">표시할 월별 정산 데이터가 없습니다.</div>
+                <div className="p-6 text-center text-gray-500">
+                  표시할 월별 정산 데이터가 없습니다.
+                </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full whitespace-nowrap text-sm">
@@ -422,7 +425,10 @@ export default function SellerSettlementProduct() {
                     </thead>
                     <tbody>
                       {mergedMonthly.map((row, idx) => (
-                        <tr key={`${row.settlementDate}-${row.updateAt}-${idx}`} className="border-t">
+                        <tr
+                          key={`${row.settlementDate}-${row.updateAt}-${idx}`}
+                          className="border-t"
+                        >
                           <td className="px-4 py-3">{row.settlementDate}</td>
                           <td className="px-4 py-3 font-medium">₩ {KRW.format(row.amount)}</td>
                           <td className="px-4 py-3">{row.account}</td>
@@ -435,8 +441,8 @@ export default function SellerSettlementProduct() {
                                 row.settlementStatus === 1
                                   ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20'
                                   : row.settlementStatus === 0
-                                  ? 'bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-600/20'
-                                  : 'bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-500/20',
+                                    ? 'bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-600/20'
+                                    : 'bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-500/20',
                               ].join(' ')}
                             >
                               {statusLabel(row.settlementStatus)}

@@ -3,7 +3,6 @@ import type { FC } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { get } from '@src/libs/request'; // ✅ patch 제거 (동일 오리진 fetch 사용)
 
@@ -226,7 +225,6 @@ const ClassList: FC = () => {
   return (
     <>
       <Header />
-      <Mainnavbar />
 
       <SellerSidenavbar>
         <div className="space-y-4 sm:space-y-6">

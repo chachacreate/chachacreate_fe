@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 
 import api from '@src/libs/apiService'; // Boot용 + FastAPI
-import EditorAPI, { type EditorHandle } from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
+import EditorAPI, {
+  type EditorHandle,
+} from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
 import axios from 'axios';
 import { predictImage } from '../../insert/services/aiService/aiService';
 
@@ -18,25 +19,25 @@ type EnumItem = { id: number; name: string };
 type DCatsByU = Record<string, EnumItem[]>;
 
 type ProductImage = {
-  id: string;               // 프론트용 로컬 UUID
-  file?: File;              // 새로 업로드한 파일
-  url: string;              // 미리보기/기존 이미지 URL
-  serverImageId?: number;   // 서버가 내려주는 기존 이미지 식별자(삭제 전송용)
+  id: string; // 프론트용 로컬 UUID
+  file?: File; // 새로 업로드한 파일
+  url: string; // 미리보기/기존 이미지 URL
+  serverImageId?: number; // 서버가 내려주는 기존 이미지 식별자(삭제 전송용)
 };
 
 type ProductForm = {
-  id: string;               // 프론트용 폼 ID
-  productNumber: number;    // UI 표기용(수정은 항상 1)
+  id: string; // 프론트용 폼 ID
+  productNumber: number; // UI 표기용(수정은 항상 1)
   name: string;
   price: number | '';
   aiPrice: number | '';
   desc: string;
-  aiDesc: string;           // AI 프롬프트/메모
-  images: ProductImage[];   // 썸네일(최대 3)
+  aiDesc: string; // AI 프롬프트/메모
+  images: ProductImage[]; // 썸네일(최대 3)
   stock: number | '';
-  categoryLarge: string;    // typeCategoryId
-  categoryMiddle: string;   // uCategoryId
-  categorySmall: string;    // dcategoryId
+  categoryLarge: string; // typeCategoryId
+  categoryMiddle: string; // uCategoryId
+  categorySmall: string; // dcategoryId
 };
 
 const MAX_NUM = 1_000_000_000_000;
@@ -146,8 +147,8 @@ const ProductEdit: FC = () => {
         const p = res.data?.product ?? res.data?.data ?? res.data;
         const images = (p?.images ?? []).slice(0, 3).map((img: any) => ({
           id: crypto.randomUUID(),
-          url: img.url,                // 서버가 내려준 정적 URL
-          serverImageId: img.id,       // 서버 이미지 ID
+          url: img.url, // 서버가 내려준 정적 URL
+          serverImageId: img.id, // 서버 이미지 ID
         })) as ProductImage[];
 
         const next: ProductForm = {
@@ -155,7 +156,7 @@ const ProductEdit: FC = () => {
           productNumber: 1,
           name: p?.productName ?? '',
           price: typeof p?.price === 'number' ? p.price : '',
-          aiPrice: '',                      // 초기엔 비워두고, 필요시 AI 버튼으로 채움
+          aiPrice: '', // 초기엔 비워두고, 필요시 AI 버튼으로 채움
           desc: p?.productDetail ?? '',
           aiDesc: '',
           images,
@@ -329,20 +330,22 @@ const ProductEdit: FC = () => {
     });
 
     // DTO 본문 (수정용)
-    const dtoPayload = [{
-      product: {
-        productId: Number(productId), // 서버가 필요하면 사용
-        productName: form.name.trim(),
-        price: toInt(typeof form.price === 'number' ? form.price : form.aiPrice),
-        productDetail: htmlWithCids, // cid 포함
-        typeCategoryId: toInt(form.categoryLarge),
-        dcategoryId: toInt(form.categorySmall),
-        stock: toInt(form.stock),
+    const dtoPayload = [
+      {
+        product: {
+          productId: Number(productId), // 서버가 필요하면 사용
+          productName: form.name.trim(),
+          price: toInt(typeof form.price === 'number' ? form.price : form.aiPrice),
+          productDetail: htmlWithCids, // cid 포함
+          typeCategoryId: toInt(form.categoryLarge),
+          dcategoryId: toInt(form.categorySmall),
+          stock: toInt(form.stock),
+        },
+        descriptionImageUrls: [], // 서버에서 cid → URL 치환 후 재추출
+        // 이미지는 위 파일 파트로 전송
+        deletedServerImageIds, // 서버에 기존 이미지 삭제 지시
       },
-      descriptionImageUrls: [], // 서버에서 cid → URL 치환 후 재추출
-      // 이미지는 위 파일 파트로 전송
-      deletedServerImageIds,    // 서버에 기존 이미지 삭제 지시
-    }];
+    ];
 
     fd.append('dtoList', new Blob([JSON.stringify(dtoPayload)], { type: 'application/json' }));
     return fd;
@@ -398,7 +401,6 @@ const ProductEdit: FC = () => {
   return (
     <>
       <Header />
-      <Mainnavbar />
 
       <SellerSidenavbar>
         <div className="space-y-6 sm:space-y-8 pb-10">
@@ -496,7 +498,11 @@ const ProductEdit: FC = () => {
                         className="border rounded-md px-3 py-2 w-full bg-gray-50 cursor-help"
                         placeholder="AI 추천가"
                         value={form.aiPrice ? `${Number(form.aiPrice).toLocaleString()} 원` : ''}
-                        title={form.aiPrice && aiPredictionInfo[form.id] ? generatePredictionTooltip() : ''}
+                        title={
+                          form.aiPrice && aiPredictionInfo[form.id]
+                            ? generatePredictionTooltip()
+                            : ''
+                        }
                       />
                     </div>
                   </div>
@@ -533,14 +539,15 @@ const ProductEdit: FC = () => {
                               typeof form.price === 'number'
                                 ? form.price
                                 : typeof form.aiPrice === 'number'
-                                ? form.aiPrice
-                                : 0,
+                                  ? form.aiPrice
+                                  : 0,
                             categoryLarge: form.categoryLarge || '',
                             categoryMiddle: form.categoryMiddle || '',
                             categorySmall: form.categorySmall || '',
                           };
                           const resp = await api.post('/ai/product-description', payload);
-                          const content: string = resp?.data?.content ?? resp?.data?.data ?? resp?.data?.markdown ?? '';
+                          const content: string =
+                            resp?.data?.content ?? resp?.data?.data ?? resp?.data?.markdown ?? '';
                           if (!content) throw new Error('AI 응답이 비었습니다.');
                           editorRefs.current[form.id]?.setMarkdown(content);
                           const html = editorRefs.current[form.id]?.getHTML() || '';

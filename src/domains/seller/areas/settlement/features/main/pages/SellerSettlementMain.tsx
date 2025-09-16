@@ -1,22 +1,12 @@
 // src/domains/seller/settlement/SellerSettlementMain.tsx
-import { useMemo, useState, useEffect } from "react";
-import React from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import SellerSidenavbar from "@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar";
-import { Package, Receipt, ChevronRight } from "lucide-react";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from "recharts";
-import { get } from "@src/libs/request";
-
+import { useMemo, useState, useEffect } from 'react';
+import React from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import Header from '@src/shared/areas/layout/features/header/Header';
+import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
+import { Package, Receipt, ChevronRight } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { get } from '@src/libs/request';
 
 // ------------------ Types ------------------
 type SettlementRow = {
@@ -24,26 +14,25 @@ type SettlementRow = {
   amount: number;
   account: string;
   bank: string;
-  name?: string;   // API 표준
+  name?: string; // API 표준
   holder?: string; // 혹시 다른 키로 올 경우 대비
-  status: number;  // 0=정산 예정, 1=정산 완료
+  status: number; // 0=정산 예정, 1=정산 완료
   updateAt: string; // e.g. "2025-05-30T12:00:00"
 };
 
 // ------------------ Utils (로컬 기준) ------------------
-const brand = "#2d4739";
-const KRW = new Intl.NumberFormat("ko-KR");
+const brand = '#2d4739';
+const KRW = new Intl.NumberFormat('ko-KR');
 
 // 로컬 기준 YYYY-MM-DD
 const fmtLocalYMD = (d: Date) => {
   const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${dd}`;
 };
 
-const addDays = (d: Date, n: number) =>
-  new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
 const startOfWeekMon = (d: Date) => {
   const day = d.getDay(); // 0:Sun..6:Sat
@@ -51,7 +40,7 @@ const startOfWeekMon = (d: Date) => {
   return addDays(d, diff);
 };
 
-const onlyDate = (iso?: string) => (iso ? iso.slice(0, 10) : "");
+const onlyDate = (iso?: string) => (iso ? iso.slice(0, 10) : '');
 
 // 각 행의 settlementDate 기준 "다음 달 1일"
 const nextMonthFirstYMDFromISO = (iso: string) => {
@@ -61,16 +50,14 @@ const nextMonthFirstYMDFromISO = (iso: string) => {
 };
 
 // ------------------ Component ------------------
-type TabKey = "all";
+type TabKey = 'all';
 
 export default function SellerSettlementMain() {
-  const { storeUrl = "store" } = useParams();
-  const [active, setActive] = useState<TabKey>("all");
+  const { storeUrl = 'store' } = useParams();
+  const [active, setActive] = useState<TabKey>('all');
 
   // 주간 anchor (월요일)
-  const [weekAnchor, setWeekAnchor] = useState<Date>(() =>
-    startOfWeekMon(new Date())
-  );
+  const [weekAnchor, setWeekAnchor] = useState<Date>(() => startOfWeekMon(new Date()));
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekAnchor, i)),
     [weekAnchor]
@@ -91,7 +78,7 @@ export default function SellerSettlementMain() {
         }
       })
       .catch((err: any) => {
-        console.error("정산 내역 조회 실패:", err);
+        console.error('정산 내역 조회 실패:', err);
       });
   }, [storeUrl]);
 
@@ -110,18 +97,16 @@ export default function SellerSettlementMain() {
       const date = fmtLocalYMD(d);
       return {
         date,
-        label: `${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-          d.getDate()
-        ).padStart(2, "0")}`,
+        label: `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(
+          2,
+          '0'
+        )}`,
         amount: map.get(date) ?? 0,
       };
     });
   }, [settlementRows, weekDays]);
 
-  const weeklyTotal = useMemo(
-    () => weeklyData.reduce((s, r) => s + r.amount, 0),
-    [weeklyData]
-  );
+  const weeklyTotal = useMemo(() => weeklyData.reduce((s, r) => s + r.amount, 0), [weeklyData]);
 
   // 최근일자순(= updateAt 내림차순) 정렬
   const sortedRows = useMemo(() => {
@@ -130,26 +115,19 @@ export default function SellerSettlementMain() {
     );
   }, [settlementRows]);
 
-  const tabs: { key: TabKey; label: string }[] = [
-    { key: "all", label: "총수익(상품+클래스)" },
-  ];
+  const tabs: { key: TabKey; label: string }[] = [{ key: 'all', label: '총수익(상품+클래스)' }];
 
   return (
     <>
       <Header />
-      <Mainnavbar />
 
       <SellerSidenavbar>
         <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
           {/* Title */}
           <div className="flex flex-col gap-1">
             <h1 className="text-xl sm:text-2xl font-bold">정산 대시보드</h1>
-            <p className="text-gray-600">
-              주간 기준으로 전체 매출 합계를 확인하세요.
-            </p>
+            <p className="text-gray-600">주간 기준으로 전체 매출 합계를 확인하세요.</p>
           </div>
-
-          
 
           {/* 차트 + 표 + 주간 합계 */}
           <div className="mt-4 grid grid-cols-1 xl:grid-cols-5 gap-4">
@@ -158,7 +136,6 @@ export default function SellerSettlementMain() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-semibold">주간 정산 금액</h3>
-                  
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -170,9 +147,7 @@ export default function SellerSettlementMain() {
                   <input
                     type="date"
                     value={fmtLocalYMD(weekAnchor)}
-                    onChange={(e) =>
-                      setWeekAnchor(startOfWeekMon(new Date(e.target.value)))
-                    }
+                    onChange={(e) => setWeekAnchor(startOfWeekMon(new Date(e.target.value)))}
                     className="h-9 rounded-lg border px-3 text-sm"
                     aria-label="주 시작일 선택(월요일 기준)"
                     title="주 시작일(월요일)"
@@ -188,29 +163,20 @@ export default function SellerSettlementMain() {
 
               <div className="mt-3 h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={weeklyData}
-                    margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
-                  >
+                  <BarChart data={weeklyData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="label" fontSize={12} />
-                    <YAxis
-                      tickFormatter={(v) => KRW.format(v)}
-                      fontSize={12}
-                    />
+                    <YAxis tickFormatter={(v) => KRW.format(v)} fontSize={12} />
                     <Tooltip
                       formatter={(v: number) => `₩ ${KRW.format(v)}`}
-                      labelFormatter={(_, payload) =>
-                        `날짜: ${payload?.[0]?.payload?.date ?? ""}`
-                      }
+                      labelFormatter={(_, payload) => `날짜: ${payload?.[0]?.payload?.date ?? ''}`}
                     />
                     <Bar dataKey="amount" radius={[6, 6, 0, 0]} fill={brand} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
               <div className="mt-3 text-sm text-gray-700">
-                주간 합계:{" "}
-                <span className="font-semibold">₩ {KRW.format(weeklyTotal)}</span>
+                주간 합계: <span className="font-semibold">₩ {KRW.format(weeklyTotal)}</span>
               </div>
             </div>
 
@@ -219,7 +185,6 @@ export default function SellerSettlementMain() {
               <div className="p-4 sm:p-6">
                 <div className="flex items-center justify-betw-een">
                   <h3 className="text-lg font-semibold">일별 합계 표</h3>
-                  
                 </div>
                 <table className="mt-4 w-full text-sm">
                   <thead>
@@ -262,9 +227,7 @@ export default function SellerSettlementMain() {
             <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">정산 내역</h2>
-                <span className="text-sm text-gray-500">
-                  {sortedRows.length}건
-                </span>
+                <span className="text-sm text-gray-500">{sortedRows.length}건</span>
               </div>
 
               <table className="mt-4 w-full text-sm">
@@ -281,29 +244,24 @@ export default function SellerSettlementMain() {
                 </thead>
                 <tbody>
                   {sortedRows.map((s, idx) => (
-                    <tr
-                      key={`${s.settlementDate}-${idx}`}
-                      className="border-t border-gray-100"
-                    >
+                    <tr key={`${s.settlementDate}-${idx}`} className="border-t border-gray-100">
                       {/* 각 건의 settlementDate 기준 "다음 달 1일" 표시 */}
-                      <td className="py-3 pr-4">
-                        {nextMonthFirstYMDFromISO(s.settlementDate)}
-                      </td>
+                      <td className="py-3 pr-4">{nextMonthFirstYMDFromISO(s.settlementDate)}</td>
                       <td className="py-3 pr-4">₩ {KRW.format(s.amount)}</td>
                       <td className="py-3 pr-4">{s.account}</td>
                       <td className="py-3 pr-4">{s.bank}</td>
                       {/* name → holder fallback */}
-                      <td className="py-3 pr-4">{s.name ?? s.holder ?? ""}</td>
+                      <td className="py-3 pr-4">{s.name ?? s.holder ?? ''}</td>
                       <td className="py-3 pr-4">
                         <span
                           className={[
-                            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border",
+                            'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border',
                             s.status === 1
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : "bg-amber-50 text-amber-700 border-amber-200",
-                          ].join(" ")}
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200',
+                          ].join(' ')}
                         >
-                          {s.status === 1 ? "정산 완료" : "정산 예정"}
+                          {s.status === 1 ? '정산 완료' : '정산 예정'}
                         </span>
                       </td>
                       {/* 최근 수정일: YYYY-MM-DD만 표시 */}
@@ -337,30 +295,30 @@ function QuickLink({
     <button
       onClick={() => navigate(to)}
       className={[
-        "group relative w-full overflow-hidden rounded-2xl",
-        "border border-gray-300 bg-transparent text-left outline-none cursor-pointer",
-        "transition-all duration-300 ease-out",
-        "text-gray-900 hover:text-white",
-        "hover:shadow-lg",
-      ].join(" ")}
+        'group relative w-full overflow-hidden rounded-2xl',
+        'border border-gray-300 bg-transparent text-left outline-none cursor-pointer',
+        'transition-all duration-300 ease-out',
+        'text-gray-900 hover:text-white',
+        'hover:shadow-lg',
+      ].join(' ')}
     >
       <span
         aria-hidden
         className={[
-          "pointer-events-none absolute inset-0 z-0",
+          'pointer-events-none absolute inset-0 z-0',
           "before:content-[''] before:absolute before:inset-0",
-          "before:bg-[#5b7d6a] before:origin-left before:scale-x-0 before:transform",
-          "before:transition-transform before:duration-500 before:ease-out",
-          "group-hover:before:scale-x-100",
-        ].join(" ")}
+          'before:bg-[#5b7d6a] before:origin-left before:scale-x-0 before:transform',
+          'before:transition-transform before:duration-500 before:ease-out',
+          'group-hover:before:scale-x-100',
+        ].join(' ')}
       />
       <div className="relative z-10 p-4 sm:p-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div
             className={[
-              "rounded-xl border p-2 bg-transparent border-gray-300 text-gray-900",
-              "transition-colors duration-300 group-hover:border-white group-hover:text-white",
-            ].join(" ")}
+              'rounded-xl border p-2 bg-transparent border-gray-300 text-gray-900',
+              'transition-colors duration-300 group-hover:border-white group-hover:text-white',
+            ].join(' ')}
           >
             {icon}
           </div>

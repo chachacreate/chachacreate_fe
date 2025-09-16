@@ -3,7 +3,6 @@ import type { FC, ChangeEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { Star, ThumbsUp, Search } from 'lucide-react';
 import { get } from '@src/libs/request';
@@ -138,7 +137,6 @@ const ProductReviewList: FC = () => {
   return (
     <>
       <Header />
-      <Mainnavbar />
 
       <SellerSidenavbar>
         <div className="space-y-6">

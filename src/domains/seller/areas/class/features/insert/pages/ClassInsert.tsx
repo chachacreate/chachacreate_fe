@@ -1,18 +1,15 @@
 // src/domains/seller/areas/class/features/insert/pages/ClassInsert.tsx
 import type { FC, ChangeEvent, MouseEvent } from 'react';
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { post } from '@src/libs/request';
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import DaumPostcodeEmbed from 'react-daum-postcode';
 import EditorAPI, {
   type EditorHandle,
 } from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
 import api from '@src/libs/apiService';
-
-type Params = { storeUrl: string };
 
 type ScheduleRow = {
   id: string;
@@ -387,7 +384,6 @@ const ClassInsert: FC = () => {
   return (
     <>
       <Header />
-      <Mainnavbar />
 
       <SellerSidenavbar>
         <div className="space-y-6 sm:space-y-8 relative">

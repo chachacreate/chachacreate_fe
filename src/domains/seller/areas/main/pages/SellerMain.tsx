@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import {
   ResponsiveContainer,
@@ -22,7 +21,6 @@ import ClassStatsCard, {
   type ClassStatsDatum,
 } from '@src/shared/components/analytics/ClassStatsCard';
 import { get } from '@src/libs/request';
-import React from 'react';
 
 /** ===== 타입 ===== */
 type Params = { storeUrl: string };
@@ -520,7 +518,6 @@ export default function SellerMain() {
   return (
     <>
       <Header />
-      <Mainnavbar />
 
       <SellerSidenavbar>
         <div className="space-y-8">

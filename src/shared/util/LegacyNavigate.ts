@@ -32,10 +32,10 @@ export const goToStoreMain = (storeUrl: string) => {
 };
 
 // 메시지 이동 함수
-export const goToMessage = () => {
+export const goToMessage = (storeSlug?: string | null) => {
   const navigate = useNavigate();
 
-  return (storeSlug?: string | null) => {
+  return () => {
     const messageHref: string = storeSlug ? `/${storeSlug}/mypage/message` : `/main/mypage/message`;
 
     navigate(messageHref); // ✅ 함수 호출

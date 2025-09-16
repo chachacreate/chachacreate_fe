@@ -1,0 +1,130 @@
+/* FullCalendar 기본 이벤트 스타일 재정의 */
+.fc-event {
+  @apply rounded-lg overflow-hidden border-0;
+  border-radius: 0.5rem !important;
+  overflow: hidden !important;
+}
+
+/* 선택된 이벤트 스타일 */
+.fc-event.fc-event-selected {
+  @apply bg-blue-500 text-white border-blue-600;
+  background-color: #3b82f6 !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+  transform: scale(1.05) !important;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  z-index: 20 !important;
+}
+
+/* 예약 가능한 이벤트 스타일 */
+.fc-event.fc-event-reservable {
+  @apply bg-gray-50 text-gray-800;
+  background-color: #f9fafb !important;
+  border-left: 4px solid #2d4739 !important;
+  color: #111827 !important;
+  transition: all 0.2s ease !important;
+}
+
+.fc-event.fc-event-reservable:hover {
+  @apply bg-gray-100 shadow-md;
+  background-color: #f3f4f6 !important;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  transform: scale(1.02) !important;
+}
+
+/* 예약 불가능한 이벤트 스타일 */
+.fc-event.fc-event-disabled {
+  @apply bg-gray-200 text-gray-500;
+  background-color: #e5e7eb !important;
+  border-left: 4px solid #d1d5db !important;
+  color: #6b7280 !important;
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+}
+
+/* FullCalendar 이벤트 내부 텍스트 스타일 */
+.fc-event-title {
+  @apply text-xs font-medium;
+  padding: 0.25rem 0.5rem !important;
+  font-weight: 500 !important;
+}
+
+/* FullCalendar 일반적인 스타일 조정 */
+.fc-daygrid-event {
+  @apply px-2 py-1;
+  margin: 1px 0 !important;
+}
+
+/* FullCalendar 헤더 스타일 커스터마이징 */
+.fc-toolbar-title {
+  @apply text-lg font-semibold text-gray-900;
+}
+
+.fc-button {
+  @apply bg-white border-gray-300 text-gray-700 hover:bg-gray-50;
+  background-color: white !important;
+  border-color: #d1d5db !important;
+  color: #374151 !important;
+}
+
+.fc-button:hover {
+  background-color: #f9fafb !important;
+}
+
+.fc-button:focus {
+  @apply ring-2 ring-blue-500 ring-offset-1;
+}
+
+/* 오늘 날짜 강조 */
+.fc-day-today {
+  @apply bg-blue-50;
+  background-color: #eff6ff !important;
+}
+
+/* 날짜 셀 호버 효과 */
+.fc-daygrid-day:hover {
+  @apply bg-gray-50;
+  background-color: #f9fafb !important;
+}
+
+/* 이벤트가 없는 날짜 클릭 시 효과 */
+.fc-daygrid-day.fc-day-active {
+  @apply bg-gray-100;
+  background-color: #f3f4f6 !important;
+}
+
+/* 반응형 조정 */
+@media (max-width: 640px) {
+  .fc-event-title {
+    @apply text-xs;
+    font-size: 0.75rem !important;
+  }
+
+  .fc-daygrid-event {
+    margin: 0.5px 0 !important;
+    padding: 1px 4px !important;
+  }
+}
+
+/* 애니메이션 효과 */
+.fc-event {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* scale 클래스 유틸리티 (Tailwind에 없는 경우) */
+.scale-102 {
+  transform: scale(1.02);
+}
+
+/* 링 효과 강화 */
+.fc-event.fc-event-selected {
+  box-shadow:
+    0 0 0 2px #93c5fd,
+    0 0 0 4px rgba(147, 197, 253, 0.2),
+    0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+}

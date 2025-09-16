@@ -9,6 +9,7 @@ import { processContent, getContentCssClasses } from '@src/shared/util/contentUt
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import './fullCalendar.pcss';
 // type-only
 import type { DateClickArg } from '@fullcalendar/interaction';
 import type { EventClickArg, EventInput, EventSourceInput } from '@fullcalendar/core';
@@ -17,8 +18,7 @@ import type { EventClickArg, EventInput, EventSourceInput } from '@fullcalendar/
 interface SummaryDTO {
   classId: number;
   title: string;
-  description?: string; // 기존 요약 설명
-
+  description?: string;
   guideline?: string;
   price: number;
   postNum?: string;
@@ -29,17 +29,20 @@ interface SummaryDTO {
   storeName?: string;
   storeContent?: string;
 }
+
 interface ImageItemDTO {
   url: string;
   thumbnailUrl?: string;
   sequence?: number;
 }
+
 interface ClassImagesDTO {
   classId: number;
   images: ImageItemDTO[];
 }
+
 interface SlotDTO {
-  slot: string; // "YYYY-MM-DD HH:mm:ss.S" or ISO
+  slot: string;
   seatsLeft: number;
   reservable: boolean;
 }
@@ -71,6 +74,7 @@ function sanitizeImageUrl(url?: string): string {
   if (s.startsWith('//')) return 'https:' + s;
   return s;
 }
+
 function normalizeImages(payload: ClassImagesDTO | ImageItemDTO[] | undefined): ImageItemDTO[] {
   const raw: ImageItemDTO[] = Array.isArray(payload)
     ? payload
@@ -79,6 +83,7 @@ function normalizeImages(payload: ClassImagesDTO | ImageItemDTO[] | undefined): 
       : [];
   return [...raw].sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
 }
+
 function pickImageSrc(item: ImageItemDTO): string {
   const full = sanitizeImageUrl(item.url);
   const thumb = item.thumbnailUrl ? sanitizeImageUrl(item.thumbnailUrl) : '';
@@ -117,20 +122,48 @@ function buildScheduleMap(rows: SlotDTO[], onlyReservable = false): ScheduleMap 
   return byDate;
 }
 
-function toFullCalendarEvents(scheduleMap: ScheduleMap): EventInput[] {
+// 개선된 FullCalendar 이벤트 생성 함수
+function toFullCalendarEvents(
+  scheduleMap: ScheduleMap,
+  selectedEventId?: string | null
+): EventInput[] {
   const events: EventInput[] = [];
   for (const [date, slots] of scheduleMap.entries()) {
     slots.forEach((s, i) => {
+      const eventId = `${date}-${s.time}-${i}`;
+      const isSelected = selectedEventId === eventId;
+      const isReservable = s.reservable && s.seatsLeft > 0;
+
       events.push({
-        id: `${date}-${s.time}-${i}`,
-        title: s.reservable && s.seatsLeft > 0 ? `여석 ${s.seatsLeft}` : '예약불가',
+        id: eventId,
+        title: isReservable ? `여석 ${s.seatsLeft}` : '예약불가',
         start: `${date}T${s.time}:00`,
         allDay: false,
         display: 'block',
-        backgroundColor: s.reservable && s.seatsLeft > 0 ? '#f3f5f4' : '#E5E7EB',
-        borderColor: s.reservable && s.seatsLeft > 0 ? '#090909' : '#E5E7EB',
-        textColor: s.reservable && s.seatsLeft > 0 ? '#0b0b0b' : '#6B7280',
-        extendedProps: { date, time: s.time, seatsLeft: s.seatsLeft, reservable: s.reservable },
+        // 선택 상태에 따른 동적 색상 설정
+        backgroundColor: isSelected
+          ? '#3B82F6' // blue-500
+          : isReservable
+            ? '#F9FAFB' // gray-50
+            : '#E5E7EB', // gray-200
+        borderColor: isSelected
+          ? '#2563EB' // blue-600
+          : isReservable
+            ? '#2D4739' // 기존 브랜드 컬러
+            : '#D1D5DB', // gray-300
+        textColor: isSelected
+          ? '#FFFFFF' // white
+          : isReservable
+            ? '#111827' // gray-900
+            : '#6B7280', // gray-500
+        extendedProps: {
+          date,
+          time: s.time,
+          seatsLeft: s.seatsLeft,
+          reservable: s.reservable,
+          isSelected,
+          isReservable,
+        },
       });
     });
   }
@@ -144,6 +177,7 @@ function daysInMonth(yyyyMm: string): number {
   if (!y || !m) return 31;
   return new Date(y, m, 0).getDate();
 }
+
 const formatCurrency = (n?: number | null) => Intl.NumberFormat('ko-KR').format(n ?? 0);
 
 /** ========== 페이지 ========== */
@@ -164,6 +198,7 @@ export default function ClassesDetailPage() {
   const calendarSectionRef = useRef<HTMLDivElement | null>(null);
   const inlineCtaRef = useRef<HTMLButtonElement | null>(null);
   const [showFixedButton, setShowFixedButton] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   /** 탭 상태 */
   const [activeTab, setActiveTab] = useState<'detail' | 'store'>('detail');
@@ -212,6 +247,15 @@ export default function ClassesDetailPage() {
           : '';
         setSelectedDate(firstDate);
         setSelectedTime(firstReservable);
+
+        // 첫 번째 예약 가능한 이벤트를 선택 상태로 설정
+        if (firstDate && firstReservable) {
+          const firstSlots = schedMap.get(firstDate) ?? [];
+          const slotIndex = firstSlots.findIndex((slot) => slot.time === firstReservable);
+          if (slotIndex >= 0) {
+            setSelectedEventId(`${firstDate}-${firstReservable}-${slotIndex}`);
+          }
+        }
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : '데이터를 불러오지 못했어요.');
       } finally {
@@ -246,10 +290,9 @@ export default function ClassesDetailPage() {
 
   const firstImageSrc = useMemo(() => {
     if (!imageList.length) return undefined;
-    return pickImageSrc(imageList[0]); // 대표 이미지
+    return pickImageSrc(imageList[0]);
   }, [imageList]);
 
-  // 상세용 추가 이미지(대표 제외)
   const detailImages = useMemo(() => {
     if (imageList.length <= 1) return [];
     return imageList.slice(1).map(pickImageSrc);
@@ -271,17 +314,16 @@ export default function ClassesDetailPage() {
     [selectedDate, scheduleMap]
   );
 
-  /** FullCalendar 이벤트 소스 */
+  /** 개선된 FullCalendar 이벤트 소스 */
   const calendarEvents = useMemo<EventSourceInput>(() => {
-    return toFullCalendarEvents(scheduleMap);
-  }, [scheduleMap]);
+    return toFullCalendarEvents(scheduleMap, selectedEventId);
+  }, [scheduleMap, selectedEventId]);
 
-  /** 콘텐츠 처리 (유틸리티 사용) */
+  /** 콘텐츠 처리 */
   const { sanitizedDescription, contentType } = useMemo(() => {
     return processContent(summary?.description);
   }, [summary?.description]);
 
-  /** 콘텐츠 CSS 클래스 */
   const contentCssClasses = useMemo(() => {
     return getContentCssClasses(contentType);
   }, [contentType]);
@@ -298,15 +340,17 @@ export default function ClassesDetailPage() {
         date: selectedDate,
         time: selectedTime,
         item: summary,
-        image: firstImageSrc, // 대표 이미지
+        image: firstImageSrc,
         storeId: summary?.storeId,
         storeName: summary?.storeName,
       },
     });
   };
+
   const handleStoreInfo = () => {
     if (storeName) nav(`/store/${storeName}/info`);
   };
+
   const scrollToCalendar = () => {
     const el = calendarSectionRef.current;
     if (!el) return;
@@ -321,14 +365,23 @@ export default function ClassesDetailPage() {
     }, 700);
   };
 
-  /** FullCalendar 핸들러 */
+  /** 개선된 FullCalendar 핸들러 */
   const onDateClick = (arg: DateClickArg) => {
-    const date = arg.dateStr; // YYYY-MM-DD
+    const date = arg.dateStr;
     if (!scheduleMap.has(date)) return;
     setSelectedDate(date);
-    const firstReservable =
-      (scheduleMap.get(date) ?? []).find((t) => t.reservable && t.seatsLeft > 0)?.time ?? '';
-    setSelectedTime(firstReservable);
+
+    const slots = scheduleMap.get(date) ?? [];
+    const firstReservable = slots.find((t) => t.reservable && t.seatsLeft > 0);
+
+    if (firstReservable) {
+      setSelectedTime(firstReservable.time);
+      const slotIndex = slots.findIndex((slot) => slot.time === firstReservable.time);
+      setSelectedEventId(`${date}-${firstReservable.time}-${slotIndex}`);
+    } else {
+      setSelectedTime('');
+      setSelectedEventId(null);
+    }
   };
 
   const onEventClick = (arg: EventClickArg) => {
@@ -337,11 +390,15 @@ export default function ClassesDetailPage() {
       time?: string;
       seatsLeft?: number;
       reservable?: boolean;
+      isReservable?: boolean;
     };
+
     if (!p?.date || !p?.time) return;
-    if (!p.reservable || (p.seatsLeft ?? 0) <= 0) return;
+    if (!p.isReservable) return; // 예약 불가능한 이벤트 클릭 방지
+
     setSelectedDate(p.date);
     setSelectedTime(p.time);
+    setSelectedEventId(arg.event.id);
   };
 
   /** 렌더 */
@@ -444,7 +501,7 @@ export default function ClassesDetailPage() {
                 ref={calendarSectionRef}
                 className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10"
               >
-                {/* 왼쪽: FullCalendar */}
+                {/* 왼쪽: 개선된 FullCalendar */}
                 <div className="bg-white border border-gray-200 rounded-2xl p-4">
                   <h3 className="text-lg font-semibold mb-3">날짜/타임 일정</h3>
                   <FullCalendar
@@ -459,6 +516,52 @@ export default function ClassesDetailPage() {
                     fixedWeekCount={false}
                     firstDay={0}
                     locale="ko"
+                    // Tailwind 클래스를 적용하는 eventClassNames
+                    eventClassNames={(arg) => {
+                      const isSelected = arg.event.extendedProps.isSelected;
+                      const isReservable = arg.event.extendedProps.isReservable;
+
+                      return [
+                        // 기본 스타일
+                        'transition-all',
+                        'duration-200',
+                        'cursor-pointer',
+                        'rounded-lg',
+                        'shadow-sm',
+                        'border-l-4',
+
+                        // 상태에 따른 스타일
+                        ...(isSelected
+                          ? [
+                              'fc-event-selected',
+                              'transform',
+                              'scale-105',
+                              'shadow-lg',
+                              'ring-2',
+                              'ring-blue-300',
+                              'ring-offset-1',
+                              'z-10',
+                            ]
+                          : isReservable
+                            ? ['fc-event-reservable', 'hover:shadow-md', 'hover:scale-102']
+                            : ['fc-event-disabled', 'opacity-60', 'cursor-not-allowed']),
+                      ];
+                    }}
+                    // 추가적인 DOM 조작
+                    eventDidMount={(info) => {
+                      const isSelected = info.event.extendedProps.isSelected;
+                      const isReservable = info.event.extendedProps.isReservable;
+
+                      // 예약 불가능한 이벤트는 클릭 방지
+                      if (!isReservable) {
+                        info.el.style.pointerEvents = 'none';
+                      }
+
+                      // 선택된 이벤트는 z-index 조정
+                      if (isSelected) {
+                        info.el.style.zIndex = '20';
+                      }
+                    }}
                   />
                 </div>
 
@@ -477,15 +580,24 @@ export default function ClassesDetailPage() {
                           return (
                             <button
                               key={`${selectedDate}_${t.time}`}
-                              onClick={() => !disabled && setSelectedTime(t.time)}
+                              onClick={() => {
+                                if (!disabled) {
+                                  setSelectedTime(t.time);
+                                  // 해당 시간의 이벤트 ID 찾아서 설정
+                                  const slotIndex = timeList.findIndex(
+                                    (slot) => slot.time === t.time
+                                  );
+                                  setSelectedEventId(`${selectedDate}-${t.time}-${slotIndex}`);
+                                }
+                              }}
                               disabled={disabled}
                               className={[
-                                'py-3 px-4 rounded-lg text-sm font-medium transition-colors text-left',
+                                'py-3 px-4 rounded-lg text-sm font-medium transition-all text-left',
                                 disabled
                                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                   : isSelected
-                                    ? 'bg-[#2D4739] text-white'
-                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700',
+                                    ? 'bg-[#2D4739] text-white shadow-lg scale-105'
+                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700 hover:shadow-md',
                               ].join(' ')}
                             >
                               <div className="flex items-center justify-between">
@@ -545,7 +657,6 @@ export default function ClassesDetailPage() {
                     <div className="prose max-w-none">
                       <h3 className="text-xl font-semibold mb-4">클래스 상세 정보</h3>
 
-                      {/* 콘텐츠 렌더링 (유틸리티 사용) */}
                       <div className="space-y-4 text-gray-700">
                         {sanitizedDescription ? (
                           <div
@@ -615,7 +726,7 @@ export default function ClassesDetailPage() {
             </div>
           )}
 
-          {/* 플로팅 CTA - 1440px 콘텐츠 영역 내부로 이동 */}
+          {/* 플로팅 CTA */}
           {showFixedButton && !isLoading && !loadError && summary && (
             <button
               onClick={scrollToCalendar}

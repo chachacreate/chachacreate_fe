@@ -1,9 +1,11 @@
 // shared/areas/navigation/features/navbar/store/Storenavbar.tsx
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation } from 'react-router-dom';
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Home, ShoppingCart, User, Store, Settings } from "lucide-react";
-import { getCurrentUser } from "@src/shared/util/jwtUtils";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Home, ShoppingCart, User, Store, Settings } from 'lucide-react';
+import { getCurrentUser } from '@src/shared/util/jwtUtils';
+import { legacyGet } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
 
 /** ===== Types ===== */
 type MenuItem = { label: string; href: string };
@@ -12,6 +14,7 @@ type StoreInfo = {
   storeName: string;
   logoImg: string;
   storeOwnerId: string | number;
+  storeUrl: string;
 };
 
 type StorenavbarProps = {
@@ -25,45 +28,32 @@ type StorenavbarProps = {
 function resolveCpath(explicit?: string) {
   if (explicit) return explicit;
   const meta = document.querySelector('meta[name="cpath"]') as HTMLMetaElement | null;
-  return meta?.content || "";
+  return meta?.content || '';
 }
 
 function buildUrlWithBase(pathOrUrl: string, base: string) {
-  if (!pathOrUrl) return "";
+  if (!pathOrUrl) return '';
   if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl; // 절대 URL
-  if (pathOrUrl.startsWith("/")) return pathOrUrl;       // 사이트 루트 기준 절대경로
-  const normalizedBase = base.endsWith("/") ? base.slice(0, -1) : base;
-  return `${normalizedBase}/${pathOrUrl}`.replace(/\/{2,}/g, "/");
+  if (pathOrUrl.startsWith('/')) return pathOrUrl; // 사이트 루트 기준 절대경로
+  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  return `${normalizedBase}/${pathOrUrl}`.replace(/\/{2,}/g, '/');
 }
 
 function stripCpath(pathname: string, cpath: string) {
-  const normalizedCpath = (cpath || "").replace(/\/+$/, "");
-  if (normalizedCpath && pathname.startsWith(normalizedCpath + "/")) {
-    return pathname.slice(normalizedCpath.length) || "/";
+  const normalizedCpath = (cpath || '').replace(/\/+$/, '');
+  if (normalizedCpath && pathname.startsWith(normalizedCpath + '/')) {
+    return pathname.slice(normalizedCpath.length) || '/';
   }
-  return pathname || "/";
+  return pathname || '/';
 }
 
 /** ===== Component ===== */
-export default function Storenavbar({
-  currentUserId: currentUserIdProp,
-  cpath: cpathProp,
-}: StorenavbarProps) {
+export default function Storenavbar({ cpath: cpathProp }: StorenavbarProps) {
   const location = useLocation();
   const params = useParams<{ store?: string; storeSlug?: string }>();
 
   /** cpath 보정 */
   const cpath = useMemo(() => resolveCpath(cpathProp), [cpathProp]);
-
-
-  /** JWT에서 현재 사용자 ID 자동 주입(외부 prop 우선) */
-const currentUserId = useMemo<string | undefined>(() => {
-  console.log("현재 유저알려줌:", currentUserIdProp);
-  if (currentUserIdProp !== undefined) return String(currentUserIdProp);
-  const id = getCurrentUser()?.memberId;
-  return id !== undefined ? String(id) : undefined;
-}, [currentUserIdProp]);
-
 
   /** 스토어 슬러그 계산 */
   const store = useMemo(() => {
@@ -71,18 +61,25 @@ const currentUserId = useMemo<string | undefined>(() => {
     if (byParam) return byParam;
 
     const path = stripCpath(location.pathname, cpath);
-    const segs = path.split("/").filter(Boolean);
+    const segs = path.split('/').filter(Boolean);
 
     const RESERVED = new Set([
-      "main", "seller", "admin", "resources", "static",
-      "assets", "legacy", "create", "api"
+      'main',
+      'seller',
+      'admin',
+      'resources',
+      'static',
+      'assets',
+      'legacy',
+      'create',
+      'api',
     ]);
 
     if (segs.length >= 2 && RESERVED.has(segs[0]) && !RESERVED.has(segs[1])) {
       return segs[1];
     }
     if (segs[0] && !RESERVED.has(segs[0])) return segs[0];
-    return "store";
+    return 'store';
   }, [params.store, params.storeSlug, location.pathname, cpath]);
 
   const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null);
@@ -91,17 +88,15 @@ const currentUserId = useMemo<string | undefined>(() => {
   const [safeBottom, setSafeBottom] = useState(0);
   const [scrolled, setScrolled] = useState(false);
 
-
   /** 링크 생성: 항상 cpath 접두 */
-  const base = (sub: string = "") =>
-    `${cpath}/${store}${sub}`.replace(/\/{2,}/g, "/");
+  const base = (sub: string = '') => `${cpath}/${store}${sub}`.replace(/\/{2,}/g, '/');
 
   /** 오너 여부: 아이디 비교만(역할 체크 X) */
   const isStoreOwner = useMemo(() => {
-    const id = currentUserId;
+    const currentUser = getCurrentUser();
+    const id = currentUser?.memberId;
     return !!(id && storeInfo?.storeOwnerId && String(id) === String(storeInfo.storeOwnerId));
-  }, [currentUserId, storeInfo?.storeOwnerId]);
-
+  }, [storeInfo?.storeOwnerId]);
   // 스토어 정보 로드 (store/cpath 변경 시마다)
   useEffect(() => {
     const controller = new AbortController();
@@ -113,54 +108,40 @@ const currentUserId = useMemo<string | undefined>(() => {
         setLoading(true);
         setErrorMsg(null);
 
-        const url = `${cpath}/legacy/${store}/info`.replace(/\/{2,}/g, "/");
+        const url = `/${store}/seller`.replace(/\/{2,}/g, '/');
 
-        const res = await fetch(url, {
-          credentials: "include",
-          signal: controller.signal,
-          headers: { Accept: "application/json" },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status} at ${url}`);
-
-        const json = await res.json();
-        const list = json?.data?.storeInfoList ?? [];
-        const storeData = list[0] ?? {};
-
-        const name = (storeData.storeName as string) ?? store;
-        const rawLogo = (storeData.logoImg as string) || "";
+        const res: ApiResponse<StoreInfo> = await legacyGet(url);
+        console.log(res);
+        const storeData: StoreInfo = res.data;
 
         setStoreInfo({
-          storeName: name,
-          logoImg: buildUrlWithBase(rawLogo, cpath),
-          storeOwnerId:
-            storeData.storeOwnerId ??
-            json?.data?.storeOwnerId ??
-            json?.storeOwnerId ??
-            json?.ownerId ??
-            "",
+          storeName: storeData.storeName,
+          logoImg: storeData.logoImg,
+          storeOwnerId: storeData.storeOwnerId,
+          storeUrl: storeData.storeUrl,
         });
       } catch (e: any) {
-        if (e?.name === "AbortError") return;
-        console.error("[Storenavbar] fetch error:", e);
+        if (e?.name === 'AbortError') return;
+        console.error('[Storenavbar] fetch error:', e);
         setErrorMsg(String(e?.message || e));
-        setStoreInfo((prev) => prev ?? { storeName: store, logoImg: "", storeOwnerId: "" });
+        setStoreInfo(
+          (prev) => prev ?? { storeName: store, logoImg: '', storeOwnerId: '', storeUrl: 'main' }
+        );
       } finally {
         setLoading(false);
       }
     };
-
     load();
     return () => controller.abort();
   }, [store, cpath]);
 
-
   // iOS safe-area bottom
   useEffect(() => {
-    const div = document.createElement("div");
+    const div = document.createElement('div');
     div.style.cssText =
-      "position:fixed;bottom:0;height:0;padding-bottom:env(safe-area-inset-bottom)";
+      'position:fixed;bottom:0;height:0;padding-bottom:env(safe-area-inset-bottom)';
     document.body.appendChild(div);
-    const pb = parseFloat(getComputedStyle(div).paddingBottom || "0");
+    const pb = parseFloat(getComputedStyle(div).paddingBottom || '0');
     setSafeBottom(pb);
     document.body.removeChild(div);
   }, []);
@@ -169,8 +150,8 @@ const currentUserId = useMemo<string | undefined>(() => {
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   /** 활성 메뉴 비교용 현재 경로(cpath 제거) */
@@ -182,36 +163,34 @@ const currentUserId = useMemo<string | undefined>(() => {
   // 메뉴 구성
   const DESKTOP_MENU = useMemo<MenuItem[]>(() => {
     const items: MenuItem[] = [
-      { label: "전체상품", href: base("/products") },
-      { label: "스토어정보", href: base("/info") },
-      { label: "클래스", href: base("/classes") },
-      { label: "공지/소식", href: base("/notices") },
-      { label: "마이페이지", href: base("/mypage") },
-      { label: "장바구니", href: base("/mypage/cart") },
+      { label: '전체상품', href: base('/products') },
+      { label: '스토어정보', href: base('/info') },
+      { label: '클래스', href: base('/classes') },
+      { label: '공지/소식', href: base('/notices') },
+      { label: '마이페이지', href: base('/mypage') },
+      { label: '장바구니', href: base('/mypage/cart') },
     ];
-    if (isStoreOwner) items.push({ label: "스토어 관리", href: `${cpath}/seller/${store}/main` });
-    items.push({ label: "메인 홈", href: `${cpath}/main` });
+    if (isStoreOwner) items.push({ label: '스토어 관리', href: `${cpath}/seller/${store}/main` });
+    items.push({ label: '메인 홈', href: `${cpath}/main` });
     return items;
   }, [isStoreOwner, store, cpath]);
 
   const MOBILE_TOP_MENU = useMemo<MenuItem[]>(() => {
     const items: MenuItem[] = [
-      { label: "전체상품", href: base("/products") },
-      { label: "스토어정보", href: base("/info") },
-      { label: "클래스", href: base("/classes") },
-      { label: "공지/소식", href: base("/notices") },
+      { label: '전체상품', href: base('/products') },
+      { label: '스토어정보', href: base('/info') },
+      { label: '클래스', href: base('/classes') },
+      { label: '공지/소식', href: base('/notices') },
     ];
-    if (isStoreOwner) items.push({ label: "스토어 관리", href: `${cpath}/seller/${store}/main` });
-    items.push({ label: "메인 홈", href: `${cpath}/main` });
+    items.push({ label: '메인 홈', href: `${cpath}/main` });
     return items;
   }, [isStoreOwner, store, cpath]);
-
 
   return (
     <div className="font-jua">
       {/* 상단 네비게이션 */}
       <header
-        data-scrolled={scrolled ? "true" : "false"}
+        data-scrolled={scrolled ? 'true' : 'false'}
         className="
           sticky top-0 z-40 w-full
           bg-white shadow-[0_4px_8px_rgba(0,0,0,0.08)]
@@ -225,10 +204,13 @@ const currentUserId = useMemo<string | undefined>(() => {
         <div className="mx-auto w-full max-w-[1920px] px-4 md:px-6 xl:px-20 2xl:px-[240px]">
           {/* 데스크톱 헤더 */}
           <div className="hidden md:flex h-20 items-center justify-between">
-
             {/* 좌측: 로고 & 스토어명 */}
             <div className="flex items-center gap-3 md:gap-6 min-w-0">
-              <a href={`${cpath}/${store}`} className="flex-shrink-0 hover:opacity-90" aria-label="스토어 홈">
+              <a
+                href={`${cpath}/${store}`}
+                className="flex-shrink-0 hover:opacity-90"
+                aria-label="스토어 홈"
+              >
                 {loading ? (
                   <div className="h-12 md:h-16 w-16 bg-gray-200 animate-pulse rounded" />
                 ) : storeInfo?.logoImg ? (
@@ -236,7 +218,9 @@ const currentUserId = useMemo<string | undefined>(() => {
                     src={storeInfo.logoImg}
                     alt={`${storeInfo.storeName} 로고`}
                     className="h-12 md:h-16 w-auto object-contain"
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    }}
                   />
                 ) : (
                   <div className="h-12 md:h-16 w-16 bg-gray-100 rounded flex items-center justify-center">
@@ -246,7 +230,7 @@ const currentUserId = useMemo<string | undefined>(() => {
               </a>
               <div className="min-w-0">
                 <h1 className="text-lg md:text-2xl font-bold text-[#1b2e23] truncate leading-tight">
-                  {(storeInfo?.storeName || store) + (errorMsg ? " (정보 로드 실패)" : "")}
+                  {(storeInfo?.storeName || store) + (errorMsg ? ' (정보 로드 실패)' : '')}
                 </h1>
               </div>
             </div>
@@ -262,11 +246,11 @@ const currentUserId = useMemo<string | undefined>(() => {
                     key={m.href}
                     href={m.href}
                     className={[
-                      "leading-none pb-1 text-[18px] transition-colors border-b-2",
+                      'leading-none pb-1 text-[18px] transition-colors border-b-2',
                       active
-                        ? "font-bold text-[#2D4739] border-transparent"
-                        : "text-[#2D4739] hover:text-[#1b2e23] border-transparent hover:border-[#2D4739]",
-                    ].join(" ")}
+                        ? 'font-bold text-[#2D4739] border-transparent'
+                        : 'text-[#2D4739] hover:text-[#1b2e23] border-transparent hover:border-[#2D4739]',
+                    ].join(' ')}
                   >
                     {m.label}
                   </a>
@@ -274,7 +258,6 @@ const currentUserId = useMemo<string | undefined>(() => {
               })}
             </nav>
           </div>
-
 
           {/* 모바일 상단 메뉴 (스크롤 영역 상단) */}
           <nav className="md:hidden flex h-12 items-center justify-between overflow-x-auto">
@@ -287,18 +270,17 @@ const currentUserId = useMemo<string | undefined>(() => {
                     key={m.href}
                     href={m.href}
                     className={[
-                      "text-center text-[14px] py-2 leading-none border-b-2 whitespace-nowrap px-2",
+                      'text-center text-[14px] py-2 leading-none border-b-2 whitespace-nowrap px-2',
                       active
-                        ? "font-bold text-[#2D4739] border-transparent"
-                        : "text-[#2D4739] hover:text-[#1b2e23] border-transparent hover:border-[#2D4739]",
-                    ].join(" ")}
+                        ? 'font-bold text-[#2D4739] border-transparent'
+                        : 'text-[#2D4739] hover:text-[#1b2e23] border-transparent hover:border-[#2D4739]',
+                    ].join(' ')}
                   >
                     {m.label}
                   </a>
                 );
               })}
             </div>
-
           </nav>
         </div>
       </header>
@@ -310,21 +292,37 @@ const currentUserId = useMemo<string | undefined>(() => {
         aria-label="모바일 하단 내비게이션"
       >
         <div className="mx-auto w-full max-w-[1920px] px-4">
-
-          <ul className={`grid h-14 ${isStoreOwner ? "grid-cols-4" : "grid-cols-3"}`}>
+          <ul className={`grid h-14 ${isStoreOwner ? 'grid-cols-4' : 'grid-cols-3'}`}>
             <li className="flex items-center justify-center">
               <HomeExpander store={store} cpath={cpath} />
             </li>
             <li className="flex items-center justify-center">
-              <BottomItem href={base("/mypage/cart")} label="장바구니" Icon={ShoppingCart} currentPath={currentPath} cpath={cpath} />
+              <BottomItem
+                href={base('/mypage/cart')}
+                label="장바구니"
+                Icon={ShoppingCart}
+                currentPath={currentPath}
+                cpath={cpath}
+              />
             </li>
             <li className="flex items-center justify-center">
-              <BottomItem href={base("/mypage")} label="마이페이지" Icon={User} currentPath={currentPath} cpath={cpath} />
-
+              <BottomItem
+                href={base('/mypage')}
+                label="마이페이지"
+                Icon={User}
+                currentPath={currentPath}
+                cpath={cpath}
+              />
             </li>
             {isStoreOwner && (
               <li className="flex items-center justify-center">
-                <BottomItem href={`${cpath}/seller/${store}/main`} label="스토어 관리" Icon={Settings} currentPath={currentPath} cpath={cpath} />
+                <BottomItem
+                  href={`${cpath}/seller/${store}/main`}
+                  label="스토어 관리"
+                  Icon={Settings}
+                  currentPath={currentPath}
+                  cpath={cpath}
+                />
               </li>
             )}
           </ul>
@@ -348,17 +346,17 @@ function HomeExpander({ store, cpath }: { store: string; cpath: string }) {
       if (!rootRef.current.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === 'Escape') setOpen(false);
     };
-    document.addEventListener("mousedown", onClick);
-    document.addEventListener("keydown", onKey);
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
     return () => {
-      document.removeEventListener("mousedown", onClick);
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
     };
   }, []);
 
-  const storeBase = `${cpath}/${store}`.replace(/\/{2,}/g, "/");
+  const storeBase = `${cpath}/${store}`.replace(/\/{2,}/g, '/');
 
   return (
     <div ref={rootRef} className="relative">
@@ -368,10 +366,10 @@ function HomeExpander({ store, cpath }: { store: string; cpath: string }) {
         aria-expanded={open}
         aria-controls="home-expander-panel"
         className={[
-          "flex flex-col items-center justify-center gap-1 w-20 h-14",
-          open ? "text-[#2D4739]" : "text-[#2D4739] opacity-90 hover:opacity-100",
-          "active:scale-95 transition-transform",
-        ].join(" ")}
+          'flex flex-col items-center justify-center gap-1 w-20 h-14',
+          open ? 'text-[#2D4739]' : 'text-[#2D4739] opacity-90 hover:opacity-100',
+          'active:scale-95 transition-transform',
+        ].join(' ')}
       >
         <Home className="h-5 w-5" aria-hidden />
         <span className="text-[12px] leading-none">홈</span>
@@ -380,20 +378,18 @@ function HomeExpander({ store, cpath }: { store: string; cpath: string }) {
       <div
         id="home-expander-panel"
         className={[
-          "absolute top-1/2 -translate-y-1/2 left-full ml-2",
-          "rounded-full bg-white/80 backdrop-blur px-2",
-          "overflow-hidden shadow-sm border border-[#e5e7eb]",
-          "transition-all duration-200",
-          open ? "w-56 opacity-100" : "w-0 opacity-0 pointer-events-none",
-        ].join(" ")}
+          'absolute top-1/2 -translate-y-1/2 left-full ml-2',
+          'rounded-full bg-white/80 backdrop-blur px-2',
+          'overflow-hidden shadow-sm border border-[#e5e7eb]',
+          'transition-all duration-200',
+          open ? 'w-56 opacity-100' : 'w-0 opacity-0 pointer-events-none',
+        ].join(' ')}
         role="menu"
         aria-hidden={!open}
       >
         <div className="flex items-center gap-2 h-10">
           <a
-
-            href={`${cpath}/main`.replace(/\/{2,}/g, "/")}
-
+            href={`${cpath}/main`.replace(/\/{2,}/g, '/')}
             className="flex items-center gap-2 px-3 py-1 rounded-full bg-white text-[#2D4739] text-sm font-medium hover:bg-white/90"
             onClick={() => setOpen(false)}
           >
@@ -409,7 +405,6 @@ function HomeExpander({ store, cpath }: { store: string; cpath: string }) {
             <Store className="h-4 w-4" />
 
             <span>{store}</span>
-
           </a>
         </div>
       </div>
@@ -430,7 +425,6 @@ function BottomItem({
   currentPath: string;
   cpath: string;
 }) {
-
   const normalizedHref = stripCpath(href, cpath);
   const active = currentPath === normalizedHref || currentPath === href;
 
@@ -438,9 +432,9 @@ function BottomItem({
     <a
       href={href}
       className={[
-        "flex flex-col items-center justify-center gap-1 w-full h-full",
-        active ? "text-[#2D4739]" : "text-[#2D4739] opacity-90 hover:opacity-100",
-      ].join(" ")}
+        'flex flex-col items-center justify-center gap-1 w-full h-full',
+        active ? 'text-[#2D4739]' : 'text-[#2D4739] opacity-90 hover:opacity-100',
+      ].join(' ')}
     >
       <Icon className="h-5 w-5" aria-hidden />
       <span className="text-[12px] leading-none">{label}</span>

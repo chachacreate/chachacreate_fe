@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Store, Info } from 'lucide-react';
 
 type Item = {
@@ -79,9 +79,9 @@ export default function StoresSubnavbar({
           {items.map((item) => {
             const active = isActivePath(item);
             return (
-              <a
+              <Link
                 key={item.to}
-                href={item.to}
+                to={item.to}
                 onClick={() => handleClick(item.to)}
                 className={[
                   'group inline-flex items-center gap-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
@@ -92,7 +92,7 @@ export default function StoresSubnavbar({
               >
                 {item.icon && <span className="shrink-0">{item.icon}</span>}
                 <span>{item.label}</span>
-              </a>
+              </Link>
             );
           })}
         </nav>

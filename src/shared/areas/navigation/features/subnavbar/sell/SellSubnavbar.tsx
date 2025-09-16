@@ -1,7 +1,7 @@
 // src/shared/areas/navigation/features/subnavbar/sell/SellSubnavbar.tsx
-import React from "react";
-import { useLocation } from "react-router-dom";
-import { Info, PackagePlus, ClipboardList, Wallet } from "lucide-react";
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Info, PackagePlus, ClipboardList, Wallet } from 'lucide-react';
 
 type Item = {
   label: string;
@@ -26,28 +26,28 @@ type SellSubnavbarProps = {
 export default function SellSubnavbar({
   items = [
     {
-      label: "개인 판매 설명",
-      to: "/main/sell/sellguide",
+      label: '개인 판매 설명',
+      to: '/main/sell/sellguide',
       exact: true,
       icon: <Info className="h-4 w-4" />,
     },
     {
-      label: "개인 판매 상품 등록&관리",
-      to: "/main/sell/sellregister",
+      label: '개인 판매 상품 등록&관리',
+      to: '/main/sell/sellregister',
       icon: <PackagePlus className="h-4 w-4" />,
     },
     {
-      label: "개인 판매 상품 주문 관리",
-      to: "/main/sell/products",
+      label: '개인 판매 상품 주문 관리',
+      to: '/main/sell/products',
       icon: <ClipboardList className="h-4 w-4" />,
     },
     {
-      label: "개인 판매 상품 정산 관리",
-      to: "/main/sell/management",
+      label: '개인 판매 상품 정산 관리',
+      to: '/main/sell/management',
       icon: <Wallet className="h-4 w-4" />,
     },
   ],
-  className = "",
+  className = '',
   sticky = false,
   stickyOffsetPx = 0,
 }: SellSubnavbarProps) {
@@ -64,11 +64,11 @@ export default function SellSubnavbar({
   return (
     <div
       className={[
-        "w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/75",
-        "py-3 md:py-4 mb-6 md:mb-8",
-        sticky ? "sticky z-30" : "",
+        'w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/75',
+        'py-3 md:py-4 mb-6 md:mb-8',
+        sticky ? 'sticky z-30' : '',
         className,
-      ].join(" ")}
+      ].join(' ')}
       style={sticky ? { top: stickyOffsetPx } : undefined}
     >
       {/* 중앙 컨테이너 - max-w 1440 */}
@@ -80,19 +80,19 @@ export default function SellSubnavbar({
           {items.map((item) => {
             const active = isActivePath(item);
             return (
-              <a
+              <Link
                 key={item.to}
-                href={item.to}
+                to={item.to}
                 className={[
-                  "group inline-flex items-center gap-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
+                  'group inline-flex items-center gap-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
                   active
-                    ? "bg-[#2d4739] text-white rounded-lg"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg",
-                ].join(" ")}
+                    ? 'bg-[#2d4739] text-white rounded-lg'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg',
+                ].join(' ')}
               >
                 {item.icon && <span className="shrink-0">{item.icon}</span>}
                 <span>{item.label}</span>
-              </a>
+              </Link>
             );
           })}
         </nav>

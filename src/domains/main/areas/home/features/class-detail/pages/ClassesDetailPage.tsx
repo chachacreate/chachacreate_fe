@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import { get } from '@src/libs/request';
+import { processContent, getContentCssClasses } from '@src/shared/util/contentUtil';
 
 /** ===== FullCalendar ===== */
 import FullCalendar from '@fullcalendar/react';
@@ -275,6 +276,16 @@ export default function ClassesDetailPage() {
     return toFullCalendarEvents(scheduleMap);
   }, [scheduleMap]);
 
+  /** 콘텐츠 처리 (유틸리티 사용) */
+  const { sanitizedDescription, contentType } = useMemo(() => {
+    return processContent(summary?.description);
+  }, [summary?.description]);
+
+  /** 콘텐츠 CSS 클래스 */
+  const contentCssClasses = useMemo(() => {
+    return getContentCssClasses(contentType);
+  }, [contentType]);
+
   /** 액션 */
   const handleApply = () => {
     if (!selectedDate || !selectedTime) {
@@ -534,19 +545,24 @@ export default function ClassesDetailPage() {
                     <div className="prose max-w-none">
                       <h3 className="text-xl font-semibold mb-4">클래스 상세 정보</h3>
 
-                      {/* 본문 텍스트 */}
+                      {/* 콘텐츠 렌더링 (유틸리티 사용) */}
                       <div className="space-y-4 text-gray-700">
-                        <p>"{summary.title}" 클래스에 오신 것을 환영합니다.</p>
-
-                        {summary.description ? (
-                          <p>{summary.description}</p>
+                        {sanitizedDescription ? (
+                          <div
+                            className={`content-wrapper ${contentCssClasses}`}
+                            dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
+                          />
                         ) : (
-                          <p>클래스 설명이 없습니다.</p>
+                          <div>
+                            <p>"{summary.title}" 클래스에 오신 것을 환영합니다.</p>
+                            <p>클래스 설명이 없습니다.</p>
+                          </div>
                         )}
+
                         {summary.guideline && (
-                          <div className="mt-2">
-                            <h4 className="font-semibold mb-1">주의사항</h4>
-                            <p>{summary.guideline}</p>
+                          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <h4 className="font-semibold mb-2 text-yellow-800">⚠️ 주의사항</h4>
+                            <p className="text-yellow-700">{summary.guideline}</p>
                           </div>
                         )}
                       </div>

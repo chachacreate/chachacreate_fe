@@ -1,6 +1,6 @@
 // src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar.tsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
   Home,
   ChevronDown,
@@ -188,14 +188,14 @@ export default function SellerSidenavbar({
                     <div
                       className={[expanded ? 'block' : 'hidden', 'lg:block', 'min-w-0'].join(' ')}
                     >
-                      <a
-                        href={`${base}/main`}
+                      <Link
+                        to={`${base}/main`}
                         className="block text-sm font-semibold text-gray-900 hover:underline truncate"
                         title={`${storeSegment} 관리자 홈`}
                         onClick={handleNavClick}
                       >
                         {storeSegment}
-                      </a>
+                      </Link>
                     </div>
                   </div>
 
@@ -222,8 +222,8 @@ export default function SellerSidenavbar({
                       const isActive = isActivePath((sec as any).to);
                       return (
                         <li key={sec.key} className="mb-1">
-                          <a
-                            href={(sec as any).to}
+                          <Link
+                            to={(sec as any).to}
                             onClick={handleNavClick}
                             className={[linkBase, isActive ? linkActive : linkInactive].join(' ')}
                           >
@@ -237,7 +237,7 @@ export default function SellerSidenavbar({
                             >
                               {sec.label}
                             </span>
-                          </a>
+                          </Link>
                         </li>
                       );
                     }
@@ -245,8 +245,8 @@ export default function SellerSidenavbar({
                     if ((sec as any).type === 'external') {
                       return (
                         <li key={sec.key} className="mb-1">
-                          <button
-                            type="button"
+                          <a
+                            href={(sec as any).href}
                             onClick={(sec as any).onClick}
                             className={[linkBase, 'w-full', linkInactive].join(' ')}
                           >
@@ -260,7 +260,7 @@ export default function SellerSidenavbar({
                             >
                               {sec.label}
                             </span>
-                          </button>
+                          </a>
                         </li>
                       );
                     }
@@ -325,10 +325,14 @@ export default function SellerSidenavbar({
                               const isActive = isActivePath(item.to);
                               return (
                                 <li key={idx}>
-                                  <a
-                                    href={item.to}
+                                  <Link
+                                    to={item.to}
                                     onClick={handleNavClick}
-                                    className={['ml-2', linkBase, isActive ? linkActive : linkInactive].join(' ')}
+                                    className={[
+                                      'ml-2',
+                                      linkBase,
+                                      isActive ? linkActive : linkInactive,
+                                    ].join(' ')}
                                   >
                                     <ItemIcon className="h-4 w-4 shrink-0" />
                                     <span
@@ -340,7 +344,7 @@ export default function SellerSidenavbar({
                                     >
                                       {item.label}
                                     </span>
-                                  </a>
+                                  </Link>
                                 </li>
                               );
                             })}

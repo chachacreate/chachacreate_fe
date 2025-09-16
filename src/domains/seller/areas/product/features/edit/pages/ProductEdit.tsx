@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 
 import api from '@src/libs/apiService'; // Boot용 + FastAPI
 import EditorAPI, {
   type EditorHandle,
 } from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
+
 import { predictImage } from '../../insert/services/aiService/aiService';
 import { legacyGet, legacyPost } from '@src/libs/request';
 
@@ -353,7 +353,7 @@ const ProductEdit: FC = () => {
       }
     });
 
-    // ----- 3. DTO 본문 데이터 -----
+    // ----- DTO 본문 데이터 -----
     const dtoPayload = {
       productId: Number(productId),
       productName: form.name.trim(),
@@ -368,7 +368,7 @@ const ProductEdit: FC = () => {
     console.log('전송용 DTO:', dtoPayload);
 
     fd.append('dto', new Blob([JSON.stringify(dtoPayload)], { type: 'application/json' }));
-
+        
     return fd;
   }
 
@@ -418,7 +418,6 @@ const ProductEdit: FC = () => {
   return (
     <>
       <Header />
-      <Mainnavbar />
 
       <SellerSidenavbar>
         <div className="space-y-6 sm:space-y-8 pb-10">

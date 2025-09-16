@@ -3,7 +3,6 @@ import type { FC } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import {
   ResponsiveContainer,
@@ -274,7 +273,6 @@ const ClassReservation: FC = () => {
       `}</style>
 
       <Header />
-      <Mainnavbar />
 
       <SellerSidenavbar>
         <div className="space-y-8">

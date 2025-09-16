@@ -2,7 +2,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { Search, Send, MessageSquare, Loader2 } from 'lucide-react';
 import { get } from '@src/libs/request';
@@ -398,7 +397,6 @@ const SellerChat: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#FFFFFF]">
         <Header />
-        <Mainnavbar />
         <SellerSidenavbar>
           <div className="flex items-center justify-center h-96">
             <div className="flex items-center gap-2 text-gray-500">
@@ -415,7 +413,6 @@ const SellerChat: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#FFFFFF]">
         <Header />
-        <Mainnavbar />
         <SellerSidenavbar>
           <div className="flex items-center justify-center h-96">
             <div className="text-center text-gray-500">
@@ -432,7 +429,6 @@ const SellerChat: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FFFFFF]">
       <Header />
-      <Mainnavbar />
 
       <SellerSidenavbar>
         <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">

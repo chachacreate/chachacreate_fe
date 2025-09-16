@@ -10,6 +10,7 @@ import { ChevronLeft, Search, Send, MessageSquare, Loader2 } from 'lucide-react'
 import { get } from '@src/libs/request';
 import type { ApiResponse } from '@src/libs/apiResponse';
 import { getCurrentUser, isLoggedIn, type UserInfo } from '@src/shared/util/jwtUtils';
+import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 
 /* ---------- Types ---------- */
 type Params = { storeUrl?: string };
@@ -40,8 +41,6 @@ interface DisplayMessage extends ChatMessage {
 
 /* ---------- Utils ---------- */
 const BRAND = '#2D4739';
-
-const fmt = (s: string): string => s.trim().toLowerCase();
 
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
@@ -508,7 +507,7 @@ const MainMypageClassesPage: React.FC = () => {
       socketRef.current = socket;
 
       socket.onopen = () => {
-        console.log('WebSocket 연결됨: ' + chatroomId);
+        // console.log('WebSocket 연결됨: ' + chatroomId);
         setMessages([]);
         loadChatHistory(chatroomId);
       };
@@ -528,7 +527,7 @@ const MainMypageClassesPage: React.FC = () => {
       };
 
       socket.onclose = (event) => {
-        console.log('WebSocket 닫힘:', event.code, event.reason);
+        // console.log('WebSocket 닫힘:', event.code, event.reason);
         if (event.code !== 1000) console.warn('WebSocket 비정상 종료');
       };
 
@@ -677,11 +676,11 @@ const MainMypageClassesPage: React.FC = () => {
       </div>
     );
   }
-
+  const isMain = location.pathname.startsWith('/main');
   return (
     <div className="min-h-screen font-jua pb-12" style={backgroundStyle}>
       <Header />
-      <Mainnavbar />
+      {isMain ? <Mainnavbar /> : <Storenavbar />}
 
       {/* 📱 모바일 */}
       <div className="lg:hidden">

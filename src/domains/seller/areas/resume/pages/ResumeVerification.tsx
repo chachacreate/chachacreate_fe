@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import Header from '@src/shared/areas/layout/features/header/Header';
-import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { useParams } from 'react-router-dom';
 import { get, post } from '@src/libs/request';
@@ -193,7 +192,6 @@ export default function ResumeVerification() {
   return (
     <>
       <Header />
-      <Mainnavbar />
       <SellerSidenavbar>
         <h1 className="text-xl font-bold text-center mt-4 mb-6">클래스 개설 신청서</h1>
         <div className="max-w-3xl mx-auto p-6 bg-white rounded-2xl shadow-lg space-y-8 border border-gray-200">

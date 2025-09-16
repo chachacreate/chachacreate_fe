@@ -5,6 +5,7 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar';
 import { get } from '@src/libs/request';
+import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 
 // 서버 DTO 타입 (백엔드 응답 규격)
 type ClassReservationSummaryResponseDTO = {
@@ -277,9 +278,7 @@ export default function MainMypageClassesPage() {
       const sorted = [...list].sort((a, b) => {
         if (a.status === 'upcoming' && b.status !== 'upcoming') return -1;
         if (a.status !== 'upcoming' && b.status === 'upcoming') return 1;
-        return a.status === 'upcoming'
-          ? a.reservedAt - b.reservedAt
-          : b.reservedAt - a.reservedAt;
+        return a.status === 'upcoming' ? a.reservedAt - b.reservedAt : b.reservedAt - a.reservedAt;
       });
 
       setItems(sorted);
@@ -326,9 +325,7 @@ export default function MainMypageClassesPage() {
     return [...base].sort((a, b) => {
       if (a.status === 'upcoming' && b.status !== 'upcoming') return -1;
       if (a.status !== 'upcoming' && b.status === 'upcoming') return 1;
-      return a.status === 'upcoming'
-        ? a.reservedAt - b.reservedAt
-        : b.reservedAt - a.reservedAt;
+      return a.status === 'upcoming' ? a.reservedAt - b.reservedAt : b.reservedAt - a.reservedAt;
     });
   }, [items, submittedQ, statusFilter]);
 
@@ -435,13 +432,15 @@ export default function MainMypageClassesPage() {
                       r.status === 'upcoming'
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : r.status === 'past'
-                        ? 'bg-gray-100 text-gray-700 border border-gray-200'
-                        : 'bg-rose-50 text-rose-700 border border-rose-200',
+                          ? 'bg-gray-100 text-gray-700 border border-gray-200'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200',
                     ].join(' ')}
                   >
                     {r.status === 'upcoming' ? '예정' : r.status === 'past' ? '지난' : '취소'}
                   </span>
-                  <h3 className="text-base sm:text-lg font-semibold truncate font-jua">{r.title}</h3>
+                  <h3 className="text-base sm:text-lg font-semibold truncate font-jua">
+                    {r.title}
+                  </h3>
                 </div>
 
                 {/* 호스트 / 주소 */}
@@ -482,9 +481,7 @@ export default function MainMypageClassesPage() {
                       >
                         상세 보기
                       </a>
-                      <button
-                        className="flex-1 h-9 rounded-lg border text-sm font-medium hover:bg-gray-50 active:scale-95 transition font-jua"
-                      >
+                      <button className="flex-1 h-9 rounded-lg border text-sm font-medium hover:bg-gray-50 active:scale-95 transition font-jua">
                         예약 취소
                       </button>
                     </>
@@ -505,14 +502,14 @@ export default function MainMypageClassesPage() {
       </div>
     </>
   );
-
+  const isMain = location.pathname.startsWith('/main');
   return (
     <div
       className="min-h-screen font-jua"
       style={{ background: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)' }}
     >
       <Header />
-      <Mainnavbar />
+      {isMain ? <Mainnavbar /> : <Storenavbar />}
 
       {/* 📱 모바일: 사이드 그리드 숨기고, 독립 페이지처럼 렌더 */}
       <div className="lg:hidden">
@@ -521,7 +518,9 @@ export default function MainMypageClassesPage() {
           <div className="px-4 py-3 flex items-center gap-3">
             <button
               type="button"
-              onClick={() => (history.length > 1 ? history.back() : (window.location.href = '/main/mypage'))}
+              onClick={() =>
+                history.length > 1 ? history.back() : (window.location.href = '/main/mypage')
+              }
               className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -548,7 +547,9 @@ export default function MainMypageClassesPage() {
           <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
             {/* 데스크톱 헤더 영역 */}
             <div className="bg-gradient-to-r from-[#2d4739] to-gray-800 px-6 md:px-8 py-5 md:py-6">
-              <h2 className="text-xl md:text-2xl text-white mb-1.5 md:mb-2 font-jua">클래스 예약 조회</h2>
+              <h2 className="text-xl md:text-2xl text-white mb-1.5 md:mb-2 font-jua">
+                클래스 예약 조회
+              </h2>
               <p className="text-gray-200 text-xs md:text-sm font-jua">
                 신청한 클래스와 예약 내역을 검색/필터로 빠르게 찾아보세요
               </p>

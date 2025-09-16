@@ -6,6 +6,7 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar';
 import { legacyGet } from '@src/libs/request';
+import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 
 /** 브랜드 컬러 */
 const BRAND = '#2d4739';
@@ -406,14 +407,14 @@ export default function MainMypageOrdersPage() {
       </div>
     );
   };
-
+  const isMain = location.pathname.startsWith('/main');
   return (
     <div
       className="min-h-screen font-jua"
       style={{ background: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)' }}
     >
       <Header />
-      <Mainnavbar />
+      {isMain ? <Mainnavbar /> : <Storenavbar />}
 
       {/* 모바일 상단바 */}
       <div className="lg:hidden">

@@ -48,7 +48,7 @@ const getAccessToken = async () => {
 };
 
 export const getUserInfoFromToken = async (token?: string): Promise<JWTPayload | null> => {
-  const t = token || await getAccessToken();
+  const t = token || (await getAccessToken());
   if (!t) return null;
   if (isTokenExpired(t)) {
     localStorage.removeItem('accessToken');
@@ -137,7 +137,6 @@ api.interceptors.response.use(
         // 토큰에서 유저정보 추출(있으면 email/userName 보강 저장)
         const userInfo = getUserInfoFromToken(newAccessToken);
         if (userInfo) {
-          if (userInfo.email) localStorage.setItem('email', userInfo.email);
           if ((userInfo as any).name) localStorage.setItem('userName', (userInfo as any).name);
         }
 

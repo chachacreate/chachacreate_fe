@@ -18,6 +18,7 @@ import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainna
 import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar';
 
 import { legacyGet, post } from '@src/libs/request';
+import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 
 /* ======================== Types ======================== */
 type Params = { orderId?: string };
@@ -411,14 +412,14 @@ const MainMypageOrderdetail: React.FC = () => {
       )}
     </main>
   );
-
+  const isMain = location.pathname.startsWith('/main');
   return (
     <div
       className="min-h-screen font-jua"
       style={{ background: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)' }}
     >
       <Header />
-      <Mainnavbar />
+      {isMain ? <Mainnavbar /> : <Storenavbar />}
 
       {/* 모바일 상단바 */}
       <div className="lg:hidden">

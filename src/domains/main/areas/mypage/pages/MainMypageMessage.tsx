@@ -10,6 +10,7 @@ import { ChevronLeft, Search, Send, MessageSquare, Loader2 } from 'lucide-react'
 import { get } from '@src/libs/request';
 import type { ApiResponse } from '@src/libs/apiResponse';
 import { getCurrentUser, isLoggedIn, type UserInfo } from '@src/shared/util/jwtUtils';
+import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 
 /* ---------- Types ---------- */
 type Params = { storeUrl?: string };
@@ -675,11 +676,11 @@ const MainMypageClassesPage: React.FC = () => {
       </div>
     );
   }
-
+  const isMain = location.pathname.startsWith('/main');
   return (
     <div className="min-h-screen font-jua pb-12" style={backgroundStyle}>
       <Header />
-      <Mainnavbar />
+      {isMain ? <Mainnavbar /> : <Storenavbar />}
 
       {/* 📱 모바일 */}
       <div className="lg:hidden">

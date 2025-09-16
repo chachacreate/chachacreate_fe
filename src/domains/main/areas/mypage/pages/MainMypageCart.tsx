@@ -1,5 +1,5 @@
 // src/domains/main/areas/mypage/pages/MainMypageCart.tsx
-import React, { use, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Minus, Plus, Trash2, ShoppingCart, Store } from 'lucide-react';
 

@@ -1,28 +1,29 @@
 // src/domains/main/areas/mypage/pages/MainMypageMyreviews.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, Loader2, Star, ThumbsUp } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronLeft, Loader2, Star, ThumbsUp } from 'lucide-react';
 
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import MypageSidenavbar from "@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar";
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar';
 
-import { get } from "@src/libs/request";
-import type { ApiResponse } from "@src/libs/apiResponse";
+import { get } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
+import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 
-//서버 DTO 타입 
+//서버 DTO 타입
 type ReviewListItemDTO = {
   reviewId: number;
   productId: number;
-  reviewCreatedAt?: string;       // "2025-09-09T10:33:31"
+  reviewCreatedAt?: string; // "2025-09-09T10:33:31"
   productThumbnailUrl?: string | null;
   productName?: string | null;
   authorId: number;
   authorName: string;
   content: string;
-  productRating?: string;         // "4.50/5.0" 형태
+  productRating?: string; // "4.50/5.0" 형태
   likeCount: number;
   reviewUpdatedAt?: string;
-  createdAt?: string;             // 일부 데이터에 존재
+  createdAt?: string; // 일부 데이터에 존재
 };
 
 // UI 모델 타입 (화면 표시용으로 가공)
@@ -32,19 +33,19 @@ type ReviewItem = {
   name: string;
   image?: string | null;
   content: string;
-  createdDate: string;   // YYYY-MM-DD
-  createdAtTs: number;   // 정렬용 timestamp
-  rating: number;        // 0~5 (소수점)
+  createdDate: string; // YYYY-MM-DD
+  createdAtTs: number; // 정렬용 timestamp
+  rating: number; // 0~5 (소수점)
   likes: number;
 };
 
 // 상수
-const API_ENDPOINT = "/mypage/reviews/reviews";
-const BRAND = "#2d4739";
+const API_ENDPOINT = '/mypage/reviews/reviews';
+const BRAND = '#2d4739';
 
 /** 이미지 없을 때 placeholder */
 const PLACEHOLDER =
-  "data:image/svg+xml;utf8," +
+  'data:image/svg+xml;utf8,' +
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480">
        <rect width="100%" height="100%" fill="#f3f4f6"/>
@@ -55,11 +56,10 @@ const PLACEHOLDER =
      </svg>`
   );
 
-
 // 유틸 함수
 
 /** "2025-09-09T10:33:31" → "2025-09-09" */
-const toDate = (iso?: string) => (iso ? iso.slice(0, 10) : "");
+const toDate = (iso?: string) => (iso ? iso.slice(0, 10) : '');
 
 /** 날짜 문자열을 timestamp로 (없으면 0) */
 const toTs = (iso?: string) => (iso ? new Date(iso).getTime() : 0);
@@ -67,21 +67,21 @@ const toTs = (iso?: string) => (iso ? new Date(iso).getTime() : 0);
 /** "4.50/5.0" → 4.5 */
 const parseRating = (raw?: string): number => {
   if (!raw) return 0;
-  const [head] = raw.split("/");
+  const [head] = raw.split('/');
   const n = Number(head);
   return Number.isFinite(n) ? n : 0;
 };
 
- // 서버 DTO → UI 모델로 변환
+// 서버 DTO → UI 모델로 변환
 const adapt = (dto: ReviewListItemDTO): ReviewItem => {
   // 날짜 우선순위: reviewCreatedAt > createdAt
-  const createdIso = dto.reviewCreatedAt ?? dto.createdAt ?? "";
+  const createdIso = dto.reviewCreatedAt ?? dto.createdAt ?? '';
   return {
     id: dto.reviewId,
     productId: dto.productId,
-    name: dto.productName ?? "(상품명 없음)",
+    name: dto.productName ?? '(상품명 없음)',
     image: dto.productThumbnailUrl ?? null,
-    content: dto.content ?? "",
+    content: dto.content ?? '',
     createdDate: toDate(createdIso),
     createdAtTs: toTs(createdIso),
     rating: parseRating(dto.productRating),
@@ -89,7 +89,7 @@ const adapt = (dto: ReviewListItemDTO): ReviewItem => {
   };
 };
 
- // 메인 컴포넌트
+// 메인 컴포넌트
 export default function MainMypageMyreviews() {
   // 데이터 상태
   const [items, setItems] = useState<ReviewItem[]>([]);
@@ -112,14 +112,12 @@ export default function MainMypageMyreviews() {
 
       let envelope: ApiResponse<ReviewListItemDTO[]> | null = null;
 
-      if (res && typeof res === "object" && "data" in (res as any)) {
+      if (res && typeof res === 'object' && 'data' in (res as any)) {
         const d = (res as any).data;
-        if (d && typeof d === "object" && "data" in d) {
+        if (d && typeof d === 'object' && 'data' in d) {
           envelope = d as ApiResponse<ReviewListItemDTO[]>;
         } else if (Array.isArray(d)) {
-          envelope = { data: d, status: 200, message: "" } as ApiResponse<
-            ReviewListItemDTO[]
-          >;
+          envelope = { data: d, status: 200, message: '' } as ApiResponse<ReviewListItemDTO[]>;
         } else {
           envelope = d as ApiResponse<ReviewListItemDTO[]>;
         }
@@ -148,9 +146,7 @@ export default function MainMypageMyreviews() {
         setItems([]);
         return;
       }
-      setErrorMsg(
-        e?.message ?? "리뷰 목록을 불러오는 중 오류가 발생했습니다."
-      );
+      setErrorMsg(e?.message ?? '리뷰 목록을 불러오는 중 오류가 발생했습니다.');
       setItems([]);
     } finally {
       setLoading(false);
@@ -172,16 +168,16 @@ export default function MainMypageMyreviews() {
 
   // 본문 더보기 토글
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
-  const toggleExpand = (id: number) =>
-    setExpanded((p) => ({ ...p, [id]: !p[id] }));
+  const toggleExpand = (id: number) => setExpanded((p) => ({ ...p, [id]: !p[id] }));
 
+  const isMain = location.pathname.startsWith('/main');
   return (
     <div
       className="min-h-screen font-jua pb-12"
-      style={{ background: "linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)" }}
+      style={{ background: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)' }}
     >
       <Header />
-      <Mainnavbar />
+      {isMain ? <Mainnavbar /> : <Storenavbar />}
 
       {/* 모바일: 독립 페이지 느낌 (뒤로가기 포함) */}
       <div className="lg:hidden">
@@ -191,7 +187,7 @@ export default function MainMypageMyreviews() {
             <button
               type="button"
               onClick={() =>
-                history.length > 1 ? history.back() : (window.location.href = "/main/mypage")
+                history.length > 1 ? history.back() : (window.location.href = '/main/mypage')
               }
               className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
               aria-label="뒤로가기"
@@ -299,7 +295,7 @@ export default function MainMypageMyreviews() {
                             onClick={() => toggleExpand(rv.id)}
                             className="mt-2 inline-flex items-center text-xs px-2 py-1 rounded-md border hover:bg-gray-50 active:scale-95 transition"
                           >
-                            {isOpen ? "접기" : "더보기"}
+                            {isOpen ? '접기' : '더보기'}
                           </button>
                         )}
                       </div>
@@ -412,7 +408,7 @@ export default function MainMypageMyreviews() {
                                     onClick={() => toggleExpand(rv.id)}
                                     className="mt-2 inline-flex items-center text-xs px-2 py-1 rounded-md border hover:bg-gray-50 active:scale-95 transition"
                                   >
-                                    {isOpen ? "접기" : "더보기"}
+                                    {isOpen ? '접기' : '더보기'}
                                   </button>
                                 )}
                               </td>

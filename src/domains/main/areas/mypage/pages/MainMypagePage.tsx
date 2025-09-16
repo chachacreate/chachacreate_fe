@@ -1,17 +1,17 @@
 // src/domains/main/areas/mypage/pages/MypageApiSmokeTest.tsx
-import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { useParams } from "react-router-dom";
-import { ChevronLeft } from "lucide-react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useParams } from 'react-router-dom';
+import { ChevronLeft } from 'lucide-react';
 
 // 컴포넌트 imports (첫 번째 코드에서 사용된 컴포넌트들)
-import Header from "@src/shared/areas/layout/features/header/Header";
-import Mainnavbar from "@src/shared/areas/navigation/features/navbar/main/Mainnavbar";
-import MypageSidenavbar from "@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar";
-
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
+import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar';
 
 // 요청 유틸 (그대로 사용)
-import { get, patch, legacyGet, legacyPost } from "@src/libs/request";
-import { isLoggedIn } from "@src/shared/util/jwtUtils";
+import { get, patch, legacyGet, legacyPost } from '@src/libs/request';
+import { isLoggedIn } from '@src/shared/util/jwtUtils';
+import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 
 /* ======================== Types ======================== */
 type Params = { storeUrl?: string };
@@ -47,99 +47,96 @@ type BankVerifyResponse = {
 
 /* ======================== Helpers ======================== */
 function asApi<T>(env: LegacyEnvelope<T>): ApiResponse<T> {
-  return { status: env.status, message: env.message ?? "", data: env.data as T };
+  return { status: env.status, message: env.message ?? '', data: env.data as T };
 }
 
 const BANKS = [
-  { code: "004", name: "국민은행" },
-  { code: "020", name: "우리은행" },
-  { code: "088", name: "신한은행" },
-  { code: "003", name: "기업은행" },
-  { code: "023", name: "SC제일은행" },
-  { code: "011", name: "농협은행" },
-  { code: "005", name: "외환은행" },
-  { code: "090", name: "카카오뱅크" },
-  { code: "032", name: "부산은행" },
-  { code: "071", name: "우체국" },
-  { code: "031", name: "대구은행" },
-  { code: "037", name: "전북은행" },
-  { code: "035", name: "제주은행" },
-  { code: "007", name: "수협은행" },
-  { code: "027", name: "씨티은행" },
-  { code: "039", name: "경남은행" },
+  { code: '004', name: '국민은행' },
+  { code: '020', name: '우리은행' },
+  { code: '088', name: '신한은행' },
+  { code: '003', name: '기업은행' },
+  { code: '023', name: 'SC제일은행' },
+  { code: '011', name: '농협은행' },
+  { code: '005', name: '외환은행' },
+  { code: '090', name: '카카오뱅크' },
+  { code: '032', name: '부산은행' },
+  { code: '071', name: '우체국' },
+  { code: '031', name: '대구은행' },
+  { code: '037', name: '전북은행' },
+  { code: '035', name: '제주은행' },
+  { code: '007', name: '수협은행' },
+  { code: '027', name: '씨티은행' },
+  { code: '039', name: '경남은행' },
 ];
-const bankNameByCode = (code: string) => BANKS.find(b => b.code === code)?.name ?? "";
-const bankCodeByName = (name: string) => BANKS.find(b => b.name === name)?.code ?? "";
+const bankNameByCode = (code: string) => BANKS.find((b) => b.code === code)?.name ?? '';
+const bankCodeByName = (name: string) => BANKS.find((b) => b.name === name)?.code ?? '';
 
 /** 특수문자 포함 비밀번호 검증 (간단 버전) */
-const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const isPasswordValid = (pwd: string) => {
-  const special = new RegExp("[" + escapeRegExp(`!"#$%&'()*+,-./:;<=>?@[\\]^_\`{|}~`) + "]");
+  const special = new RegExp('[' + escapeRegExp(`!"#$%&'()*+,-./:;<=>?@[\\]^_\`{|}~`) + ']');
   return pwd.length >= 8 && /[a-zA-Z]/.test(pwd) && /[0-9]/.test(pwd) && special.test(pwd);
 };
 
 /* ======================== Component ======================== */
 export default function MypageApiSmokeTest() {
   const { storeUrl } = useParams<Params>();
-  const legacyStore = useMemo(() => storeUrl ?? "default", [storeUrl]);
+  const legacyStore = useMemo(() => storeUrl ?? 'default', [storeUrl]);
 
   // ---- 상태 ----
   const [member, setMember] = useState<Member | null>(null);
 
   // 기본정보(표시용)
-  const [nameValue, setNameValue] = useState("");
-  const [phoneValue, setPhoneValue] = useState("");
-  const [emailValue, setEmailValue] = useState("");
+  const [nameValue, setNameValue] = useState('');
+  const [phoneValue, setPhoneValue] = useState('');
+  const [emailValue, setEmailValue] = useState('');
 
   // 주소
-  const [postNum, setPostNum] = useState("");
-  const [addressRoad, setAddressRoad] = useState("");
-  const [addressDetail, setAddressDetail] = useState("");
-  const [addressExtra, setAddressExtra] = useState("");
+  const [postNum, setPostNum] = useState('');
+  const [addressRoad, setAddressRoad] = useState('');
+  const [addressDetail, setAddressDetail] = useState('');
+  const [addressExtra, setAddressExtra] = useState('');
 
   // 비밀번호 (입력만; 현비번은 절대 조회/노출 안 함)
-  const [pwdCurrent, setPwdCurrent] = useState("");
-  const [pwdNew, setPwdNew] = useState("");
-  const [pwdNewOk, setPwdNewOk] = useState("");
+  const [pwdCurrent, setPwdCurrent] = useState('');
+  const [pwdNew, setPwdNew] = useState('');
+  const [pwdNewOk, setPwdNewOk] = useState('');
   const [showCurrentPwd, setShowCurrentPwd] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
   const [showNewPwdOk, setShowNewPwdOk] = useState(false);
 
   // 판매자 계좌 정보
-  const [bankCode, setBankCode] = useState("");
-  const [account, setAccount] = useState("");
-  const [accountOwner, setAccountOwner] = useState("");
+  const [bankCode, setBankCode] = useState('');
+  const [account, setAccount] = useState('');
+  const [accountOwner, setAccountOwner] = useState('');
   const [isAccountEditing, setIsAccountEditing] = useState(false);
   const [isAccountVerified, setIsAccountVerified] = useState(false);
-  const [savedAccountNum, setSavedAccountNum] = useState("");
-  const [savedBankCode, setSavedBankCode] = useState("");
+  const [savedAccountNum, setSavedAccountNum] = useState('');
+  const [savedBankCode, setSavedBankCode] = useState('');
   const [originalSellerData, setOriginalSellerData] = useState<SellerLegacy>({});
 
   // 이력 정보
-  const [careerText, setCareerText] = useState("");
-  const [profileImagePreview, setProfileImagePreview] = useState("");
+  const [careerText, setCareerText] = useState('');
+  const [profileImagePreview, setProfileImagePreview] = useState('');
 
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /** 멤버별 주소 조회: Boot API 사용 (레거시 코드 참고) */
-  const fetchAddressByMemberId = useCallback(
-    async (memberId: number) => {
-      try {
-        const response = await get<Address>(`/api/info/memberAddress/${memberId}`);
-        if (response.status === 200 && response.data) return response.data;
-        return null;
-      } catch (error) {
-        console.error("주소 조회 실패:", error);
-        return null;
-      }
-    },
-    []
-  );
+  const fetchAddressByMemberId = useCallback(async (memberId: number) => {
+    try {
+      const response = await get<Address>(`/api/info/memberAddress/${memberId}`);
+      if (response.status === 200 && response.data) return response.data;
+      return null;
+    } catch (error) {
+      console.error('주소 조회 실패:', error);
+      return null;
+    }
+  }, []);
 
   /** 계좌 인증 API 호출 (레거시: /legacy/common/bank) */
   const verifyBankAccount = useCallback(async (bankCode: string, accountNum: string) => {
-    const clean = accountNum.replace(/[^0-9]/g, "");
+    const clean = accountNum.replace(/[^0-9]/g, '');
     const env = await legacyGet<LegacyEnvelope<BankVerifyResponse>>(
       `/common/bank?bank_code=${encodeURIComponent(bankCode)}&bank_num=${encodeURIComponent(clean)}`
     );
@@ -149,7 +146,7 @@ export default function MypageApiSmokeTest() {
   /** 전체 불러오기: 기본정보(레거시) → 주소(Boot) → 판매자(레거시) */
   const loadAll = useCallback(async () => {
     if (!isLoggedIn()) {
-      alert("로그인이 필요합니다.");
+      alert('로그인이 필요합니다.');
       return;
     }
     setLoading(true);
@@ -158,26 +155,26 @@ export default function MypageApiSmokeTest() {
       const memberEnv = await legacyGet<LegacyEnvelope<Member>>(`/${legacyStore}/mypage`);
       const memberRes = asApi(memberEnv);
       if (memberRes.status !== 200 || !memberRes.data) {
-        throw new Error(memberRes.message || "회원 정보 조회 실패");
+        throw new Error(memberRes.message || '회원 정보 조회 실패');
       }
       const m = memberRes.data;
       setMember(m);
-      setNameValue(m.memberName ?? "");
-      setPhoneValue(m.memberPhone ?? "");
-      setEmailValue(m.memberEmail ?? "");
+      setNameValue(m.memberName ?? '');
+      setPhoneValue(m.memberPhone ?? '');
+      setEmailValue(m.memberEmail ?? '');
 
       // 2) Address (Boot)
       const a = await fetchAddressByMemberId(m.memberId);
       if (a) {
-        setPostNum(a.postNum ?? "");
-        setAddressRoad(a.addressRoad ?? "");
-        setAddressDetail(a.addressDetail ?? "");
-        setAddressExtra(a.addressExtra ?? "");
+        setPostNum(a.postNum ?? '');
+        setAddressRoad(a.addressRoad ?? '');
+        setAddressDetail(a.addressDetail ?? '');
+        setAddressExtra(a.addressExtra ?? '');
       } else {
-        setPostNum("");
-        setAddressRoad("");
-        setAddressDetail("");
-        setAddressExtra("");
+        setPostNum('');
+        setAddressRoad('');
+        setAddressDetail('');
+        setAddressExtra('');
       }
 
       // 3) Seller (LEGACY)
@@ -186,49 +183,49 @@ export default function MypageApiSmokeTest() {
         const res = asApi(env);
         if (res.status === 200 && res.data) {
           const s = res.data;
-          setAccount(s.account ?? "");
-          setBankCode(bankCodeByName(s.accountBank ?? ""));
-          setAccountOwner(s.accountOwner ?? m.memberName ?? "");
-          setCareerText(s.profileInfo ?? "");
+          setAccount(s.account ?? '');
+          setBankCode(bankCodeByName(s.accountBank ?? ''));
+          setAccountOwner(s.accountOwner ?? m.memberName ?? '');
+          setCareerText(s.profileInfo ?? '');
           if (s.profileImageName) {
             setProfileImagePreview(`/resources/profileImages/${s.profileImageName}`);
           } else {
-            setProfileImagePreview("");
+            setProfileImagePreview('');
           }
           // 저장 기준값
-          setSavedAccountNum(s.account ?? "");
-          setSavedBankCode(bankCodeByName(s.accountBank ?? ""));
+          setSavedAccountNum(s.account ?? '');
+          setSavedBankCode(bankCodeByName(s.accountBank ?? ''));
           setOriginalSellerData(s);
           setIsAccountVerified(true);
           setIsAccountEditing(false);
         } else {
           // 신규 등록 모드
-          setAccount("");
-          setBankCode("");
-          setAccountOwner(m.memberName ?? "");
-          setCareerText("");
-          setProfileImagePreview("");
-          setSavedAccountNum("");
-          setSavedBankCode("");
+          setAccount('');
+          setBankCode('');
+          setAccountOwner(m.memberName ?? '');
+          setCareerText('');
+          setProfileImagePreview('');
+          setSavedAccountNum('');
+          setSavedBankCode('');
           setOriginalSellerData({});
           setIsAccountVerified(false);
           setIsAccountEditing(true);
         }
       } catch {
         // 신규 등록 모드
-        setAccount("");
-        setBankCode("");
-        setAccountOwner(m.memberName ?? "");
-        setCareerText("");
-        setProfileImagePreview("");
-        setSavedAccountNum("");
-        setSavedBankCode("");
+        setAccount('');
+        setBankCode('');
+        setAccountOwner(m.memberName ?? '');
+        setCareerText('');
+        setProfileImagePreview('');
+        setSavedAccountNum('');
+        setSavedBankCode('');
         setOriginalSellerData({});
         setIsAccountVerified(false);
         setIsAccountEditing(true);
       }
     } catch (e: any) {
-      alert(e?.message || "조회 중 오류");
+      alert(e?.message || '조회 중 오류');
     } finally {
       setLoading(false);
     }
@@ -242,44 +239,44 @@ export default function MypageApiSmokeTest() {
 
   // 주소 저장: Boot PATCH (/api/mypage/changeaddr)
   const saveAddress = async () => {
-    if (!member) return alert("member 없음");
+    if (!member) return alert('member 없음');
     const addressData = { postNum, addressRoad, addressDetail, addressExtra };
     try {
       const result = await patch<any>(`/mypage/changeaddr`, addressData);
       if (result.status === 200) {
-        alert("주소 저장 성공");
+        alert('주소 저장 성공');
       } else {
-        alert("주소 저장 실패");
+        alert('주소 저장 실패');
       }
     } catch (err: any) {
-      console.error("[saveAddress] error:", err);
-      alert("api 호출 실패");
+      console.error('[saveAddress] error:', err);
+      alert('api 호출 실패');
     }
   };
 
   // 📌 우편번호 팝업 열기
   const openPostcode = () => {
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
 
     const run = () => {
       new window.daum!.Postcode({
         oncomplete: (data: any) => {
           // 기본 필드
-          const zonecode = data.zonecode || "";
-          const road = data.roadAddress || "";
-          const jibun = data.jibunAddress || "";
+          const zonecode = data.zonecode || '';
+          const road = data.roadAddress || '';
+          const jibun = data.jibunAddress || '';
 
           // 참고항목(동/건물명 등) 조합
           const extras: string[] = [];
           if (data.bname) extras.push(data.bname);
           if (data.buildingName) extras.push(data.buildingName);
-          const extraText = extras.length ? `(${extras.join(", ")})` : "";
+          const extraText = extras.length ? `(${extras.join(', ')})` : '';
 
           // 상태 반영
           setPostNum(zonecode);
-          setAddressRoad(road || jibun);       // 기본은 도로명, 없으면 지번
+          setAddressRoad(road || jibun); // 기본은 도로명, 없으면 지번
           setAddressExtra(extraText);
-          setAddressDetail("");                // 상세는 사용자가 직접 입력
+          setAddressDetail(''); // 상세는 사용자가 직접 입력
         },
       }).open();
     };
@@ -287,15 +284,15 @@ export default function MypageApiSmokeTest() {
     // 일부 환경은 load 래핑 필요
     if (window.daum?.postcode?.load) window.daum.postcode.load(run);
     else if (window.daum?.Postcode) run();
-    else alert("우편번호 스크립트가 아직 로드되지 않았습니다.");
+    else alert('우편번호 스크립트가 아직 로드되지 않았습니다.');
   };
 
   // 비밀번호 변경: Boot PATCH (/api/mypage/changepwd)
   const changePassword = async () => {
-    if (!pwdCurrent) return alert("현재 비밀번호를 입력하세요.");
-    if (!pwdNew) return alert("새 비밀번호를 입력하세요.");
-    if (!isPasswordValid(pwdNew)) return alert("비밀번호는 8자 이상, 영문/숫자/특수문자 포함");
-    if (pwdNew !== pwdNewOk) return alert("비밀번호 확인이 일치하지 않습니다.");
+    if (!pwdCurrent) return alert('현재 비밀번호를 입력하세요.');
+    if (!pwdNew) return alert('새 비밀번호를 입력하세요.');
+    if (!isPasswordValid(pwdNew)) return alert('비밀번호는 8자 이상, 영문/숫자/특수문자 포함');
+    if (pwdNew !== pwdNewOk) return alert('비밀번호 확인이 일치하지 않습니다.');
     const payload = {
       currentPassword: pwdCurrent,
       newPassword: pwdNew,
@@ -303,20 +300,20 @@ export default function MypageApiSmokeTest() {
     };
     try {
       const result = await patch<string>(`/mypage/changepwd`, payload);
-      alert(result as unknown as string || "비밀번호 변경 성공");
-      setPwdCurrent("");
-      setPwdNew("");
-      setPwdNewOk("");
+      alert((result as unknown as string) || '비밀번호 변경 성공');
+      setPwdCurrent('');
+      setPwdNew('');
+      setPwdNewOk('');
     } catch (err: any) {
-      console.error("[changePassword] error:", err);
-      alert(err?.message || "비밀번호 변경 실패");
+      console.error('[changePassword] error:', err);
+      alert(err?.message || '비밀번호 변경 실패');
     }
   };
 
   // 계좌 인증
   const handleAccountVerify = async () => {
     if (!bankCode || !account) {
-      alert("은행과 계좌번호를 모두 입력해주세요.");
+      alert('은행과 계좌번호를 모두 입력해주세요.');
       return;
     }
     try {
@@ -324,21 +321,21 @@ export default function MypageApiSmokeTest() {
       const holder = res.data?.bankHolderInfo;
       if (holder) {
         setAccountOwner(holder);
-        const loginName = member?.memberName?.trim() ?? "";
+        const loginName = member?.memberName?.trim() ?? '';
         if (loginName && holder.trim() === loginName) {
           setIsAccountVerified(true);
           setIsAccountEditing(false);
-          alert("계좌 인증이 완료되었습니다.");
+          alert('계좌 인증이 완료되었습니다.');
         } else {
           setIsAccountVerified(false);
-          alert("예금주명이 로그인 사용자와 다릅니다.");
+          alert('예금주명이 로그인 사용자와 다릅니다.');
         }
       } else {
-        alert("예금주 정보를 찾을 수 없습니다.");
+        alert('예금주 정보를 찾을 수 없습니다.');
       }
     } catch (err: any) {
-      console.error("[handleAccountVerify] error:", err);
-      alert("예금주 조회 중 오류가 발생했습니다.");
+      console.error('[handleAccountVerify] error:', err);
+      alert('예금주 조회 중 오류가 발생했습니다.');
     }
   };
 
@@ -352,7 +349,7 @@ export default function MypageApiSmokeTest() {
   const handleAccountCancel = () => {
     setAccount(savedAccountNum);
     setBankCode(savedBankCode);
-    setAccountOwner(originalSellerData.accountOwner ?? member?.memberName ?? "");
+    setAccountOwner(originalSellerData.accountOwner ?? member?.memberName ?? '');
     setIsAccountEditing(false);
     setIsAccountVerified(!!savedAccountNum);
   };
@@ -362,15 +359,15 @@ export default function MypageApiSmokeTest() {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = ev => setProfileImagePreview(ev.target?.result as string);
+      reader.onload = (ev) => setProfileImagePreview(ev.target?.result as string);
       reader.readAsDataURL(file);
     }
   };
 
   // 이미지 삭제
   const handleImageRemove = () => {
-    setProfileImagePreview("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    setProfileImagePreview('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // 판매자 정보 저장 (계좌 + 이력)
@@ -384,26 +381,26 @@ export default function MypageApiSmokeTest() {
       (currentAccountNum !== savedAccountNum || currentBankCode !== savedBankCode) &&
       !isAccountVerified
     ) {
-      alert("계좌 인증을 먼저 완료해주세요.");
+      alert('계좌 인증을 먼저 완료해주세요.');
       return;
     }
     if (!currentBankName) {
-      alert("은행을 선택하세요.");
+      alert('은행을 선택하세요.');
       return;
     }
     if (!currentAccountNum) {
-      alert("계좌번호를 입력하세요.");
+      alert('계좌번호를 입력하세요.');
       return;
     }
     if (!accountOwner) {
-      alert("예금주명을 확인할 수 없습니다. 계좌 인증을 진행하세요.");
+      alert('예금주명을 확인할 수 없습니다. 계좌 인증을 진행하세요.');
       return;
     }
 
     const payload = {
       account: currentAccountNum,
       accountBank: currentBankName, // 서버는 '은행명' 기대
-      accountOwner,                 // ✅ 인증으로 채워진 예금주명 저장
+      accountOwner, // ✅ 인증으로 채워진 예금주명 저장
       profileInfo: careerText,
     };
 
@@ -411,17 +408,17 @@ export default function MypageApiSmokeTest() {
       const env = await legacyPost<LegacyEnvelope<unknown>>(`/main/sell/info`, payload);
       const res = asApi(env);
       if (res.status === 200) {
-        alert("판매자 정보 저장 성공");
+        alert('판매자 정보 저장 성공');
         // 저장 기준값 업데이트
         setSavedAccountNum(currentAccountNum);
         setSavedBankCode(currentBankCode);
         await loadAll();
       } else {
-        alert(res.message || "판매자 정보 저장 실패");
+        alert(res.message || '판매자 정보 저장 실패');
       }
     } catch (err: any) {
-      console.error("[saveSeller] error:", err);
-      alert(err?.message || "판매자 정보 저장 실패");
+      console.error('[saveSeller] error:', err);
+      alert(err?.message || '판매자 정보 저장 실패');
     }
   };
 
@@ -439,21 +436,24 @@ export default function MypageApiSmokeTest() {
   );
 
   // 기존 state 선언 부분에 추가
-const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
+  const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
 
+  const isMain = location.pathname.startsWith('/main');
   /* ======================== JSX Return ======================== */
   return (
-    <div className="min-h-screen font-jua" style={{ background: "linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)" }}>
+    <div
+      className="min-h-screen font-jua"
+      style={{ background: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)' }}
+    >
       <Header />
-      <Mainnavbar />
+      {isMain ? <Mainnavbar /> : <Storenavbar />}
 
       {/* 모바일 상단바 */}
-      <div className="lg:hidden"> 
-          <MypageSidenavbar />
+      <div className="lg:hidden">
+        <MypageSidenavbar />
 
         {/* 모바일 컨텐츠 */}
         <div className="px-4">
-          
           <Container>
             <div className="space-y-8">
               {/* 기본정보 섹션 */}
@@ -464,25 +464,25 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">이름</label>
-                    <input 
-                      value={nameValue} 
-                      readOnly 
+                    <input
+                      value={nameValue}
+                      readOnly
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">이메일</label>
-                    <input 
-                      value={emailValue} 
-                      readOnly 
+                    <input
+                      value={emailValue}
+                      readOnly
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">연락처</label>
-                    <input 
-                      value={phoneValue} 
-                      readOnly 
+                    <input
+                      value={phoneValue}
+                      readOnly
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
                     />
                   </div>
@@ -512,7 +512,9 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">도로명 주소</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      도로명 주소
+                    </label>
                     <input
                       placeholder="도로명 주소"
                       value={addressRoad}
@@ -521,7 +523,9 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">상세 주소</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      상세 주소
+                    </label>
                     <input
                       placeholder="상세 주소"
                       value={addressDetail}
@@ -530,7 +534,9 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">참고 항목</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      참고 항목
+                    </label>
                     <input
                       placeholder="참고 항목 (예: (동, 아파트))"
                       value={addressExtra}
@@ -539,8 +545,8 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                     />
                   </div>
                 </div>
-                <button 
-                  onClick={saveAddress} 
+                <button
+                  onClick={saveAddress}
                   className="w-full mt-6 px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
                 >
                   주소 저장
@@ -552,10 +558,12 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                 <h3 className="text-lg font-bold text-gray-900 mb-6">비밀번호 변경</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">현재 비밀번호</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      현재 비밀번호
+                    </label>
                     <div className="relative">
                       <input
-                        type={showCurrentPwd ? "text" : "password"}
+                        type={showCurrentPwd ? 'text' : 'password'}
                         placeholder="현재 비밀번호"
                         value={pwdCurrent}
                         onChange={(e) => setPwdCurrent(e.target.value)}
@@ -566,15 +574,17 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                         onClick={() => setShowCurrentPwd(!showCurrentPwd)}
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
-                        {showCurrentPwd ? "🙈" : "👁️"}
+                        {showCurrentPwd ? '🙈' : '👁️'}
                       </button>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">새 비밀번호</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      새 비밀번호
+                    </label>
                     <div className="relative">
                       <input
-                        type={showNewPwd ? "text" : "password"}
+                        type={showNewPwd ? 'text' : 'password'}
                         placeholder="새 비밀번호"
                         value={pwdNew}
                         onChange={(e) => setPwdNew(e.target.value)}
@@ -585,15 +595,17 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                         onClick={() => setShowNewPwd(!showNewPwd)}
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
-                        {showNewPwd ? "🙈" : "👁️"}
+                        {showNewPwd ? '🙈' : '👁️'}
                       </button>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">새 비밀번호 확인</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      새 비밀번호 확인
+                    </label>
                     <div className="relative">
                       <input
-                        type={showNewPwdOk ? "text" : "password"}
+                        type={showNewPwdOk ? 'text' : 'password'}
                         placeholder="새 비밀번호 확인"
                         value={pwdNewOk}
                         onChange={(e) => setPwdNewOk(e.target.value)}
@@ -604,13 +616,13 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                         onClick={() => setShowNewPwdOk(!showNewPwdOk)}
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
-                        {showNewPwdOk ? "🙈" : "👁️"}
+                        {showNewPwdOk ? '🙈' : '👁️'}
                       </button>
                     </div>
                   </div>
                 </div>
-                <button 
-                  onClick={changePassword} 
+                <button
+                  onClick={changePassword}
                   className="w-full mt-6 px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
                 >
                   비밀번호 변경
@@ -624,7 +636,9 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                   className="w-full flex items-center justify-between text-lg font-bold text-gray-900 hover:text-[#2d4739] transition-colors"
                 >
                   <span>판매자 정보 확인하기</span>
-                  <span className={`transform transition-transform ${isSellerInfoVisible ? 'rotate-180' : ''}`}>
+                  <span
+                    className={`transform transition-transform ${isSellerInfoVisible ? 'rotate-180' : ''}`}
+                  >
                     ↓
                   </span>
                 </button>
@@ -636,7 +650,9 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                       <h3 className="text-lg font-bold text-gray-900 mb-6">계좌 정보</h3>
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">은행</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            은행
+                          </label>
                           {isAccountEditing ? (
                             <select
                               value={bankCode}
@@ -644,8 +660,10 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
                             >
                               <option value="">선택</option>
-                              {BANKS.map(b => (
-                                <option key={b.code} value={b.code}>{b.name}</option>
+                              {BANKS.map((b) => (
+                                <option key={b.code} value={b.code}>
+                                  {b.name}
+                                </option>
                               ))}
                             </select>
                           ) : (
@@ -657,21 +675,25 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                           )}
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">계좌번호</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            계좌번호
+                          </label>
                           <input
                             placeholder="계좌번호"
                             value={account}
-                            onChange={(e) => setAccount(e.target.value.replace(/[^0-9-]/g, ""))}
+                            onChange={(e) => setAccount(e.target.value.replace(/[^0-9-]/g, ''))}
                             disabled={!isAccountEditing}
                             className={`w-full px-3 py-2 border border-gray-200 rounded-lg ${
-                              isAccountEditing 
-                                ? "focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]" 
-                                : "bg-gray-50 text-gray-600"
+                              isAccountEditing
+                                ? 'focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]'
+                                : 'bg-gray-50 text-gray-600'
                             }`}
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">예금주명 (인증으로만 변경됨)</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            예금주명 (인증으로만 변경됨)
+                          </label>
                           <input
                             value={accountOwner}
                             readOnly
@@ -683,15 +705,15 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                       <div className="flex gap-2 mt-6">
                         {isAccountEditing ? (
                           <>
-                            <button 
-                              onClick={handleAccountVerify} 
+                            <button
+                              onClick={handleAccountVerify}
                               className="flex-1 px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
                             >
                               계좌 인증
                             </button>
                             {savedAccountNum && (
-                              <button 
-                                onClick={handleAccountCancel} 
+                              <button
+                                onClick={handleAccountCancel}
                                 className="flex-1 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
                               >
                                 취소
@@ -699,8 +721,8 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                             )}
                           </>
                         ) : (
-                          <button 
-                            onClick={handleAccountEdit} 
+                          <button
+                            onClick={handleAccountEdit}
                             className="w-full px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
                           >
                             수정
@@ -721,7 +743,9 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
 
                       <div className="space-y-6">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">프로필 이미지</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            프로필 이미지
+                          </label>
                           <div
                             className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm"
                             onClick={() => fileInputRef.current?.click()}
@@ -759,7 +783,9 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">나의 이력 (최대 150자)</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            나의 이력 (최대 150자)
+                          </label>
                           <textarea
                             placeholder="나의 이력을 입력해주세요..."
                             rows={5}
@@ -773,8 +799,8 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                         </div>
                       </div>
 
-                      <button 
-                        onClick={saveSeller} 
+                      <button
+                        onClick={saveSeller}
                         className="w-full mt-6 px-4 py-2 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
                       >
                         판매자 정보 저장
@@ -816,25 +842,25 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-3">이름</label>
-                      <input 
-                        value={nameValue} 
-                        readOnly 
+                      <input
+                        value={nameValue}
+                        readOnly
                         className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-3">이메일</label>
-                      <input 
-                        value={emailValue} 
-                        readOnly 
+                      <input
+                        value={emailValue}
+                        readOnly
                         className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-3">연락처</label>
-                      <input 
-                        value={phoneValue} 
-                        readOnly 
+                      <input
+                        value={phoneValue}
+                        readOnly
                         className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
                       />
                     </div>
@@ -846,7 +872,9 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                   <h3 className="text-xl font-bold text-gray-900 mb-8">주소 정보</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-3">우편번호</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        우편번호
+                      </label>
                       <div className="flex gap-3">
                         <input
                           placeholder="우편번호"
@@ -864,7 +892,9 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-3">참고 항목</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        참고 항목
+                      </label>
                       <input
                         placeholder="참고 항목 (예: (동, 아파트))"
                         value={addressExtra}
@@ -873,7 +903,9 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-3">도로명 주소</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        도로명 주소
+                      </label>
                       <input
                         placeholder="도로명 주소"
                         value={addressRoad}
@@ -882,7 +914,9 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-3">상세 주소</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        상세 주소
+                      </label>
                       <input
                         placeholder="상세 주소"
                         value={addressDetail}
@@ -892,8 +926,8 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                     </div>
                   </div>
                   <div className="flex justify-end mt-8">
-                    <button 
-                      onClick={saveAddress} 
+                    <button
+                      onClick={saveAddress}
                       className="px-8 py-3 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
                     >
                       주소 저장
@@ -906,10 +940,12 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                   <h3 className="text-xl font-bold text-gray-900 mb-8">비밀번호 변경</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-3">현재 비밀번호</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        현재 비밀번호
+                      </label>
                       <div className="relative">
                         <input
-                          type={showCurrentPwd ? "text" : "password"}
+                          type={showCurrentPwd ? 'text' : 'password'}
                           placeholder="현재 비밀번호"
                           value={pwdCurrent}
                           onChange={(e) => setPwdCurrent(e.target.value)}
@@ -920,15 +956,17 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                           onClick={() => setShowCurrentPwd(!showCurrentPwd)}
                           className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                         >
-                          {showCurrentPwd ? "🙈" : "👁️"}
+                          {showCurrentPwd ? '🙈' : '👁️'}
                         </button>
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-3">새 비밀번호</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        새 비밀번호
+                      </label>
                       <div className="relative">
                         <input
-                          type={showNewPwd ? "text" : "password"}
+                          type={showNewPwd ? 'text' : 'password'}
                           placeholder="새 비밀번호"
                           value={pwdNew}
                           onChange={(e) => setPwdNew(e.target.value)}
@@ -939,15 +977,17 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                           onClick={() => setShowNewPwd(!showNewPwd)}
                           className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                         >
-                          {showNewPwd ? "🙈" : "👁️"}
+                          {showNewPwd ? '🙈' : '👁️'}
                         </button>
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-3">새 비밀번호 확인</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        새 비밀번호 확인
+                      </label>
                       <div className="relative">
                         <input
-                          type={showNewPwdOk ? "text" : "password"}
+                          type={showNewPwdOk ? 'text' : 'password'}
                           placeholder="새 비밀번호 확인"
                           value={pwdNewOk}
                           onChange={(e) => setPwdNewOk(e.target.value)}
@@ -958,14 +998,14 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                           onClick={() => setShowNewPwdOk(!showNewPwdOk)}
                           className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                         >
-                          {showNewPwdOk ? "🙈" : "👁️"}
+                          {showNewPwdOk ? '🙈' : '👁️'}
                         </button>
                       </div>
                     </div>
                   </div>
                   <div className="flex justify-end mt-8">
-                    <button 
-                      onClick={changePassword} 
+                    <button
+                      onClick={changePassword}
                       className="px-8 py-3 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
                     >
                       비밀번호 변경
@@ -974,13 +1014,15 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                 </section>
 
                 {/* 판매자 정보 토글 섹션 */}
-                <section className="bg-white rounded-xl border border-gray-200 shadow-lg p-8" >
+                <section className="bg-white rounded-xl border border-gray-200 shadow-lg p-8">
                   <button
                     onClick={() => setIsSellerInfoVisible(!isSellerInfoVisible)}
                     className="w-full flex items-center justify-between text-xl font-bold text-gray-900 hover:text-[#2d4739] transition-colors"
                   >
                     <span>판매자 정보 확인하기</span>
-                    <span className={`transform transition-transform ${isSellerInfoVisible ? 'rotate-180' : ''}`}>
+                    <span
+                      className={`transform transition-transform ${isSellerInfoVisible ? 'rotate-180' : ''}`}
+                    >
                       ↓
                     </span>
                   </button>
@@ -992,7 +1034,9 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                         <h3 className="text-xl font-bold text-gray-900 mb-8">계좌 정보</h3>
                         <div className="space-y-6">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-3">은행</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                              은행
+                            </label>
                             {isAccountEditing ? (
                               <select
                                 value={bankCode}
@@ -1000,8 +1044,10 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]"
                               >
                                 <option value="">선택</option>
-                                {BANKS.map(b => (
-                                  <option key={b.code} value={b.code}>{b.name}</option>
+                                {BANKS.map((b) => (
+                                  <option key={b.code} value={b.code}>
+                                    {b.name}
+                                  </option>
                                 ))}
                               </select>
                             ) : (
@@ -1013,21 +1059,25 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                             )}
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-3">계좌번호</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                              계좌번호
+                            </label>
                             <input
                               placeholder="계좌번호"
                               value={account}
-                              onChange={(e) => setAccount(e.target.value.replace(/[^0-9-]/g, ""))}
+                              onChange={(e) => setAccount(e.target.value.replace(/[^0-9-]/g, ''))}
                               disabled={!isAccountEditing}
                               className={`w-full px-4 py-3 border border-gray-200 rounded-lg ${
-                                isAccountEditing 
-                                  ? "focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]" 
-                                  : "bg-gray-50 text-gray-600"
+                                isAccountEditing
+                                  ? 'focus:ring-2 focus:ring-[#2d4739] focus:border-[#2d4739]'
+                                  : 'bg-gray-50 text-gray-600'
                               }`}
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-3">예금주명 (인증으로만 변경됨)</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                              예금주명 (인증으로만 변경됨)
+                            </label>
                             <input
                               value={accountOwner}
                               readOnly
@@ -1039,15 +1089,15 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                         <div className="flex gap-3 mt-8">
                           {isAccountEditing ? (
                             <>
-                              <button 
-                                onClick={handleAccountVerify} 
+                              <button
+                                onClick={handleAccountVerify}
                                 className="flex-1 px-6 py-3 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
                               >
                                 계좌 인증
                               </button>
                               {savedAccountNum && (
-                                <button 
-                                  onClick={handleAccountCancel} 
+                                <button
+                                  onClick={handleAccountCancel}
                                   className="flex-1 px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
                                 >
                                   취소
@@ -1055,8 +1105,8 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                               )}
                             </>
                           ) : (
-                            <button 
-                              onClick={handleAccountEdit} 
+                            <button
+                              onClick={handleAccountEdit}
                               className="w-full px-6 py-3 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
                             >
                               수정
@@ -1077,7 +1127,9 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
 
                         <div className="space-y-6">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-3">프로필 이미지</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                              프로필 이미지
+                            </label>
                             <div
                               className="w-40 h-40 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer bg-white hover:bg-gray-50 transition-colors shadow-sm"
                               onClick={() => fileInputRef.current?.click()}
@@ -1115,7 +1167,9 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                           </div>
 
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-3">나의 이력 (최대 150자)</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                              나의 이력 (최대 150자)
+                            </label>
                             <textarea
                               placeholder="나의 이력을 입력해주세요..."
                               rows={6}
@@ -1128,8 +1182,8 @@ const [isSellerInfoVisible, setIsSellerInfoVisible] = useState(false);
                             </div>
                           </div>
 
-                          <button 
-                            onClick={saveSeller} 
+                          <button
+                            onClick={saveSeller}
                             className="w-full px-6 py-3 bg-[#2d4739] text-white rounded-lg hover:bg-[#243c30] transition-colors"
                           >
                             판매자 정보 저장

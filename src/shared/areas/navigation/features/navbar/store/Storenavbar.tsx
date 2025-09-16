@@ -31,14 +31,6 @@ function resolveCpath(explicit?: string) {
   return meta?.content || '';
 }
 
-function buildUrlWithBase(pathOrUrl: string, base: string) {
-  if (!pathOrUrl) return '';
-  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl; // 절대 URL
-  if (pathOrUrl.startsWith('/')) return pathOrUrl; // 사이트 루트 기준 절대경로
-  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
-  return `${normalizedBase}/${pathOrUrl}`.replace(/\/{2,}/g, '/');
-}
-
 function stripCpath(pathname: string, cpath: string) {
   const normalizedCpath = (cpath || '').replace(/\/+$/, '');
   if (normalizedCpath && pathname.startsWith(normalizedCpath + '/')) {

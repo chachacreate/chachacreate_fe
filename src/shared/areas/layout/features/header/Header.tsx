@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import Searchbar from '@src/shared/areas/navigation/features/searchbar/Searchbar';
-import { getUserInfoFromToken } from '@src/libs/apiService';
 import {
   goToLogin,
   goToMain,
@@ -9,7 +8,6 @@ import {
   goToSignup,
   logOut,
 } from '@src/shared/util/LegacyNavigate';
-import type { JWTPayload } from '@src/libs/apiResponse';
 import { clearTokens, getCurrentUser } from '@src/shared/util/jwtUtils';
 import mobLogo from '@src/shared/resources/images/logo/mainlogo_mob.png';
 

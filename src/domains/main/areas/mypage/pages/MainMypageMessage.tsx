@@ -41,8 +41,6 @@ interface DisplayMessage extends ChatMessage {
 /* ---------- Utils ---------- */
 const BRAND = '#2D4739';
 
-const fmt = (s: string): string => s.trim().toLowerCase();
-
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
   if (isNaN(date.getTime())) return dateString;

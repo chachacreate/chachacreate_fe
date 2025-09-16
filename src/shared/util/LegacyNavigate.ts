@@ -1,4 +1,5 @@
 import { legacyPost } from '@src/libs/request';
+import { useNavigate } from 'react-router-dom';
 
 // 로그아웃 처리 - 레거시 시스템 세션도 함께 정리
 export const logOut = async () => {
@@ -31,8 +32,12 @@ export const goToStoreMain = (storeUrl: string) => {
 };
 
 // 메시지 이동 함수
-export const goToMessage = (storeSlug?: string | null) => {
-  const messageHref = storeSlug ? `/${storeSlug}/mypage/message` : `/main/mypage/message`;
+export const goToMessage = () => {
+  const navigate = useNavigate();
 
-  window.location.href = messageHref;
+  return (storeSlug?: string | null) => {
+    const messageHref: string = storeSlug ? `/${storeSlug}/mypage/message` : `/main/mypage/message`;
+
+    navigate(messageHref); // ✅ 함수 호출
+  };
 };

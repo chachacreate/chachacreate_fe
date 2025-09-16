@@ -516,6 +516,11 @@ export default function ClassesDetailPage() {
                     fixedWeekCount={false}
                     firstDay={0}
                     locale="ko"
+                    eventTimeFormat={{
+                      hour: '2-digit', // 두 자리 숫자
+                      minute: '2-digit', // 분 표시
+                      hour12: false, // 24시간제 (오전/오후 제거)
+                    }}
                     // Tailwind 클래스를 적용하는 eventClassNames
                     eventClassNames={(arg) => {
                       const isSelected = arg.event.extendedProps.isSelected;

@@ -5,7 +5,7 @@ import { useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { Star, ThumbsUp, Search } from 'lucide-react';
-import { get } from '@src/libs/request';
+import { get, legacyGet } from '@src/libs/request';
 
 type Params = { storeUrl: string };
 
@@ -89,11 +89,36 @@ const ProductReviewList: FC = () => {
   }, [storeUrl, selectedProduct]);
 
   // 상품 드롭다운 옵션
-  const products = useMemo(() => {
-    const map = new Map<string, string>();
-    reviews.forEach((r) => map.set(r.productId, r.productName)); // <-- MOCK_REVIEWS -> reviews
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [reviews]); // reviews에 의존
+  // const products = useMemo(() => {
+  //   const map = new Map<string, string>();
+  //   reviews.forEach((r) => map.set(r.productId, r.productName)); // <-- MOCK_REVIEWS -> reviews
+  //   return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  // }, [reviews]); // reviews에 의존
+
+  // 삭제되지 않은 상품 목록 기준으로 변경
+  const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const res = await legacyGet<any>(`/${storeUrl}/seller/products`);
+        // console.log(res);
+        const productsData = Array.isArray(res.data) ? res.data : [];
+
+        setProducts(
+          productsData
+            .filter((p: any) => p.deleteCheck === 0) // 삭제되지 않은 것만
+            .map((p: any) => ({
+              id: String(p.productId),
+              name: p.productName,
+            }))
+        );
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    fetchProducts();
+  }, [storeUrl]);
 
   // 필터 + 검색 + 정렬
   const filtered = useMemo(() => {
@@ -173,7 +198,7 @@ const ProductReviewList: FC = () => {
                   <select
                     value={selectedProduct}
                     onChange={onChangeProduct}
-                    className="w-full md:w-72 rounded-lg border-gray-300 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                    className="w-full md:w-72 rounded-lg border-gray-300 bg-white text-sm px-3 py-2"
                   >
                     <option value="all">전체 상품</option>
                     {products.map((p) => (

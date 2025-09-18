@@ -59,8 +59,10 @@ const startOfWeekMon = (d: Date) => {
   return addDays(d, diff);
 };
 const takeDatePart = (s: string | null | undefined) => (s ? s.slice(0, 10) : '—');
+
+// 요청하신 라벨 규칙으로 유지
 const statusLabel = (n: number | null | undefined) =>
-  n === 1 ? '정산완료' : n === 0 ? '미정산' : '—';
+  n === 1 ? '정산완료' : n === 0 ? '정산예정' : '—';
 
 // ---------- Component ----------
 export default function SellerSettlementProduct() {
@@ -167,7 +169,7 @@ export default function SellerSettlementProduct() {
     };
   }, [storeUrl, selectedId]);
 
-  // 월별 정산(레거시 + 부트 메타) 조회/머지
+  // 월별 정산(레거시 + 부트 메타) 조회/머지  ———— ★ YYYY-MM 키로 안전 조인
   useEffect(() => {
     if (!storeUrl) return;
     let alive = true;
@@ -191,22 +193,61 @@ export default function SellerSettlementProduct() {
         setLegacyMonthly(legacyList);
         setBootMonthly(bootList);
 
+        // 부트 메타에서 예금주 기본값(fallback)
         const fallbackName = bootList.find((m) => m?.name)?.name ?? null;
-        const byKey = new Map(
-          bootList.filter((m) => m && m.updatedAtKey).map((m) => [m.updatedAtKey as string, m])
-        );
 
-        const merged = legacyList.map<MergedMonthlySettlementItem>((l) => {
-          const m = byKey.get(l.updateAt);
+        // 부트 메타를 YYYY-MM 키로 집계(동월 중복 시 updateAt/updatedAtKey 최신값 우선)
+        type BootEnriched = BootMonthlyMetaItem & { yymm: string | null; sortKey: string | null };
+        const bootEnriched: BootEnriched[] = bootList.map((m) => {
+          const ts = (m.updatedAtKey ?? m.updateAt) || null; // "YYYY-MM-DD HH:mm:ss" 또는 ISO
+          const sortKey =
+            ts && ts.length >= 19
+              ? ts.slice(0, 19).replace('T', ' ')
+              : ts; // 비교용
+          const yymm =
+            ts && ts.length >= 7
+              ? ts.slice(0, 7)
+              : null;
+          return { ...m, yymm, sortKey };
+        });
+
+        // 같은 YYYY-MM 내 최신 sortKey를 가진 행만 유지
+        const bootByYm = new Map<string, BootEnriched>();
+        for (const m of bootEnriched) {
+          if (!m.yymm) continue;
+          const prev = bootByYm.get(m.yymm);
+          if (!prev) {
+            bootByYm.set(m.yymm, m);
+          } else {
+            // 문자열 비교(yyyy-MM-dd HH:mm:ss 형태라 사전식 비교 가능)
+            if ((m.sortKey ?? '') > (prev.sortKey ?? '')) {
+              bootByYm.set(m.yymm, m);
+            }
+          }
+        }
+
+        // 레거시 YYYY-MM 키 생성은 settlementDate에서
+        const mergedAll = legacyList.map<MergedMonthlySettlementItem>((l) => {
+          const ym = l.settlementDate.slice(0, 7); // "YYYY-MM"
+          const meta = bootByYm.get(ym);
           return {
             ...l,
-            name: m?.name ?? fallbackName,
-            settlementStatus: m?.settlementStatus ?? null,
+            name: meta?.name ?? fallbackName,
+            settlementStatus: meta?.settlementStatus ?? null,
             legacyUpdatedDate: takeDatePart(l.updateAt),
           };
         });
 
-        setMergedMonthly(merged);
+        // 화면에는 정산상태 0/1만 노출
+        const mergedVisible = mergedAll.filter(
+          (row) => row.settlementStatus === 0 || row.settlementStatus === 1
+        );
+
+        setMergedMonthly(
+          [...mergedVisible].sort(
+            (a, b) => new Date(b.settlementDate).getTime() - new Date(a.settlementDate).getTime()
+          )
+        );
       } catch {
         if (alive) {
           setMonthlyError('월별 정산 데이터를 합치는 데 실패했습니다.');
@@ -396,7 +437,7 @@ export default function SellerSettlementProduct() {
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-lg font-semibold">월별 상품 정산</h3>
               {!monthlyLoading && (
-                <div className="text-sm text-gray-500">{legacyMonthly.length}건</div>
+                <div className="text-sm text-gray-500">{mergedMonthly.length}건</div>
               )}
             </div>
 
@@ -441,8 +482,8 @@ export default function SellerSettlementProduct() {
                                 row.settlementStatus === 1
                                   ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20'
                                   : row.settlementStatus === 0
-                                    ? 'bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-600/20'
-                                    : 'bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-500/20',
+                                  ? 'bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-600/20'
+                                  : 'bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-500/20',
                               ].join(' ')}
                             >
                               {statusLabel(row.settlementStatus)}

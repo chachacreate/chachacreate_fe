@@ -294,6 +294,12 @@ export default function SellerSettlementClass() {
     return sum;
   }, [daily?.daily, monthlyRows]);
 
+  /* (추가) status가 0/1인 행만 표에 노출 */
+  const filteredMonthlyRows = useMemo(
+    () => monthlyRows.filter((r) => r?.status === 0 || r?.status === 1),
+    [monthlyRows]
+  );
+
   /* 렌더링 */
   return (
     <>
@@ -336,7 +342,7 @@ export default function SellerSettlementClass() {
                 >
                   {options.map((opt) => (
                     <option key={opt.id} value={opt.id}>
-                      [{opt.id}] {opt.name}
+                      {opt.name}
                     </option>
                   ))}
                 </select>
@@ -456,8 +462,8 @@ export default function SellerSettlementClass() {
                 <span className="text-sm text-gray-500">
                   {monthlyLoading
                     ? '로딩 중…'
-                    : monthlyRows.length
-                      ? `${monthlyRows.length}건`
+                    : filteredMonthlyRows.length
+                      ? `${filteredMonthlyRows.length}건`
                       : '데이터 없음'}
                 </span>
               </div>
@@ -490,14 +496,14 @@ export default function SellerSettlementClass() {
                         로딩 중…
                       </td>
                     </tr>
-                  ) : monthlyRows.length === 0 ? (
+                  ) : filteredMonthlyRows.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-8 text-center text-gray-500">
                         정산 데이터가 없습니다
                       </td>
                     </tr>
                   ) : (
-                    monthlyRows.map((s, idx) => (
+                    filteredMonthlyRows.map((s, idx) => (
                       <tr key={`${s.settlementDate}-${idx}`} className="border-t border-gray-100">
                         {/* 표시 시점에만 '다음달 1일'로 변환 → 로컬 YYYY-MM-DD로 노출 */}
                         <td className="py-3 pr-4">

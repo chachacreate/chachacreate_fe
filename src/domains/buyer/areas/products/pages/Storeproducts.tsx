@@ -343,7 +343,6 @@ const StoreProducts = () => {
     const endPage = Math.min(startPage + PAGE_LIMIT - 1, totalPages);
 
     // «
-
     pages.push(
       <button
         key="first"
@@ -356,7 +355,6 @@ const StoreProducts = () => {
     );
 
     // numbers
-
     for (let i = startPage; i <= endPage; i++) {
       pages.push(
         <button
@@ -570,82 +568,78 @@ const StoreProducts = () => {
 
           {/* 상품 그리드 */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {allProducts.map((product) => (
-              <div
-                key={product.id}
-                onClick={() => handleProductClick(product.id)}
-                className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-[#2d4739]/40 hover:-translate-y-1 transition-all duration-200 cursor-pointer overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2d4739]/40"
-                tabIndex={0}
-                role="button"
-                aria-label={`${product.name} 상세로 이동`}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleProductClick(product.id);
-                  }
-                }}
-              >
-                {/* 이미지 영역 */}
-                <div className="relative aspect-square overflow-hidden">
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    loading="lazy"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
+            {allProducts.map((product) => {
+              const order = product.orderCount ?? 0;
+              const view = product.viewCount ?? 0;
+              const bothZero = order === 0 && view === 0;
 
-                      target.src = '/placeholder-image.jpg';
-                    }}
-                  />
-                  {/* 레이팅 배지 (옵션) */}
-
-                  {product.rating && (
-                    <div className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-black/60 text-white text-xs px-2 py-1 backdrop-blur-sm">
-                      <span className="flex">{renderStars(product.rating)}</span>
-                      <span className="opacity-90">({product.rating})</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* 카드 본문 */}
-                <div className="p-4">
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {product.categories.slice(0, 2).map((category, index) => (
-                      <span
-                        key={index}
-                        className="text-xs bg-[#2d4739]/10 text-[#2d4739] px-2 py-1 rounded-full"
-                      >
-                        {category}
-                      </span>
-                    ))}
-                    {product.categories.length > 2 && (
-                      <span className="text-xs text-gray-400 px-1">
-                        +{product.categories.length - 2}
-                      </span>
+              return (
+                <div
+                  key={product.id}
+                  onClick={() => handleProductClick(product.id)}
+                  className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-[#2d4739]/40 hover:-translate-y-1 transition-all duration-200 cursor-pointer overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2d4739]/40"
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`${product.name} 상세로 이동`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleProductClick(product.id);
+                    }
+                  }}
+                >
+                  {/* 이미지 영역 */}
+                  <div className="relative aspect-square overflow-hidden">
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/placeholder-image.jpg';
+                      }}
+                    />
+                    {/* 레이팅 배지 (옵션) */}
+                    {product.rating && (
+                      <div className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-black/60 text-white text-xs px-2 py-1 backdrop-blur-sm">
+                        <span className="flex">{renderStars(product.rating)}</span>
+                        <span className="opacity-90">({product.rating})</span>
+                      </div>
                     )}
                   </div>
 
-                  <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2 mb-2">
-                    {product.name}
-                  </h3>
+                  {/* 카드 본문 */}
+                  <div className="p-4">
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {product.categories.map((category, index) => (
+                        <span
+                          key={index}
+                          className="text-xs bg-[#2d4739]/10 text-[#2d4739] px-2 py-1 rounded-full"
+                        >
+                          {category}
+                        </span>
+                      ))}
+                    </div>
 
-                  {(product.orderCount || product.viewCount) && (
+                    <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2 mb-2">
+                      {product.name}
+                    </h3>
+
+                    {/* 주문/조회: 항상 둘 다 노출 (0도 '0회'로) */}
                     <p className="text-xs text-gray-500 mb-3">
-                      {product.orderCount > 0 && `주문 ${product.orderCount.toLocaleString()}회`}
-                      {product.orderCount > 0 && product.viewCount > 0 && ' · '}
-                      {product.viewCount > 0 && `조회 ${product.viewCount.toLocaleString()}회`}
+                      주문 {(product.orderCount ?? 0).toLocaleString()}회 · 조회 {(product.viewCount ?? 0).toLocaleString()}회
                     </p>
-                  )}
 
-                  <div className="flex items-center justify-between">
-                    <p className="text-lg font-extrabold text-[#2d4739]">
-                      {formatPrice(product.price)}원
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-lg font-extrabold text-[#2d4739]">
+                        {formatPrice(product.price)}원
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* 로딩 */}
@@ -676,7 +670,6 @@ const StoreProducts = () => {
           )}
 
           {/* 페이지네이션 */}
-
           {!loading && allProducts.length > 0 && <div className="mt-8">{renderPagination()}</div>}
         </div>
       </div>

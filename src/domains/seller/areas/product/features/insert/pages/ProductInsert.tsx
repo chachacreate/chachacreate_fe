@@ -9,7 +9,6 @@ import api from '@src/libs/apiService'; // Boot용 + FastAPI
 import EditorAPI, {
   type EditorHandle,
 } from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
-import axios from 'axios';
 import { predictImage } from '../services/aiService/aiService';
 import { legacyGet, legacyPost } from '@src/libs/request';
 

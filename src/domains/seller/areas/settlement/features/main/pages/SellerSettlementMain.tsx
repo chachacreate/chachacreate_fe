@@ -6,25 +6,29 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { Package, Receipt, ChevronRight } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { get } from '@src/libs/request';
+import { get, legacyGet } from '@src/libs/request';
 
 // ------------------ Types ------------------
 type SettlementRow = {
-  settlementDate: string; // e.g. "2025-05-01T00:00:00"
+  settlementDate: string; 
   amount: number;
   account: string;
   bank: string;
-  name?: string; // API 표준
-  holder?: string; // 혹시 다른 키로 올 경우 대비
+  name?: string; 
   status: number; // 0=정산 예정, 1=정산 완료
-  updateAt: string; // e.g. "2025-05-30T12:00:00"
+  updateAt: string; 
+};
+
+// 일별 매출 응답 타입
+type DailySaleRow = {
+  ymd: string; // "YYYY-MM-DD"
+  amt: number; // 금액
 };
 
 // ------------------ Utils (로컬 기준) ------------------
 const brand = '#2d4739';
 const KRW = new Intl.NumberFormat('ko-KR');
 
-// 로컬 기준 YYYY-MM-DD
 const fmtLocalYMD = (d: Date) => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -35,14 +39,13 @@ const fmtLocalYMD = (d: Date) => {
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
 const startOfWeekMon = (d: Date) => {
-  const day = d.getDay(); // 0:Sun..6:Sat
+  const day = d.getDay(); // 0(일) ~ 6(토)
   const diff = day === 0 ? -6 : 1 - day;
   return addDays(d, diff);
 };
 
 const onlyDate = (iso?: string) => (iso ? iso.slice(0, 10) : '');
 
-// 각 행의 settlementDate 기준 "다음 달 1일"
 const nextMonthFirstYMDFromISO = (iso: string) => {
   const base = new Date(iso);
   const nextFirst = new Date(base.getFullYear(), base.getMonth() + 1, 1);
@@ -63,14 +66,17 @@ export default function SellerSettlementMain() {
     [weekAnchor]
   );
 
-  // 정산 데이터 상태
+  // 정산 데이터 상태 (월별 정산 내역)
   const [settlementRows, setSettlementRows] = useState<SettlementRow[]>([]);
 
-  // API 호출 (axios -> get)
+  // 일별 매출 — 상품(레거시), 클래스(부트)
+  const [productDaily, setProductDaily] = useState<DailySaleRow[]>([]);
+  const [classDaily, setClassDaily] = useState<DailySaleRow[]>([]);
+
+  // 정산 내역 호출
   useEffect(() => {
-    get(`/api/seller/settlements/main/${storeUrl}/all`)
+    get(`/seller/settlements/main/${storeUrl}/all`)
       .then((res: any) => {
-        // request 래퍼 대응: res.data?.data || res.data || res
         const payload = res?.data ?? res;
         const list = payload?.data ?? payload;
         if (Array.isArray(list)) {
@@ -82,17 +88,49 @@ export default function SellerSettlementMain() {
       });
   }, [storeUrl]);
 
-  // 주간 데이터 계산(차트/표)
-  // 표시 기준과 동일하게, 각 행을 "다음 달 1일" 날짜로 그룹핑
+  // 일별 매출 호출: 상품(레거시) + 클래스(부트)
+  useEffect(() => {
+    legacyGet(`seller/settlements/products/${storeUrl}/sales`)
+      .then((res: any) => {
+        const payload = res?.data ?? res;
+        const list = payload?.data ?? payload;
+        setProductDaily(Array.isArray(list) ? (list as DailySaleRow[]) : []);
+      })
+      .catch((err: any) => {
+        console.error('상품 일별 매출 조회 실패:', err);
+        setProductDaily([]);
+      });
+
+    get(`/api/seller/sales/${storeUrl}/classes`)
+      .then((res: any) => {
+        const payload = res?.data ?? res;
+        const list = payload?.data ?? payload;
+        setClassDaily(Array.isArray(list) ? (list as DailySaleRow[]) : []);
+      })
+      .catch((err: any) => {
+        console.error('클래스 일별 매출 조회 실패:', err);
+        setClassDaily([]);
+      });
+  }, [storeUrl]);
+
+  // 주간 데이터 계산(차트/표) — "상품+클래스" 같은 날짜 합산
   const weeklyData = useMemo(() => {
     const map = new Map<string, number>();
     weekDays.forEach((d) => map.set(fmtLocalYMD(d), 0));
-    settlementRows.forEach((row) => {
-      const displayYMD = nextMonthFirstYMDFromISO(row.settlementDate);
-      if (map.has(displayYMD)) {
-        map.set(displayYMD, (map.get(displayYMD) ?? 0) + row.amount);
-      }
-    });
+
+    const addIfInWeek = (rows: DailySaleRow[]) => {
+      rows.forEach((r) => {
+        if (!r?.ymd) return;
+        const amt = Number(r.amt || 0);
+        if (map.has(r.ymd)) {
+          map.set(r.ymd, (map.get(r.ymd) ?? 0) + amt);
+        }
+      });
+    };
+
+    addIfInWeek(productDaily);
+    addIfInWeek(classDaily);
+
     return weekDays.map((d) => {
       const date = fmtLocalYMD(d);
       return {
@@ -104,7 +142,7 @@ export default function SellerSettlementMain() {
         amount: map.get(date) ?? 0,
       };
     });
-  }, [settlementRows, weekDays]);
+  }, [productDaily, classDaily, weekDays]);
 
   const weeklyTotal = useMemo(() => weeklyData.reduce((s, r) => s + r.amount, 0), [weeklyData]);
 
@@ -245,13 +283,11 @@ export default function SellerSettlementMain() {
                 <tbody>
                   {sortedRows.map((s, idx) => (
                     <tr key={`${s.settlementDate}-${idx}`} className="border-t border-gray-100">
-                      {/* 각 건의 settlementDate 기준 "다음 달 1일" 표시 */}
                       <td className="py-3 pr-4">{nextMonthFirstYMDFromISO(s.settlementDate)}</td>
                       <td className="py-3 pr-4">₩ {KRW.format(s.amount)}</td>
                       <td className="py-3 pr-4">{s.account}</td>
                       <td className="py-3 pr-4">{s.bank}</td>
-                      {/* name → holder fallback */}
-                      <td className="py-3 pr-4">{s.name ?? s.holder ?? ''}</td>
+                      <td className="py-3 pr-4">{s.name ?? ''}</td>
                       <td className="py-3 pr-4">
                         <span
                           className={[
@@ -264,7 +300,6 @@ export default function SellerSettlementMain() {
                           {s.status === 1 ? '정산 완료' : '정산 예정'}
                         </span>
                       </td>
-                      {/* 최근 수정일: YYYY-MM-DD만 표시 */}
                       <td className="py-3 pr-4">{onlyDate(s.updateAt)}</td>
                     </tr>
                   ))}

@@ -278,6 +278,7 @@ const ProductList: FC = () => {
   const goInsert = () => navigate(`/seller/${storeUrl}/product/insert`);
   const goEdit = (id: string) =>
     navigate(`/seller/${storeUrl}/product/${encodeURIComponent(id)}/edit`);
+  const goDetail = (id: string) => navigate(`/${storeUrl}/products/${id}`);
 
   return (
     <>
@@ -424,6 +425,7 @@ const ProductList: FC = () => {
                               disabled ? 'cursor-not-allowed' : 'hover:ring-1 hover:ring-gray-300',
                             ].join(' ')}
                             title={r.name}
+                            onClick={() => !disabled && goDetail(r.id)}
                           >
                             <img
                               src={r.imageUrl || PLACEHOLDER_IMG}
@@ -433,7 +435,12 @@ const ProductList: FC = () => {
                           </div>
                         </td>
                         <td className="px-3 py-3 align-top">
-                          <div className="font-medium text-gray-900 break-words">{r.name}</div>
+                          <div
+                            className="font-medium text-gray-900 break-words cursor-pointer hover:underline"
+                            onClick={() => !disabled && goDetail(r.id)}
+                          >
+                            {r.name}
+                          </div>
                           {/* <div className="text-xs text-gray-500 mt-1">{r.id}</div> */}
                         </td>
                         <td className="px-3 py-3 align-top text-right">

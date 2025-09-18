@@ -563,7 +563,7 @@ const MainProductsorder: React.FC = () => {
         {/* 모바일: 사이드바 없이 1단 + 하단 고정 결제바 */}
         <div className="lg:hidden">
           {/* 배송지 & 상품 */}
-          <div className="space-y-8">
+          <div className="space-y-8 pb-20">
             {/* 배송지 카드 (모바일) */}
             <section className="rounded-2xl border border-gray-200 bg-white shadow-sm p-6">
               <div className="flex items-center gap-2 mb-3">

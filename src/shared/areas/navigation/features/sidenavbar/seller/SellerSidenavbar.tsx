@@ -93,7 +93,7 @@ export default function SellerSidenavbar({
       try {
         const res = await legacyGet<any>(`/info/store/${storeSegment}`);
         const data = res.data;
-        console.log('스토어 정보 로딩', data);
+        // console.log('스토어 정보 로딩', data);
         setStoreInfo({
           name: data.storeName,
           logoUrl: data.logoImg,

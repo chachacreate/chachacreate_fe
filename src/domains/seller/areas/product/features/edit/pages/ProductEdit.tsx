@@ -23,7 +23,8 @@ type ProductImage = {
   id: string; // 프론트용 로컬 UUID
   file?: File; // 새로 업로드한 파일
   url: string; // 미리보기/기존 이미지 URL
-  serverImageId?: number; // 서버가 내려주는 기존 이미지 식별자(삭제 전송용)
+  serverImageId?: number; // 서버가 내려주는 기존 이미지 식별자(PImgId)
+  markedForDelete?: boolean; // 삭제 선택 표시용
 };
 
 type ProductForm = {
@@ -108,10 +109,14 @@ const ProductEdit: FC = () => {
   const [isLoadingAiPrice, setIsLoadingAiPrice] = useState(false);
   const [aiPredictionInfo, setAiPredictionInfo] = useState<Record<string, any>>({});
 
-  // 에디터 refs
-  const editorRefs = useRef<Record<string, EditorHandle | null>>({});
-  // 에디터 로컬 이미지 버킷: form.id 기준
-  const pendingDescImagesRef = useRef<Record<string, Map<string, File>>>({});
+  // 수정: 단일 상품만 수정 → 에디터도 1개만 필요
+  const editorRef = useRef<EditorHandle | null>(null);
+
+  // 단일 상품용 로컬 이미지 버킷
+  const pendingDescImagesRef = useRef<Map<string, File>>(new Map());
+
+  // 현재 활성(삭제 표시 안 된) 이미지
+  const activeImages = form.images.filter((img) => !img.markedForDelete);
 
   // ---------- 초기 로딩: 카테고리 + 상품 상세 ----------
   useEffect(() => {
@@ -119,9 +124,9 @@ const ProductEdit: FC = () => {
       try {
         // 카테고리
         const catRes = await legacyGet<any>('/category', { withCredentials: true });
-        console.log('카테고리 응답:', catRes);
+        // console.log('카테고리 응답:', catRes);
         const { typeCategories = [], uCategories = [], dCategoriesByU = {} } = catRes || {};
-        console.log('카테고리:', typeCategories, uCategories, dCategoriesByU);
+        // console.log('카테고리:', typeCategories, uCategories, dCategoriesByU);
 
         setTypeCats(typeCategories);
         setUCats(uCategories);
@@ -130,40 +135,39 @@ const ProductEdit: FC = () => {
         // 하단 inferredUId에서 dCategoriesByU를 사용하기 위해 카테고리와 상품을 하나의 시도에서 모두 처리
 
         // 상품 상세
-        const res = await legacyGet<any>(`/${storeUrl}/seller/products/${productId}`, {
+        const response = await legacyGet<any>(`/${storeUrl}/seller/products/${productId}`, {
           withCredentials: true,
         });
 
-        const p = res.data?.product ?? res.data?.data ?? res.data;
+        const product = response.data?.product ?? response.data?.data ?? response.data;
 
         // 기존 이미지 3장 배열로 변환
-        const images: ProductImage[] = [p.pimgUrl1, p.pimgUrl2, p.pimgUrl3]
-          .filter(Boolean)
-          .map((url: string) => ({
-            id: crypto.randomUUID(),
-            url,
-            serverImageId: 0, // 서버 이미지 ID 없으면 0, 실제로 필요하면 API 수정
-          }));
+        const images: ProductImage[] = product.images.map((img: any) => ({
+          id: crypto.randomUUID(), // 프론트용
+          url: img.url,
+          serverImageId: img.id, // DB에서 내려준 이미지 PK
+          markedForDelete: false,
+        }));
 
         // dCategoryId를 통해 uCategory 추론
         const inferredUId =
           Object.entries(dCategoriesByU).find(([uId, dCats]) =>
-            (dCats as EnumItem[]).some((d: any) => String(d.id) === String(p?.dcategoryId))
+            (dCats as EnumItem[]).some((d: any) => String(d.id) === String(product?.dcategoryId))
           )?.[0] ?? '';
 
         const next: ProductForm = {
           id: crypto.randomUUID(),
           productNumber: 1,
-          name: p?.productName ?? '',
-          price: typeof p?.price === 'number' ? p.price : '',
+          name: product?.productName ?? '',
+          price: typeof product?.price === 'number' ? product.price : '',
           aiPrice: '', // 초기엔 비워두고, 필요시 AI 버튼으로 채움
-          desc: p?.productDetail ?? '',
+          desc: product?.productDetail ?? '',
           aiDesc: '',
           images,
-          stock: typeof p?.stock === 'number' ? p.stock : '',
-          categoryLarge: String(p?.typeCategoryId ?? ''),
+          stock: typeof product?.stock === 'number' ? product.stock : '',
+          categoryLarge: String(product?.typeCategoryId ?? ''),
           categoryMiddle: inferredUId,
-          categorySmall: String(p?.dcategoryId ?? ''),
+          categorySmall: String(product?.dcategoryId ?? ''),
         };
 
         // console.log('폼 초기값: ', next);
@@ -183,7 +187,7 @@ const ProductEdit: FC = () => {
 
   // ---------- 에디터 초기값 세팅 ---------- // 기존 설명 폼 반영
   useEffect(() => {
-    const editor = editorRefs.current[form.id];
+    const editor = editorRef.current;
     if (editor && form.desc) {
       editor.setMarkdown(form.desc); // 기존 HTML/마크다운을 에디터에 넣음
     }
@@ -194,108 +198,128 @@ const ProductEdit: FC = () => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const onPickImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 수정용 이미지 선택 핸들러
+  const onEditPickImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || !files.length) return;
 
-    const remainSlots = 3 - form.images.length; // form.images 기준
-    const newFiles = Array.from(files).slice(0, remainSlots);
+    // 기존 서버 이미지 + 새로 추가하는 파일 합쳐서 3개까지 허용
+    const chosen = Array.from(files);
+    setForm((prev) => {
+      const currentCount = prev.images?.length ?? 0;
+      const remain = Math.max(0, 3 - currentCount);
 
-    const newImages: ProductImage[] = newFiles.map((file) => ({
-      id: crypto.randomUUID(),
-      url: URL.createObjectURL(file),
-      file,
-    }));
+      const toAdd = chosen.slice(0, remain).map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        url: URL.createObjectURL(file),
+        isNew: true,
+      }));
 
-    setForm((prev) => ({
-      ...prev,
-      images: [...prev.images, ...newImages],
-    }));
+      return { ...prev, images: [...toAdd, ...(prev.images ?? [])] };
+    });
 
     e.target.value = '';
   };
 
   const removeImage = (index: number) => {
-    const target = form.images[index];
+    setForm((prev) => {
+      const img = prev.images[index];
+      if (!img) return prev;
 
-    // 기존 서버 이미지였다면 삭제 리스트에 추가
-    if (target.serverImageId) {
-      setDeletedServerImageIds((prev) => [...prev, target.serverImageId!]);
-    }
-
-    // form.images에서 제거
-    setForm((prev) => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-    }));
+      if (img.serverImageId) {
+        // 기존 서버 이미지이면 markedForDelete = true
+        const newImages = [...prev.images];
+        newImages[index] = { ...img, markedForDelete: true };
+        return { ...prev, images: newImages };
+      } else {
+        // 새로 업로드한 이미지면 그냥 제거
+        return { ...prev, images: prev.images.filter((_, i) => i !== index) };
+      }
+    });
   };
 
-  // ---------- AI 가격 ----------
-  const genAiPrice = async () => {
-    // 첫 이미지 기준
-    if (!form.images.length || !(form.images[0].file || form.images[0].url)) {
-      alert('AI 가격 추천을 위해 상품 사진을 먼저 업로드하거나 기존 이미지를 확인해 주세요.');
+  // ✅ AI 가격 추천 - 이미지 예측 API (수정 페이지-단일 폼 전용)
+  const genAiPriceForEdit = async () => {
+    if (!form.images.length || !form.images[0].file) {
+      alert('AI 가격 추천을 위해 상품 사진을 먼저 업로드해 주세요.');
       return;
     }
 
-    // 실제로는 파일 기반이 정확. 기존 이미지 URL만 있는 경우엔 스킵/폴백
-    const imgFile = form.images.find((i) => i.file)?.file;
     setIsLoadingAiPrice(true);
+
     try {
-      if (imgFile) {
-        const result = await predictImage(imgFile);
-        if (result.success && result.predictions.length > 0) {
-          const top = result.predictions[0];
-          setAiPredictionInfo({ [form.id]: result });
-          if (top.price_info?.median_price) {
-            updateForm('aiPrice', Math.round(top.price_info.median_price));
-          } else {
-            const base = (form.name.length || 6) * 1200;
-            const randomized = Math.round((base + Math.random() * 8000) / 100) * 100;
-            updateForm('aiPrice', randomized as number);
-            alert('가격 통계가 없어 기본 알고리즘으로 추천했습니다.');
-          }
+      const result = await predictImage(form.images[0].file);
+
+      if (result.success && result.predictions.length > 0) {
+        const topPrediction = result.predictions[0];
+
+        setAiPredictionInfo(result);
+
+        if (topPrediction.price_info?.median_price) {
+          const medianPrice = Math.round(topPrediction.price_info.median_price);
+
+          setForm((prev) => ({
+            ...prev,
+            aiPrice: medianPrice,
+          }));
+
+          console.log(
+            `AI 예측 카테고리: ${topPrediction.category} (신뢰도: ${(topPrediction.confidence * 100).toFixed(1)}%)`
+          );
         } else {
-          throw new Error('이미지 예측 실패');
+          // 가격 정보 없음 → 기본 알고리즘
+          const base = (form?.name.length || 6) * 1200;
+          const randomized = Math.round((base + Math.random() * 8000) / 100) * 100;
+          setForm((prev) => ({
+            ...prev,
+            aiPrice: randomized,
+          }));
+          alert('해당 카테고리의 가격 정보가 없어 기본 알고리즘으로 가격을 추천했습니다.');
         }
       } else {
-        // 파일이 없고 URL만 있을 때 폴백
-        const base = (form.name.length || 6) * 1200;
-        const randomized = Math.round((base + Math.random() * 8000) / 100) * 100;
-        updateForm('aiPrice', randomized as number);
-        alert('로컬 이미지 파일이 없어 기본 알고리즘으로 추천했습니다.');
+        throw new Error('이미지 예측에 실패했습니다.');
       }
-    } catch (e: any) {
-      console.error(e);
-      const base = (form.name.length || 6) * 1200;
+    } catch (error: any) {
+      console.error('AI 가격 추천 실패:', error);
+
+      // 실패 시 기존 로직 폴백
+      const base = (form?.name.length || 6) * 1200;
       const randomized = Math.round((base + Math.random() * 8000) / 100) * 100;
-      updateForm('aiPrice', randomized as number);
-      alert('AI 분석 실패로 기본 알고리즘을 사용했습니다.');
+      setForm((prev) => ({
+        ...prev,
+        aiPrice: randomized,
+      }));
+
+      alert('AI 가격 분석에 실패하여 기본 알고리즘으로 가격을 추천합니다.');
     } finally {
       setIsLoadingAiPrice(false);
     }
   };
 
+  // AI 예측 정보 툴팁 생성
   const generatePredictionTooltip = (): string => {
-    const predictionInfo = aiPredictionInfo[form.id];
+    const predictionInfo = aiPredictionInfo;
     if (!predictionInfo) return '';
-    let tip = `🎯 예측: ${predictionInfo.top_category} (신뢰도 ${(predictionInfo.top_confidence * 100).toFixed(1)}%)\n`;
-    predictionInfo.predictions.forEach((pred: any, idx: number) => {
+
+    let tooltip = `🎯 예측 완료: ${predictionInfo.top_category} (신뢰도: ${(predictionInfo.top_confidence * 100).toFixed(2)}%)\n`;
+
+    predictionInfo.predictions.forEach((pred: any, index: number) => {
       if (pred.price_info) {
-        tip += `📊 '${pred.price_info.db_category}' 가격 통계\n`;
-        tip += `  평균: ${pred.price_info.average_price.toLocaleString()}원\n`;
-        tip += `  범위: ${pred.price_info.min_price.toLocaleString()} ~ ${pred.price_info.max_price.toLocaleString()}원\n`;
-        tip += `  중앙값: ${pred.price_info.median_price.toLocaleString()}원\n`;
-        tip += `  표본: ${pred.price_info.product_count}개`;
+        tooltip += `📊 카테고리 '${pred.price_info.db_category}' 가격 통계:\n`;
+        tooltip += `   평균: ${pred.price_info.average_price.toLocaleString()}원\n`;
+        tooltip += `   범위: ${pred.price_info.min_price.toLocaleString()}원 ~ ${pred.price_info.max_price.toLocaleString()}원\n`;
+        tooltip += `   중앙값: ${pred.price_info.median_price.toLocaleString()}원\n`;
+        tooltip += `   상품수: ${pred.price_info.product_count}개`;
       } else {
-        tip += `📭 '${pred.category}' 가격 정보 없음`;
+        tooltip += `📭 카테고리 '${pred.category}'에 대한 가격 정보가 없습니다.`;
       }
-      if (idx < predictionInfo.predictions.length - 1) tip += '\n';
+      if (index < predictionInfo.predictions.length - 1) tooltip += '\n';
     });
-    return tip;
+
+    return tooltip;
   };
 
-  // ---------- 카테고리 ----------
   const onChangeLarge = (largeId: string) => {
     updateForm('categoryLarge', largeId);
     updateForm('categoryMiddle', '');
@@ -306,15 +330,56 @@ const ProductEdit: FC = () => {
     updateForm('categorySmall', '');
   };
 
-  // ---------- 에디터 로컬 이미지 수집 ----------
+  // 에디터에서 로컬 이미지 등록되면 기억
   const onLocalImageAdded = (url: string, file: File) => {
-    const bucket = (pendingDescImagesRef.current[form.id] ||= new Map<string, File>());
+    const bucket = (pendingDescImagesRef.current ||= new Map<string, File>());
     bucket.set(url, file);
   };
 
-  // ---------- 에디터 본문 준비(blob src → cid 치환) ----------
+  // ✅ AI 상세설명 생성 → 에디터에 주입 (수정 페이지 전용)
+  const genAiDescForEdit = async () => {
+    if (!form.name.trim()) {
+      alert('상품 이름을 먼저 입력해 주세요.');
+      return;
+    }
+
+    try {
+      const payload = {
+        name: form.name,
+        prompt: form.aiDesc,
+        price:
+          typeof form.price === 'number'
+            ? form.price
+            : typeof form.aiPrice === 'number'
+              ? form.aiPrice
+              : 0,
+        categoryLarge: form.categoryLarge || '',
+        categoryMiddle: form.categoryMiddle || '',
+        categorySmall: form.categorySmall || '',
+      };
+
+      const resp = await api.post('/ai/product-description', payload);
+      const content: string = resp?.data?.content ?? resp?.data?.data ?? resp?.data?.markdown ?? '';
+      if (!content) throw new Error('AI 응답이 비었습니다.');
+
+      // [수정용 변경] formId 제거, 단일 에디터만 다룸
+      editorRef.current?.setMarkdown(content);
+
+      const html = editorRef.current?.getHTML() || '';
+
+      // [수정용 변경] updateForm 대신 setForm 사용
+      setForm((prev) => ({
+        ...prev,
+        desc: html,
+      }));
+    } catch (e: any) {
+      alert(e?.response?.data?.error || e?.message || 'AI 설명 생성 실패');
+    }
+  };
+
+  /** 저장 직전: blob src → cid:desc-n 치환 + 파일목록 반환 */
   function prepareDescForSubmit(rawHtml: string) {
-    const bucket = pendingDescImagesRef.current[form.id] ?? new Map<string, File>();
+    const bucket = pendingDescImagesRef.current ?? new Map<string, File>();
     const srcs = extractImageUrlsFromHtml(rawHtml);
     let html = rawHtml;
     const descFiles: Array<{ idx: number; file: File }> = [];
@@ -322,38 +387,43 @@ const ProductEdit: FC = () => {
 
     for (const src of srcs) {
       const f = bucket.get(src);
-      if (!f) continue; // 외부 URL은 그대로
+      if (!f) continue; // http(s) 등 외부 URL은 그대로
       const cid = `cid:desc-${seq}`;
       html = html.split(src).join(cid);
       descFiles.push({ idx: seq, file: f });
-      if (src.startsWith('blob:')) URL.revokeObjectURL(src);
+      if (src.startsWith('blob:')) URL.revokeObjectURL(src); // 메모리 해제
       bucket.delete(src);
       seq++;
     }
     return { htmlWithCids: html, descFiles };
   }
 
-  // ---------- multipart/form-data 구성 ----------
-  function buildFormDataForUpdate() {
+  function buildFormDataForUpdateSingle(form: ProductForm) {
     const fd = new FormData();
 
-    // ----- 1. 상품 상세 설명 (에디터 본문) -----
-    const rawHtml = editorRefs.current[form.id]?.getHTML?.() || form.desc || '';
+    const rawHtml = editorRef.current?.getHTML() || form.desc || '';
     const { htmlWithCids, descFiles } = prepareDescForSubmit(rawHtml);
 
-    // 설명 본문 이미지(로컬 추가분만 업로드)
-    descFiles.forEach(({ file }) => {
-      fd.append('images', file);
+    // 설명 이미지 + 썸네일 이미지 모두 'images' key로 추가
+    descFiles.forEach(({ file }) => fd.append('images', file));
+    form.images.forEach((img) => {
+      if (img.file) fd.append('images', img.file);
     });
 
-    // 상품 썸네일/이미지
-    form.images.forEach((img) => {
-      if (img.file) {
-        fd.append('images', img.file); // 무조건 key = "images"
+    // 삭제할 기존 서버 이미지 ID
+    const seqsToDelete = form.images
+      .filter((img) => img.serverImageId && img.markedForDelete)
+      .map((img) => img.serverImageId);
+
+    console.log('삭제할 서버 이미지 ID:', seqsToDelete);
+
+    seqsToDelete.forEach((id) => {
+      if (id != null) {
+        // null 또는 undefined 제외
+        fd.append('imageIds', id.toString());
       }
     });
 
-    // ----- DTO 본문 데이터 -----
     const dtoPayload = {
       productId: Number(productId),
       productName: form.name.trim(),
@@ -362,13 +432,12 @@ const ProductEdit: FC = () => {
       typeCategoryId: toInt(form.categoryLarge),
       dcategoryId: toInt(form.categorySmall),
       stock: toInt(form.stock),
-      descriptionImageUrls: [],
-      deletedServerImageIds, // 프론트에서 삭제 시 모은 serverImageId 배열
+      descriptionImageUrls: [], // 서버에서 cid → URL 처리
     };
-    console.log('전송용 DTO:', dtoPayload);
+    // console.log('전송용 DTO:', dtoPayload);
 
     fd.append('dto', new Blob([JSON.stringify(dtoPayload)], { type: 'application/json' }));
-        
+
     return fd;
   }
 
@@ -390,7 +459,7 @@ const ProductEdit: FC = () => {
     }
 
     try {
-      const fd = buildFormDataForUpdate();
+      const fd = buildFormDataForUpdateSingle(form);
 
       await legacyPost<any>(`/${storeUrl}/seller/productupdate/${productId}`, fd);
 
@@ -412,7 +481,7 @@ const ProductEdit: FC = () => {
     // 상세를 다시 불러오고 싶으면 location.reload 또는 상세 GET 재호출 로직 구현
     setForm(createEmptyProductForm());
     setDeletedServerImageIds([]);
-    pendingDescImagesRef.current[form.id]?.clear();
+    pendingDescImagesRef.current.clear();
   };
 
   return (
@@ -445,23 +514,24 @@ const ProductEdit: FC = () => {
               <div className="grid gap-2">
                 <span className="text-sm font-medium">상품 사진 (최대 3장)</span>
                 <div className="flex flex-wrap items-center gap-2">
-                  {form.images.length < 3 && (
+                  {activeImages.length < 3 && (
                     <label className="px-3 py-2 rounded-md border text-sm cursor-pointer hover:bg-gray-50">
                       + 사진 선택
                       <input
                         type="file"
                         accept="image/*"
                         multiple
-                        onChange={onPickImages}
+                        onChange={onEditPickImages.bind(null)}
                         className="hidden"
                       />
                     </label>
                   )}
-                  <span className="text-xs text-gray-500">현재 {form.images.length}/3</span>
+
+                  <span className="text-xs text-gray-500">현재 {activeImages.length}/3</span>
                 </div>
                 {form.images.length > 0 && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {form.images.map((img, index) => (
+                    {activeImages.map((img, index) => (
                       <div key={img.id} className="relative rounded-lg overflow-hidden border">
                         <img src={img.url} alt="preview" className="w-full h-40 object-cover" />
                         <button
@@ -503,7 +573,7 @@ const ProductEdit: FC = () => {
                     <button
                       type="button"
                       className="px-3 py-2 rounded-md border hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 flex items-center gap-1"
-                      onClick={genAiPrice}
+                      onClick={genAiPriceForEdit}
                       disabled={isLoadingAiPrice}
                     >
                       {isLoadingAiPrice && (
@@ -536,7 +606,7 @@ const ProductEdit: FC = () => {
                 <legend className="text-sm font-medium">상품 상세설명</legend>
                 <EditorAPI
                   ref={(el) => {
-                    editorRefs.current[form.id] = el ?? null;
+                    editorRef.current = el ?? null;
                   }}
                   initialValue={form.desc}
                   onLocalImageAdded={(url, file) => onLocalImageAdded(url, file)}
@@ -548,33 +618,7 @@ const ProductEdit: FC = () => {
                     <button
                       type="button"
                       className="px-3 py-1.5 rounded-md border text-sm hover:bg-gray-50"
-                      onClick={async () => {
-                        if (!form.name.trim()) return alert('상품 이름을 먼저 입력해 주세요.');
-                        try {
-                          const payload = {
-                            name: form.name,
-                            prompt: form.aiDesc,
-                            price:
-                              typeof form.price === 'number'
-                                ? form.price
-                                : typeof form.aiPrice === 'number'
-                                  ? form.aiPrice
-                                  : 0,
-                            categoryLarge: form.categoryLarge || '',
-                            categoryMiddle: form.categoryMiddle || '',
-                            categorySmall: form.categorySmall || '',
-                          };
-                          const resp = await api.post('/ai/product-description', payload);
-                          const content: string =
-                            resp?.data?.content ?? resp?.data?.data ?? resp?.data?.markdown ?? '';
-                          if (!content) throw new Error('AI 응답이 비었습니다.');
-                          editorRefs.current[form.id]?.setMarkdown(content);
-                          const html = editorRefs.current[form.id]?.getHTML() || '';
-                          updateForm('desc', html);
-                        } catch (e: any) {
-                          alert(e?.response?.data?.error || e?.message || 'AI 설명 생성 실패');
-                        }
-                      }}
+                      onClick={() => genAiDescForEdit()}
                     >
                       AI 설명 생성
                     </button>

@@ -421,7 +421,7 @@ const ProductList: FC = () => {
                         <td className="px-3 py-3 align-top">
                           <div
                             className={[
-                              'h-15 w-20 overflow-hidden rounded-md border',
+                              'h-20 max-w-20 overflow-hidden rounded-md border',
                               disabled ? 'cursor-not-allowed' : 'hover:ring-1 hover:ring-gray-300',
                             ].join(' ')}
                             title={r.name}

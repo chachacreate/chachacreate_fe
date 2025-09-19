@@ -28,6 +28,7 @@ interface SummaryDTO {
   storeId?: number;
   storeName?: string;
   storeContent?: string;
+  storeUrl?: string;
 }
 
 interface ImageItemDTO {
@@ -348,7 +349,8 @@ export default function ClassesDetailPage() {
   };
 
   const handleStoreInfo = () => {
-    if (storeName) nav(`/store/${storeName}/info`);
+    const storeUrl = summary?.storeUrl ?? '';
+    window.location.href = `/${storeUrl}/info`;
   };
 
   const scrollToCalendar = () => {

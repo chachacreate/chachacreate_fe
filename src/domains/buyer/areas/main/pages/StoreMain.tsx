@@ -1,13 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import { legacyGet } from '@src/libs/request';
-
-// Swiper CSS
-// import 'swiper/css';
-// import 'swiper/css/navigation';
-// import 'swiper/css/pagination';
+import Header from '@src/shared/areas/layout/features/header/Header';
+import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
+import Footer from '@src/shared/areas/layout/features/footer/Footer';
 
 // 타입 정의
 interface StoreInfo {
@@ -50,6 +46,7 @@ const StoreMain: React.FC = () => {
   const [bestProducts, setBestProducts] = useState<Product[]>([]);
   const [notice, setNotice] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
     if (storeUrl) {
@@ -60,10 +57,10 @@ const StoreMain: React.FC = () => {
 
   const loadStoreData = async () => {
     try {
+      setError('');
       const result = await legacyGet<{ data: StoreData }>(`/${storeUrl}`);
       const { mainProduct, bestProduct } = result.data;
-      
-      // 스토어 정보 설정 (첫 번째 대표 상품에서 추출)
+
       if (mainProduct.length > 0) {
         const storeData = mainProduct[0];
         setStoreInfo({
@@ -72,11 +69,12 @@ const StoreMain: React.FC = () => {
           storeDetail: storeData.storeDetail
         });
       }
-      
+
       setMainProducts(mainProduct);
       setBestProducts(bestProduct);
     } catch (error) {
       console.error('스토어 데이터 로딩 실패:', error);
+      setError('스토어 데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -85,7 +83,7 @@ const StoreMain: React.FC = () => {
   const loadNotices = async () => {
     try {
       const result = await legacyGet<NoticeResponse>(`${storeUrl}/seller/management/noticeselect`);
-      
+
       if (result?.data && Array.isArray(result.data)) {
         const pinned = result.data.filter(n => n.noticeCheck === 1);
         if (pinned.length > 0) {
@@ -115,310 +113,236 @@ const StoreMain: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg font-jua text-gray-600">로딩 중...</div>
-      </div>
+      <>
+        <Header />
+        <Storenavbar />
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-lg font-jua text-gray-600">로딩 중...</div>
+        </div>
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Header />
+        <Storenavbar />
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-lg font-jua text-red-600 mb-4">{error}</div>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              다시 시도
+            </button>
+          </div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="bg-white font-jua text-gray-900">
-      {/* 히어로 섹션 */}
-      <section className="w-full">
-        <div className="w-full bg-[#F3F0E8]">
-          <div className="h-[200px] sm:h-[240px] lg:h-[280px]"></div>
-        </div>
-        <div className="relative">
-          <div className="w-full px-4 sm:px-8 xl:px-60">
-            <div className="-mt-[88px] sm:-mt-[100px]">
-              <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">
-                <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
-                  {/* 스토어 로고 */}
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 relative">
-                    <img 
-                      src={storeInfo?.logoImg || ''} 
-                      alt={storeInfo?.storeName || '스토어 로고'}
-                      className="w-full h-full object-cover object-center"
-                      onError={(e) => {
-                        e.currentTarget.style.opacity = '0';
-                      }}
-                    />
-                    {/* 이미지 로딩 실패시 대체 아이콘 */}
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-400 opacity-50 pointer-events-none">
-                      <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                      </svg>
-                    </div>
-                  </div>
-                  
-                  {/* 스토어 정보 */}
-                  <div className="flex-1 min-w-0">
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-normal tracking-wide text-gray-900">
-                      {storeInfo?.storeName || '스토어명'}
-                    </h1>
-                    <p className="mt-2 text-sm sm:text-base leading-relaxed text-[#4B5563]">
-                      {storeInfo?.storeDetail || '스토어 설명'}
-                    </p>
-                    
-                    {/* 액션 버튼들 */}
-                    <div className="mt-4 flex flex-wrap gap-3">
-                      <a 
-                        href={`/${storeUrl}/products`}
-                        className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-normal text-white bg-[#2D4739] hover:opacity-95 transition-opacity tracking-wider"
-                      >
-                        전체 상품 보기
-                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-                        </svg>
-                      </a>
-                      <a 
-                        href={`/${storeUrl}/notices`}
-                        className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-normal text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-colors tracking-wider"
-                      >
-                        공지사항
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="h-6"></div>
-            </div>
+    <>
+      <Header />
+      <Storenavbar />
+      <div className="bg-white font-jua text-gray-900">
+        {/* 히어로 섹션 */}
+        <section className="w-full">
+          <div className="w-full bg-[#F3F0E8]">
+            <div className="h-[200px] sm:h-[240px] lg:h-[280px]"></div>
           </div>
-        </div>
-      </section>
-
-      {/* 스토어 공지사항 */}
-      <section className="w-full px-4 sm:px-8 xl:px-60">
-        <div className="rounded-xl border border-gray-200 p-4 sm:p-5 lg:p-6 bg-white">
-          <div className="text-sm font-normal mb-2 text-[#7A241F] tracking-wider">
-            공지사항
-          </div>
-          <div className="overflow-hidden">
-            <div className="text-sm sm:text-base leading-relaxed text-gray-700">
-              <div className="animate-marquee whitespace-nowrap">
-                {notice}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 인기 상품 섹션 */}
-      <section className="w-full px-4 sm:px-8 xl:px-60 mt-8 sm:mt-10">
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-4">
-          <div>
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide text-[#2D4739] flex items-center gap-2">
-              <span className="text-xl sm:text-2xl">⭐</span>
-              인기 상품
-            </h2>
-            <p className="mt-1 text-xs sm:text-sm text-gray-500">구매수가 많은 상품을 모았어요</p>
-          </div>
-          <a 
-            href={`/${storeUrl}/products`}
-            className="inline-flex items-center gap-1 text-xs sm:text-sm font-normal text-gray-700 hover:text-gray-900 transition-colors self-start sm:self-auto"
-          >
-            전체보기
-            <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-            </svg>
-          </a>
-        </div>
-        
-        <div className="mt-4 sm:mt-5 relative">
-          <Swiper
-            modules={[Navigation, Pagination]}
-            slidesPerView={3}
-            spaceBetween={30}
-            loop={false}
-            navigation={{
-              nextEl: '.product-next',
-              prevEl: '.product-prev',
-            }}
-            pagination={{
-              el: '.product-pagination',
-              clickable: true,
-            }}
-            allowTouchMove={false}
-            className="overflow-hidden rounded-xl"
-          >
-            {bestProducts.map((product) => (
-              <SwiperSlide 
-                key={product.productId}
-                onClick={() => handleProductClick(product.productId)}
-                className="cursor-pointer"
-              >
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="aspect-square overflow-hidden bg-gray-50">
-                    <img 
-                      src={product.pimgUrl} 
-                      alt={product.productName}
-                      className="w-full h-full object-cover object-center hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-normal text-gray-900 text-sm sm:text-base mb-2 line-clamp-2">
-                      {product.productName}
-                    </h3>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {product.typeCategoryName && (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                          {product.typeCategoryName}
-                        </span>
-                      )}
-                      {product.ucategoryName && (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                          {product.ucategoryName}
-                        </span>
-                      )}
-                      {product.dcategoryName && (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                          {product.dcategoryName}
-                        </span>
+          <div className="relative">
+            <div className="w-full px-4 sm:px-8 xl:px-60">
+              <div className="-mt-[88px] sm:-mt-[100px]">
+                <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">
+                  <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
+                    {/* 스토어 로고 */}
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 relative">
+                      {storeInfo?.logoImg ? (
+                        <img
+                          src={storeInfo.logoImg}
+                          alt={`${storeInfo.storeName} 로고`}
+                          className="w-full h-full object-cover object-center"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="text-gray-400">
+                          <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                          </svg>
+                        </div>
                       )}
                     </div>
-                    <p className="text-[#2D4739] font-normal text-sm sm:text-base">
-                      {formatPrice(product.price)}
-                    </p>
-                  </div>
-                </div>
-              </SwiperSlide>
-            ))}
-          </Swiper>
-          
-          {/* Navigation */}
-          <div className="swiper-button-prev product-prev hidden sm:block !w-8 !h-8 lg:!w-10 lg:!h-10 !mt-0 !left-2 !top-1/2 !-translate-y-1/2 
-                          bg-white/90 rounded-full shadow-lg border border-gray-200 
-                          after:!text-gray-600 after:!text-xs lg:after:!text-sm after:!font-bold
-                          hover:bg-white transition-all duration-200"></div>
-          <div className="swiper-button-next product-next hidden sm:block !w-8 !h-8 lg:!w-10 lg:!h-10 !mt-0 !right-2 !top-1/2 !-translate-y-1/2 
-                          bg-white/90 rounded-full shadow-lg border border-gray-200 
-                          after:!text-gray-600 after:!text-xs lg:after:!text-sm after:!font-bold
-                          hover:bg-white transition-all duration-200"></div>
-          
-          {/* Pagination */}
-          <div className="swiper-pagination product-pagination !bottom-2 sm:!bottom-4"></div>
-        </div>
-      </section>
 
-      {/* 대표 상품 섹션 */}
-      <section className="w-full px-4 sm:px-8 xl:px-60 mt-8 sm:mt-10">
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-4">
-          <div>
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide text-[#2D4739] flex items-center gap-2">
-              <span className="text-xl sm:text-2xl">⭐</span>
-              대표 상품
-            </h2>
-            <p className="mt-1 text-xs sm:text-sm text-gray-500">판매자가 추천하는 스토어 대표작</p>
-          </div>
-          <a 
-            href={`/${storeUrl}/products`}
-            className="inline-flex items-center gap-1 text-xs sm:text-sm font-normal text-gray-700 hover:text-gray-900 transition-colors self-start sm:self-auto"
-          >
-            전체보기
-            <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-            </svg>
-          </a>
-        </div>
-        
-        <div className="mt-4 sm:mt-5 relative">
-          <Swiper
-            modules={[Navigation, Pagination]}
-            slidesPerView={3}
-            spaceBetween={30}
-            loop={false}
-            navigation={{
-              nextEl: '.store-next',
-              prevEl: '.store-prev',
-            }}
-            pagination={{
-              el: '.store-pagination',
-              clickable: true,
-            }}
-            allowTouchMove={false}
-            className="overflow-hidden rounded-xl"
-          >
-            {mainProducts.map((product) => (
-              <SwiperSlide 
-                key={product.productId}
-                onClick={() => handleProductClick(product.productId)}
-                className="cursor-pointer"
-              >
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="aspect-square overflow-hidden bg-gray-50">
-                    <img 
-                      src={product.pimgUrl} 
-                      alt={product.productName}
-                      className="w-full h-full object-cover object-center hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-normal text-gray-900 text-sm sm:text-base mb-2 line-clamp-2">
-                      {product.productName}
-                    </h3>
-                    {product.categoryName && (
-                      <div className="mb-2">
-                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                          {product.categoryName}
-                        </span>
+                    {/* 스토어 정보 */}
+                    <div className="flex-1 min-w-0">
+                      <h1 className="text-xl sm:text-2xl lg:text-3xl font-normal tracking-wide text-gray-900">
+                        {storeInfo?.storeName || '스토어명'}
+                      </h1>
+                      <p className="mt-2 text-sm sm:text-base leading-relaxed text-[#4B5563]">
+                        {storeInfo?.storeDetail || '스토어 설명'}
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <a
+                          href={`/${storeUrl}/products`}
+                          className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-normal text-white bg-[#2D4739] hover:opacity-95 transition-opacity tracking-wider"
+                        >
+                          전체 상품 보기
+                        </a>
+                        <a
+                          href={`/${storeUrl}/notices`}
+                          className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-normal text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-colors tracking-wider"
+                        >
+                          공지사항
+                        </a>
                       </div>
-                    )}
-                    <p className="text-gray-600 text-xs sm:text-sm line-clamp-2">
-                      {truncateText(product.productDetail, 50)}
-                    </p>
+                    </div>
                   </div>
                 </div>
-              </SwiperSlide>
-            ))}
-          </Swiper>
-          
-          {/* Navigation */}
-          <div className="swiper-button-prev store-prev hidden sm:block !w-8 !h-8 lg:!w-10 lg:!h-10 !mt-0 !left-2 !top-1/2 !-translate-y-1/2 
-                          bg-white/90 rounded-full shadow-lg border border-gray-200 
-                          after:!text-gray-600 after:!text-xs lg:after:!text-sm after:!font-bold
-                          hover:bg-white transition-all duration-200"></div>
-          <div className="swiper-button-next store-next hidden sm:block !w-8 !h-8 lg:!w-10 lg:!h-10 !mt-0 !right-2 !top-1/2 !-translate-y-1/2 
-                          bg-white/90 rounded-full shadow-lg border border-gray-200 
-                          after:!text-gray-600 after:!text-xs lg:after:!text-sm after:!font-bold
-                          hover:bg-white transition-all duration-200"></div>
-          
-          {/* Pagination */}
-          <div className="swiper-pagination store-pagination !bottom-2 sm:!bottom-4"></div>
+                <div className="h-6"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 공지사항 */}
+        <section className="w-full px-4 sm:px-8 xl:px-60">
+  <div className="rounded-xl border border-gray-200 p-4 sm:p-5 lg:p-6 bg-white">
+    <div className="text-sm font-normal mb-2 text-[#7A241F] tracking-wider">공지사항</div>
+
+    <div className="relative overflow-hidden">
+      <div className="marquee" aria-label="스토어 공지">
+        <div className="marquee__track">
+          <span className="marquee__item">{notice || '공지사항이 없습니다.'}</span>
         </div>
-      </section>
+      </div>
 
-      {/* 여백 */}
-      <div className="h-8 sm:h-12"></div>
-
-      {/* 마키 애니메이션 CSS */}
-      <style >{`
-        @keyframes marquee {
-          0% { transform: translateX(100%); }
-          100% { transform: translateX(-100%); }
-        }
-        
-        .animate-marquee {
-          animation: marquee 20s linear infinite;
-        }
-
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-
-        .swiper-pagination-bullet {
-          background: rgba(255, 255, 255, 0.7) !important;
-          border: 1px solid #d1d5db !important;
-        }
-
-        .swiper-pagination-bullet-active {
-          background: #2D4739 !important;
-          border-color: #2D4739 !important;
-        }
-      `}</style>
+      {/* 좌우 페이드 마스크 */}
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-8 sm:w-12 bg-gradient-to-r from-white to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-8 sm:w-12 bg-gradient-to-l from-white to-transparent" />
     </div>
+  </div>
+</section>
+
+
+        {/* 인기 상품 */}
+        {bestProducts.length > 0 && (
+          <section className="w-full px-4 sm:px-8 xl:px-60 mt-8 sm:mt-10">
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide text-[#2D4739] mb-4">⭐ 인기 상품</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {bestProducts.map((product) => (
+                <div
+                  key={product.productId}
+                  onClick={() => handleProductClick(product.productId)}
+                  className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                >
+                  <div className="aspect-square bg-gray-50 overflow-hidden">
+                    <img
+                      src={product.pimgUrl}
+                      alt={product.productName}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform"
+                      onError={(e) => { e.currentTarget.src = '/placeholder-image.jpg'; }}
+                    />
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-sm sm:text-base mb-2 line-clamp-2">{product.productName}</h3>
+                    <p className="text-[#2D4739] font-normal">{formatPrice(product.price)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 대표 상품 */}
+        {mainProducts.length > 0 && (
+          <section className="w-full px-4 sm:px-8 xl:px-60 mt-8 sm:mt-10">
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide text-[#2D4739] mb-4">⭐ 대표 상품</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {mainProducts.map((product) => (
+                <div
+                  key={product.productId}
+                  onClick={() => handleProductClick(product.productId)}
+                  className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                >
+                  <div className="aspect-square bg-gray-50 overflow-hidden">
+                    <img
+                      src={product.pimgUrl}
+                      alt={product.productName}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform"
+                      onError={(e) => { e.currentTarget.src = '/placeholder-image.jpg'; }}
+                    />
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-sm sm:text-base mb-2 line-clamp-2">{product.productName}</h3>
+                    <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">{truncateText(product.productDetail, 50)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <div className="h-8 sm:h-12"></div>
+        <style>{`
+  .marquee {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+.marquee__track {
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+  min-width: 100%; /* 비어있을 때 깜빡임/점프 방지 */
+  animation: marquee-mobile 18s linear infinite; /* 모바일 기본: 느리게 & 즉시 보이게 */
+}
+.marquee__item {
+  display: inline-block;
+  padding-right: 2rem;
+  font-size: 0.95rem;   /* 모바일 글자 조금 키움 */
+  line-height: 1.5rem;
+  color: #374151;
+}
+/* 호버 시 일시정지 (모바일엔 영향 거의 없음) */
+.marquee:hover .marquee__track { animation-play-state: paused; }
+
+/* 접근성: 모션 감소 */
+@media (prefers-reduced-motion: reduce) {
+  .marquee__track { animation: none; transform: translateX(0); }
+}
+
+/* 🔹 모바일: 화면 안(오른쪽 가장자리)에서 바로 시작 → 왼쪽으로 사라짐 */
+@keyframes marquee-mobile {
+  0%   { transform: translateX(0); }        /* 바로 보이게 */
+  100% { transform: translateX(-100%); }    /* 왼쪽 바깥으로 */
+}
+
+/* 🔹 태블릿 이상: 오른쪽 바깥에서 들어오며 흐르도록(원래 의도 유지), 속도 살짝 느리게 */
+@media (min-width: 640px) {
+  .marquee__track { animation: marquee-desktop 22s linear infinite; }
+  .marquee__item { font-size: 1rem; }
+}
+@media (min-width: 1024px) {
+  .marquee__track { animation-duration: 26s; }
+}
+
+/* 데스크톱용 키프레임: 오른쪽 바깥 → 왼쪽 바깥 */
+@keyframes marquee-desktop {
+  0%   { transform: translateX(100%); }   /* 오른쪽 밖에서 시작 */
+  100% { transform: translateX(-100%); }  /* 왼쪽 밖으로 */
+}
+
+`}</style>
+
+      </div>
+      <Footer />
+    </>
+    
   );
 };
 

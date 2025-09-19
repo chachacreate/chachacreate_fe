@@ -28,6 +28,7 @@ type OrderStatus =
 
 type OrderItem = {
   id: string;
+  orderDetailId: string;
   orderNumber: string;
   customerName: string;
   deliveryAddress: string;
@@ -55,7 +56,6 @@ type FilterKey =
   | 'refunded';
 
 /* ------------------ 상수/매핑 ------------------ */
-// 서버 Enum 코드 ↔ 한글 라벨
 type StatusCode =
   | 'ORDER_OK'
   | 'SHIPPED'
@@ -64,16 +64,6 @@ type StatusCode =
   | 'CANCEL_OK'
   | 'REFUND_RQ'
   | 'REFUND_OK';
-
-const CODE_TO_LABEL: Record<StatusCode, OrderStatus> = {
-  ORDER_OK: '주문완료',
-  SHIPPED: '발송완료',
-  DELIVERED: '배송완료',
-  CANCEL_RQ: '취소요청',
-  CANCEL_OK: '취소완료',
-  REFUND_RQ: '환불요청',
-  REFUND_OK: '환불완료',
-};
 
 const LABEL_TO_CODE: Record<OrderStatus, StatusCode> = {
   주문완료: 'ORDER_OK',
@@ -85,7 +75,16 @@ const LABEL_TO_CODE: Record<OrderStatus, StatusCode> = {
   환불완료: 'REFUND_OK',
 };
 
-// 모든 상태를 언제나 선택 가능
+const STATUS_CODE_TO_LABEL: Record<string, OrderStatus> = {
+  ORDER_OK: '주문완료',
+  SHIPPED: '발송완료',
+  DELIVERED: '배송완료',
+  CANCEL_RQ: '취소요청',
+  CANCEL_OK: '취소완료',
+  REFUND_RQ: '환불요청',
+  REFUND_OK: '환불완료',
+};
+
 const ALL_STATUS_LABELS: OrderStatus[] = [
   '주문완료',
   '발송완료',
@@ -146,10 +145,11 @@ export default function SellerOrderManagementMain() {
   const { storeUrl = 'store' } = useParams();
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [showAll, setShowAll] = useState(false);
-  const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [orderIds, setOrderIds] = useState<string[]>([]);
+  const ordersMap = useRef<Record<string, OrderItem>>({});
   const [openMenuOrderId, setOpenMenuOrderId] = useState<string | null>(null);
-
   const menuRef = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(1); // 현재 보고 있는 페이지, 초기값 1
 
   // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
@@ -162,89 +162,101 @@ export default function SellerOrderManagementMain() {
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, [openMenuOrderId]);
 
-  // 초기/스토어 변경 시 조회
+  // 초기 데이터 fetch
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await legacyGet<{
-          status: number;
-          message: string;
-          data: any[];
-        }>(`/${storeUrl}/seller/management/orders`);
-
-        if (response?.data) {
-          const mapped: OrderItem[] = response.data.map((item) => ({
-            id: String(item.orderId),
-            orderNumber: `ORD-${String(item.orderDetailId).padStart(5, '0')}`,
-            customerName: item.orderName,
-            deliveryAddress:
-              `${item.addressRoad || ''} ${item.addressDetail || ''} ${item.addressExtra || ''}`.trim(),
-            productName: item.productName,
-            quantity: item.orderCnt,
-            amount: item.orderPrice,
-            orderDate: new Date(item.orderDate).toISOString().split('T')[0],
-            updatedAt: new Date(item.orderDate).toISOString().split('T')[0],
-            status: item.orderStatus as OrderStatus, // 서버가 한글 라벨로 내려줌
-            productId: String(item.productId),
-            cancelReason: item.cancelReason,
-            refundReason: item.refundReason,
-            refundAmount: item.refundAmount,
-            refundDate: item.refundDate,
-          }));
-          setOrders(mapped);
-        } else {
-          setOrders([]);
-          console.error('주문/발송 관리 조회 실패:', response?.message);
+        const res = await legacyGet<{ status: number; message: string; data: any[] }>(
+          `/${storeUrl}/seller/management/orders`
+        );
+        if (res?.data) {
+          const map: Record<string, OrderItem> = {};
+          const ids: string[] = [];
+          res.data.forEach((item) => {
+            const detailId = String(item.orderDetailId);
+            map[detailId] = {
+              id: detailId,
+              orderDetailId: detailId,
+              orderNumber: `ORD-${detailId.padStart(5, '0')}`,
+              customerName: item.orderName,
+              deliveryAddress:
+                `${item.addressRoad || ''} ${item.addressDetail || ''} ${item.addressExtra || ''}`.trim(),
+              productName: item.productName,
+              quantity: item.orderCnt,
+              amount: item.orderPrice,
+              orderDate: new Date(item.orderDate).toISOString().split('T')[0],
+              updatedAt: new Date(item.orderDate).toISOString().split('T')[0],
+              status: item.orderStatus,
+              productId: String(item.productId),
+            };
+            ids.push(detailId);
+          });
+          ordersMap.current = map;
+          setOrderIds(ids);
         }
       } catch (err) {
-        console.error('API 요청 실패:', err);
-        setOrders([]);
+        console.error(err);
       }
     };
-
-    void fetchOrders();
+    fetchOrders();
   }, [storeUrl]);
 
   // 필터링
   const filteredOrders = useMemo(() => {
+    const list = orderIds.map((id) => ordersMap.current[id]);
     switch (activeFilter) {
       case 'ordered':
-        return orders.filter((o) => o.status === '주문완료');
+        return list.filter((o) => o.status === '주문완료');
       case 'shipped':
-        return orders.filter((o) => o.status === '발송완료');
+        return list.filter((o) => o.status === '발송완료');
       case 'delivered':
-        return orders.filter((o) => o.status === '배송완료');
+        return list.filter((o) => o.status === '배송완료');
       case 'cancel_request':
-        return orders.filter((o) => o.status === '취소요청');
+        return list.filter((o) => o.status === '취소요청');
       case 'cancelled':
-        return orders.filter((o) => o.status === '취소완료');
+        return list.filter((o) => o.status === '취소완료');
       case 'refund_request':
-        return orders.filter((o) => o.status === '환불요청');
+        return list.filter((o) => o.status === '환불요청');
       case 'refunded':
-        return orders.filter((o) => o.status === '환불완료');
+        return list.filter((o) => o.status === '환불완료');
       case 'all':
       default:
-        return orders;
+        return list;
     }
-  }, [activeFilter, orders]);
+  }, [activeFilter, orderIds]);
 
-  const displayedOrders = useMemo(
-    () => (showAll ? filteredOrders : filteredOrders.slice(0, 10)),
-    [filteredOrders, showAll]
-  );
+  // const displayedOrders = useMemo(
+  //   () => (showAll ? filteredOrders : filteredOrders.slice(0, 10)),
+  //   [filteredOrders, showAll]
+  // );
+
+  const PAGE_SIZE = 20;
+  const totalPages = Math.ceil(filteredOrders.length / PAGE_SIZE);
+  const displayedOrders = filteredOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const statusCounts = useMemo(() => {
-    return {
-      all: orders.length,
-      ordered: orders.filter((o) => o.status === '주문완료').length,
-      shipped: orders.filter((o) => o.status === '발송완료').length,
-      delivered: orders.filter((o) => o.status === '배송완료').length,
-      cancel_request: orders.filter((o) => o.status === '취소요청').length,
-      cancelled: orders.filter((o) => o.status === '취소완료').length,
-      refund_request: orders.filter((o) => o.status === '환불요청').length,
-      refunded: orders.filter((o) => o.status === '환불완료').length,
+    const counts: Record<FilterKey, number> = {
+      all: orderIds.length,
+      ordered: 0,
+      shipped: 0,
+      delivered: 0,
+      cancel_request: 0,
+      cancelled: 0,
+      refund_request: 0,
+      refunded: 0,
     };
-  }, [orders]);
+    orderIds.forEach((id) => {
+      const status = ordersMap.current[id]?.status;
+      if (status === '주문완료') counts.ordered++;
+      else if (status === '발송완료') counts.shipped++;
+      else if (status === '배송완료') counts.delivered++;
+      else if (status === '취소요청') counts.cancel_request++;
+      else if (status === '취소완료') counts.cancelled++;
+      else if (status === '환불요청') counts.refund_request++;
+      else if (status === '환불완료') counts.refunded++;
+    });
+    return counts;
+  }, [orderIds]);
 
   const filterOptions: { key: FilterKey; label: string }[] = [
     { key: 'all', label: `전체 (${statusCounts.all})` },
@@ -257,29 +269,20 @@ export default function SellerOrderManagementMain() {
     { key: 'refunded', label: `환불완료 (${statusCounts.refunded})` },
   ];
 
-  // 상태 변경 호출
+  // 상태 변경
   const patchOrderStatus = async (orderId: string, nextLabel: OrderStatus) => {
-    const code: StatusCode = LABEL_TO_CODE[nextLabel];
+    const code = LABEL_TO_CODE[nextLabel];
     try {
-      await legacyPatch<{
-        status: number;
-        message: string;
-        data: null;
-      }>(`/${storeUrl}/seller/management/orders/${orderId}/status`, {
+      await legacyPatch(`/${storeUrl}/seller/management/orders/${orderId}/status`, {
         toStatus: code,
       });
-
-      // 낙관적 업데이트
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === orderId
-            ? { ...o, status: nextLabel, updatedAt: new Date().toISOString().slice(0, 10) }
-            : o
-        )
-      );
+      if (ordersMap.current[orderId]) {
+        ordersMap.current[orderId].status = nextLabel;
+        ordersMap.current[orderId].updatedAt = new Date().toISOString().slice(0, 10);
+        setOrderIds([...orderIds]); // 렌더링 강제
+      }
     } catch (err) {
       console.error('상태 변경 실패:', err);
-      // 필요 시 토스트/알럿 처리
     } finally {
       setOpenMenuOrderId(null);
     }
@@ -365,7 +368,10 @@ export default function SellerOrderManagementMain() {
                       displayedOrders.map((order) => {
                         const open = openMenuOrderId === order.id;
                         return (
-                          <tr key={order.id} className="border-t border-gray-100 relative">
+                          <tr
+                            key={order.orderDetailId}
+                            className="border-t border-gray-100 relative"
+                          >
                             <td className="py-4 pr-6 whitespace-nowrap">
                               <button
                                 type="button"
@@ -433,7 +439,71 @@ export default function SellerOrderManagementMain() {
                   </tbody>
                 </table>
               </div>
+              <div className="flex justify-center items-center gap-2 mt-4 flex-wrap">
+                {/* 이전 그룹 */}
+                <button
+                  onClick={() => setPage(Math.max(Math.floor((page - 1) / 5 - 1) * 5 + 1, 1))}
+                  disabled={page <= 5}
+                  className="px-3 py-1 rounded-md border bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  «
+                </button>
 
+                {/* 이전 페이지 */}
+                <button
+                  onClick={() => setPage(Math.max(page - 1, 1))}
+                  disabled={page === 1}
+                  className="px-3 py-1 rounded-md border bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  ◀
+                </button>
+
+                {/* 페이지 그룹 (5개 단위) */}
+                {(() => {
+                  const pages = [];
+                  const groupStart = Math.floor((page - 1) / 5) * 5 + 1;
+                  const groupEnd = Math.min(groupStart + 4, totalPages);
+
+                  for (let p = groupStart; p <= groupEnd; p++) {
+                    pages.push(
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={[
+                          'px-3 py-1 rounded-md border text-sm transition',
+                          p === page
+                            ? 'bg-[#2d4739] text-white border-[#2d4739]'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100',
+                        ].join(' ')}
+                      >
+                        {p}
+                      </button>
+                    );
+                  }
+                  return pages;
+                })()}
+
+                {/* 다음 페이지 */}
+                <button
+                  onClick={() => setPage(Math.min(page + 1, totalPages))}
+                  disabled={page === totalPages}
+                  className="px-3 py-1 rounded-md border bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  ▶
+                </button>
+                {/* 다음 그룹 */}
+                <button
+                  onClick={() =>
+                    setPage(Math.min(Math.floor((page - 1) / 5 + 1) * 5 + 1, totalPages))
+                  }
+                  disabled={page + 5 > totalPages}
+                  className="px-3 py-1 rounded-md border bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  »
+                </button>
+              </div>
+
+              {/* 
               {!showAll && filteredOrders.length > 10 && (
                 <div className="mt-4 flex justify-center">
                   <button
@@ -443,7 +513,7 @@ export default function SellerOrderManagementMain() {
                     전체 보기 ({filteredOrders.length - 10}개 더)
                   </button>
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>

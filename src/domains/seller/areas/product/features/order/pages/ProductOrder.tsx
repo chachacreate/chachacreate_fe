@@ -170,7 +170,7 @@ export default function SellerOrderManagementMain() {
         const response = await legacyGet<any>(
           `/${storeUrl}/seller/management/orders?page=${page}&size=${PAGE_SIZE}&status=${activeFilter}`
         );
-        // console.log('주문 데이터:', res);
+        // console.log('주문 데이터:', response);
 
         if (Array.isArray(response.data)) {
           const mapped = response.data.map((item: any) => ({
@@ -188,7 +188,7 @@ export default function SellerOrderManagementMain() {
             status: item.orderStatus,
             productId: String(item.productId),
           }));
-          if (response.data.StatusCode === 200) {
+          if (response.status === 200) {
             setOrders(mapped);
 
             // totalCount 기반 페이지 계산

@@ -164,28 +164,28 @@ export default function SellerMain() {
     return [
       {
         key: '신규주문',
-        count: data.newOrders,
+        count: data.orderOkCount,
         icon: PackagePlus,
         badgeCls: 'bg-emerald-100 text-emerald-700',
         hoverBg: 'bg-emerald-50',
       },
       {
         key: '배송완료',
-        count: data.delivered,
+        count: data.deliveredCount,
         icon: Truck,
         badgeCls: 'bg-blue-100 text-blue-700',
         hoverBg: 'bg-blue-50',
       },
       {
         key: '취소요청',
-        count: data.cancelRequests,
+        count: data.cancelRqCount,
         icon: XOctagon,
         badgeCls: 'bg-rose-100 text-rose-700',
         hoverBg: 'bg-rose-50',
       },
       {
         key: '환불완료',
-        count: data.refunds,
+        count: data.refundOkCount,
         icon: RotateCcw,
         badgeCls: 'bg-amber-100 text-amber-700',
         hoverBg: 'bg-amber-50',

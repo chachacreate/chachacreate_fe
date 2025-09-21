@@ -14,7 +14,7 @@ import {
   ChevronDown,
   Check,
 } from 'lucide-react';
-import { legacyGet, legacyPatch } from '@src/libs/request';
+import { get, legacyGet, legacyPatch } from '@src/libs/request';
 
 /* ------------------ Types ------------------ */
 type OrderStatus =
@@ -46,14 +46,14 @@ type OrderItem = {
 };
 
 type FilterKey =
-  | 'all'
-  | 'ordered'
-  | 'shipped'
-  | 'delivered'
-  | 'cancel_request'
-  | 'cancelled'
-  | 'refund_request'
-  | 'refunded';
+  | 'ALL'
+  | 'ORDER_OK'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCEL_RQ'
+  | 'CANCEL_OK'
+  | 'REFUND_RQ'
+  | 'REFUND_OK';
 
 /* ------------------ 상수/매핑 ------------------ */
 type StatusCode =
@@ -143,13 +143,15 @@ const getStatusColor = (status: OrderStatus) => {
 /* ------------------ Component ------------------ */
 export default function SellerOrderManagementMain() {
   const { storeUrl = 'store' } = useParams();
-  const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
-  const [showAll, setShowAll] = useState(false);
-  const [orderIds, setOrderIds] = useState<string[]>([]);
-  const ordersMap = useRef<Record<string, OrderItem>>({});
+  const [activeFilter, setActiveFilter] = useState<FilterKey>('ALL');
+
+  const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const PAGE_SIZE = 10;
+
   const [openMenuOrderId, setOpenMenuOrderId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [page, setPage] = useState(1); // 현재 보고 있는 페이지, 초기값 1
 
   // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
@@ -162,111 +164,118 @@ export default function SellerOrderManagementMain() {
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, [openMenuOrderId]);
 
-  // 초기 데이터 fetch
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const res = await legacyGet<{ status: number; message: string; data: any[] }>(
-          `/${storeUrl}/seller/management/orders`
+        const response = await legacyGet<any>(
+          `/${storeUrl}/seller/management/orders?page=${page}&size=${PAGE_SIZE}&status=${activeFilter}`
         );
-        if (res?.data) {
-          const map: Record<string, OrderItem> = {};
-          const ids: string[] = [];
-          res.data.forEach((item) => {
-            const detailId = String(item.orderDetailId);
-            map[detailId] = {
-              id: detailId,
-              orderDetailId: detailId,
-              orderNumber: `ORD-${detailId.padStart(5, '0')}`,
-              customerName: item.orderName,
-              deliveryAddress:
-                `${item.addressRoad || ''} ${item.addressDetail || ''} ${item.addressExtra || ''}`.trim(),
-              productName: item.productName,
-              quantity: item.orderCnt,
-              amount: item.orderPrice,
-              orderDate: new Date(item.orderDate).toISOString().split('T')[0],
-              updatedAt: new Date(item.orderDate).toISOString().split('T')[0],
-              status: item.orderStatus,
-              productId: String(item.productId),
-            };
-            ids.push(detailId);
-          });
-          ordersMap.current = map;
-          setOrderIds(ids);
+        // console.log('주문 데이터:', res);
+
+        if (Array.isArray(response.data)) {
+          const mapped = response.data.map((item: any) => ({
+            id: String(item.orderDetailId),
+            orderDetailId: String(item.orderDetailId),
+            orderNumber: `ORD-${String(item.orderDetailId).padStart(5, '0')}`,
+            customerName: item.orderName,
+            deliveryAddress:
+              `${item.addressRoad || ''} ${item.addressDetail || ''} ${item.addressExtra || ''}`.trim(),
+            productName: item.productName,
+            quantity: item.orderCnt,
+            amount: item.orderPrice,
+            orderDate: new Date(item.orderDate).toISOString().split('T')[0],
+            updatedAt: new Date(item.orderDate).toISOString().split('T')[0],
+            status: item.orderStatus,
+            productId: String(item.productId),
+          }));
+          if (response.data.StatusCode === 200) {
+            setOrders(mapped);
+
+            // totalCount 기반 페이지 계산
+            setTotalPages(Math.ceil((response.data[0]?.totalCount || 0) / PAGE_SIZE));
+          } else {
+            console.error('주문 데이터 로드 실패: ', response.data.message);
+          }
         }
-      } catch (err) {
-        console.error(err);
+      } catch (error) {
+        console.error('API 호출 실패: ', error);
       }
     };
+
     fetchOrders();
-  }, [storeUrl]);
+  }, [storeUrl, page, activeFilter]);
 
   // 필터링
   const filteredOrders = useMemo(() => {
-    const list = orderIds.map((id) => ordersMap.current[id]);
     switch (activeFilter) {
-      case 'ordered':
-        return list.filter((o) => o.status === '주문완료');
-      case 'shipped':
-        return list.filter((o) => o.status === '발송완료');
-      case 'delivered':
-        return list.filter((o) => o.status === '배송완료');
-      case 'cancel_request':
-        return list.filter((o) => o.status === '취소요청');
-      case 'cancelled':
-        return list.filter((o) => o.status === '취소완료');
-      case 'refund_request':
-        return list.filter((o) => o.status === '환불요청');
-      case 'refunded':
-        return list.filter((o) => o.status === '환불완료');
-      case 'all':
+      case 'ORDER_OK':
+        return orders.filter((o) => o.status === '주문완료');
+      case 'SHIPPED':
+        return orders.filter((o) => o.status === '발송완료');
+      case 'DELIVERED':
+        return orders.filter((o) => o.status === '배송완료');
+      case 'CANCEL_RQ':
+        return orders.filter((o) => o.status === '취소요청');
+      case 'CANCEL_OK':
+        return orders.filter((o) => o.status === '취소완료');
+      case 'REFUND_RQ':
+        return orders.filter((o) => o.status === '환불요청');
+      case 'REFUND_OK':
+        return orders.filter((o) => o.status === '환불완료');
       default:
-        return list;
+        return orders;
     }
-  }, [activeFilter, orderIds]);
+  }, [activeFilter, orders]);
 
-  // const displayedOrders = useMemo(
-  //   () => (showAll ? filteredOrders : filteredOrders.slice(0, 10)),
-  //   [filteredOrders, showAll]
-  // );
+  const displayedOrders = filteredOrders;
 
-  const PAGE_SIZE = 20;
-  const totalPages = Math.ceil(filteredOrders.length / PAGE_SIZE);
-  const displayedOrders = filteredOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const [statusCounts, setStatusCounts] = useState<{
+    ALL: number;
+    ORDER_OK: number;
+    SHIPPED: number;
+    DELIVERED: number;
+    CANCEL_RQ: number;
+    CANCEL_OK: number;
+    REFUND_RQ: number;
+    REFUND_OK: number;
+  }>({
+    ALL: 0,
+    ORDER_OK: 0,
+    SHIPPED: 0,
+    DELIVERED: 0,
+    CANCEL_RQ: 0,
+    CANCEL_OK: 0,
+    REFUND_RQ: 0,
+    REFUND_OK: 0,
+  });
 
-  const statusCounts = useMemo(() => {
-    const counts: Record<FilterKey, number> = {
-      all: orderIds.length,
-      ordered: 0,
-      shipped: 0,
-      delivered: 0,
-      cancel_request: 0,
-      cancelled: 0,
-      refund_request: 0,
-      refunded: 0,
+  useEffect(() => {
+    const fetchStatusCounts = async () => {
+      const response = await get<any>(`/seller/${storeUrl}/main/status`);
+      // console.log('상태별 주문 개수:', response);
+      setStatusCounts({
+        ALL: response.data.totalCount,
+        ORDER_OK: response.data.orderOkCount,
+        SHIPPED: response.data.shippedCount,
+        DELIVERED: response.data.deliveredCount,
+        CANCEL_RQ: response.data.cancelRqCount,
+        CANCEL_OK: response.data.cancelOkCount,
+        REFUND_RQ: response.data.refundRqCount,
+        REFUND_OK: response.data.refundOkCount,
+      });
     };
-    orderIds.forEach((id) => {
-      const status = ordersMap.current[id]?.status;
-      if (status === '주문완료') counts.ordered++;
-      else if (status === '발송완료') counts.shipped++;
-      else if (status === '배송완료') counts.delivered++;
-      else if (status === '취소요청') counts.cancel_request++;
-      else if (status === '취소완료') counts.cancelled++;
-      else if (status === '환불요청') counts.refund_request++;
-      else if (status === '환불완료') counts.refunded++;
-    });
-    return counts;
-  }, [orderIds]);
+    fetchStatusCounts();
+  }, [storeUrl]);
 
   const filterOptions: { key: FilterKey; label: string }[] = [
-    { key: 'all', label: `전체 (${statusCounts.all})` },
-    { key: 'ordered', label: `주문완료 (${statusCounts.ordered})` },
-    { key: 'shipped', label: `발송완료 (${statusCounts.shipped})` },
-    { key: 'delivered', label: `배송완료 (${statusCounts.delivered})` },
-    { key: 'cancel_request', label: `취소요청 (${statusCounts.cancel_request})` },
-    { key: 'cancelled', label: `취소완료 (${statusCounts.cancelled})` },
-    { key: 'refund_request', label: `환불요청 (${statusCounts.refund_request})` },
-    { key: 'refunded', label: `환불완료 (${statusCounts.refunded})` },
+    { key: 'ALL', label: `전체 (${statusCounts.ALL})` },
+    { key: 'ORDER_OK', label: `주문완료 (${statusCounts.ORDER_OK})` },
+    { key: 'SHIPPED', label: `발송완료 (${statusCounts.SHIPPED})` },
+    { key: 'DELIVERED', label: `배송완료 (${statusCounts.DELIVERED})` },
+    { key: 'CANCEL_RQ', label: `취소요청 (${statusCounts.CANCEL_RQ})` },
+    { key: 'CANCEL_OK', label: `취소완료 (${statusCounts.CANCEL_OK})` },
+    { key: 'REFUND_RQ', label: `환불요청 (${statusCounts.REFUND_RQ})` },
+    { key: 'REFUND_OK', label: `환불완료 (${statusCounts.REFUND_OK})` },
   ];
 
   // 상태 변경
@@ -276,17 +285,29 @@ export default function SellerOrderManagementMain() {
       await legacyPatch(`/${storeUrl}/seller/management/orders/${orderId}/status`, {
         toStatus: code,
       });
-      if (ordersMap.current[orderId]) {
-        ordersMap.current[orderId].status = nextLabel;
-        ordersMap.current[orderId].updatedAt = new Date().toISOString().slice(0, 10);
-        setOrderIds([...orderIds]); // 렌더링 강제
-      }
+
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? { ...o, status: nextLabel, updatedAt: new Date().toISOString().slice(0, 10) }
+            : o
+        )
+      );
+
+      // 상태 변경 후 필터가 걸려서 숨겨지는 걸 방지
+      setActiveFilter('ALL'); // 모든 주문으로 보여주기
+
+      alert('상태가 변경되었습니다.');
     } catch (err) {
-      console.error('상태 변경 실패:', err);
+      console.error('API 호출 실패:', err);
     } finally {
       setOpenMenuOrderId(null);
     }
   };
+
+  // useEffect(() => {
+  //   console.log('orders 상태 변경:', orders);
+  // }, [orders]);
 
   const isCompletedStatus = (s: OrderStatus) => s === '취소완료' || s === '환불완료';
 
@@ -322,10 +343,11 @@ export default function SellerOrderManagementMain() {
                     checked={activeFilter === option.key}
                     onChange={() => {
                       setActiveFilter(option.key);
-                      setShowAll(false);
+                      setPage(1); // 필터 변경 시 항상 1페이지로 초기화
                     }}
                     className="sr-only"
                   />
+
                   {option.label}
                 </label>
               ))}

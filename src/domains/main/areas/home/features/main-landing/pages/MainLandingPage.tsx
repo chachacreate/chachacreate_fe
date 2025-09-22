@@ -5,6 +5,7 @@ import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainna
 import Footer from '@src/shared/areas/layout/features/footer/Footer';
 import { ChevronDown, X } from 'lucide-react';
 import { legacyGet } from '@src/libs/request';
+import { Link } from 'react-router-dom';
 interface Store {
   storeId: string;
   storeUrl: string;
@@ -262,10 +263,13 @@ const MainLandingPage = () => {
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#2d4739]">
               인기 스토어
             </h2>
-            <button className="text-[#2d4739] hover:text-green-600 transition-colors flex items-center space-x-1 text-sm sm:text-base">
+            <Link
+              to={'/main/stores'}
+              className="text-[#2d4739] hover:text-green-600 transition-colors flex items-center space-x-1 text-sm sm:text-base"
+            >
               <span>전체보기</span>
               <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
-            </button>
+            </Link>
           </div>
 
           <div className="relative overflow-hidden">
@@ -287,6 +291,7 @@ const MainLandingPage = () => {
                           <div
                             key={itemIndex}
                             className="bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group flex flex-col relative"
+                            onClick={() => handleStoreClick(store.storeId, store.storeUrl)}
                           >
                             <div className="relative overflow-hidden flex-shrink-0">
                               <div className="w-full aspect-[3/2] sm:aspect-[4/3] lg:aspect-[4/3] bg-gray-200 flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
@@ -435,10 +440,13 @@ const MainLandingPage = () => {
         <section className="pt-4 sm:pt-8 isolate">
           <div className="flex justify-between items-center mb-4 sm:mb-8">
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#2d4739]">인기 상품</h2>
-            <button className="text-[#2d4739] hover:text-green-600 transition-colors flex items-center space-x-1 text-sm sm:text-base">
+            <Link
+              to={`/main/products`}
+              className="text-[#2d4739] hover:text-green-600 transition-colors flex items-center space-x-1 text-sm sm:text-base"
+            >
               <span>전체보기</span>
               <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
-            </button>
+            </Link>
           </div>
 
           <div className="relative overflow-hidden">
@@ -538,10 +546,13 @@ const MainLandingPage = () => {
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#2d4739]">
               금주 신상품
             </h2>
-            <button className="text-[#2d4739] hover:text-green-600 transition-colors flex items-center space-x-1 text-sm sm:text-base">
+            <Link
+              to={'/main/products'}
+              className="text-[#2d4739] hover:text-green-600 transition-colors flex items-center space-x-1 text-sm sm:text-base"
+            >
               <span>전체보기</span>
               <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
-            </button>
+            </Link>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">

@@ -140,12 +140,13 @@ const ProductEdit: FC = () => {
         });
 
         const product = response.data?.product ?? response.data?.data ?? response.data;
+        // console.log('상품 상세 응답:', product);
 
         // 기존 이미지 3장 배열로 변환
-        const images: ProductImage[] = product.images.map((img: any) => ({
-          id: crypto.randomUUID(), // 프론트용
+        const images: ProductImage[] = (product.images ?? []).map((img: any) => ({
+          id: crypto.randomUUID(),
           url: img.url,
-          serverImageId: img.id, // DB에서 내려준 이미지 PK
+          serverImageId: img.id,
           markedForDelete: false,
         }));
 

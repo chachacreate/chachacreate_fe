@@ -67,7 +67,7 @@ export default function MainClassOrderResultPage() {
     );
   }
   // responseData: 결제 승인 응답 데이터
-  console.log(responseData);
+  // console.log(responseData);
   const title = responseData.classTitle;
   const price = responseData.amount;
 

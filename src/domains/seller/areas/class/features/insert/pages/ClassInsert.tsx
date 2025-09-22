@@ -366,7 +366,7 @@ const ClassInsert: FC = () => {
         throw new Error(res.message || '서버가 생성된 ID를 반환하지 않았습니다.');
       }
 
-      console.log('✅ 생성된 클래스 ID들:', ids);
+      // console.log('✅ 생성된 클래스 ID들:', ids);
       alert(`클래스 ${ids.length}개가 등록되었습니다.`);
 
       // 성공 시에만 리셋/이동

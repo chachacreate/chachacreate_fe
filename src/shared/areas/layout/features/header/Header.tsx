@@ -116,7 +116,7 @@ export default function Header({ user, storeSlug, hideTopBar = false }: HeaderPr
           storeUrl: storeData.storeUrl,
         });
 
-        console.log('스토어 정보 설정 완료:', storeData.storeName);
+        // console.log('스토어 정보 설정 완료:', storeData.storeName);
       } catch (error: any) {
         if (error?.name === 'AbortError') return;
         console.error('스토어 정보 로드 실패:', error);
@@ -152,20 +152,20 @@ export default function Header({ user, storeSlug, hideTopBar = false }: HeaderPr
     }
 
     try {
-      console.log('채팅방 생성 중...');
+      // console.log('채팅방 생성 중...');
 
       const chatData = await post<any>(`/api/chat/personal/${storeUrl}`, {
         buyerId: buyerId,
       });
 
-      console.log('채팅방 생성/연결 완료:', chatData);
+      // console.log('채팅방 생성/연결 완료:', chatData);
       window.location.href = `/${storeUrl}/mypage/message`;
     } catch (error: any) {
       console.error('채팅방 생성 실패:', error);
 
       // 409 상태 코드(이미 존재)인 경우에도 메시지 페이지로 이동
       if (error?.response?.status === 409 || error?.response?.status === 200) {
-        console.log('기존 채팅방 사용');
+        // console.log('기존 채팅방 사용');
         window.location.href = `/${storeUrl}/mypage/message`;
       } else {
         alert('채팅방 생성에 실패했습니다. 다시 시도해주세요.');

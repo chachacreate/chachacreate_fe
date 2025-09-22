@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { legacyGet } from '@src/libs/request';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
@@ -48,6 +48,8 @@ const StoreMain: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     if (storeUrl) {
       loadStoreData();
@@ -66,7 +68,7 @@ const StoreMain: React.FC = () => {
         setStoreInfo({
           logoImg: storeData.logoImg,
           storeName: storeData.storeName,
-          storeDetail: storeData.storeDetail
+          storeDetail: storeData.storeDetail,
         });
       }
 
@@ -75,6 +77,7 @@ const StoreMain: React.FC = () => {
     } catch (error) {
       console.error('스토어 데이터 로딩 실패:', error);
       setError('스토어 데이터를 불러오는데 실패했습니다.');
+      navigate('/error/404', { replace: true });
     } finally {
       setLoading(false);
     }
@@ -85,7 +88,7 @@ const StoreMain: React.FC = () => {
       const result = await legacyGet<NoticeResponse>(`${storeUrl}/seller/management/noticeselect`);
 
       if (result?.data && Array.isArray(result.data)) {
-        const pinned = result.data.filter(n => n.noticeCheck === 1);
+        const pinned = result.data.filter((n) => n.noticeCheck === 1);
         if (pinned.length > 0) {
           const noticeData = pinned[0];
           setNotice(`🎉 ${noticeData.noticeTitle} : ${noticeData.noticeText}`);
@@ -171,8 +174,12 @@ const StoreMain: React.FC = () => {
                         />
                       ) : (
                         <div className="text-gray-400">
-                          <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                          <svg
+                            className="w-6 h-6 sm:w-8 sm:h-8"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                           </svg>
                         </div>
                       )}
@@ -211,28 +218,29 @@ const StoreMain: React.FC = () => {
 
         {/* 공지사항 */}
         <section className="w-full px-4 sm:px-8 xl:px-60">
-  <div className="rounded-xl border border-gray-200 p-4 sm:p-5 lg:p-6 bg-white">
-    <div className="text-sm font-normal mb-2 text-[#7A241F] tracking-wider">공지사항</div>
+          <div className="rounded-xl border border-gray-200 p-4 sm:p-5 lg:p-6 bg-white">
+            <div className="text-sm font-normal mb-2 text-[#7A241F] tracking-wider">공지사항</div>
 
-    <div className="relative overflow-hidden">
-      <div className="marquee" aria-label="스토어 공지">
-        <div className="marquee__track">
-          <span className="marquee__item">{notice || '공지사항이 없습니다.'}</span>
-        </div>
-      </div>
+            <div className="relative overflow-hidden">
+              <div className="marquee" aria-label="스토어 공지">
+                <div className="marquee__track">
+                  <span className="marquee__item">{notice || '공지사항이 없습니다.'}</span>
+                </div>
+              </div>
 
-      {/* 좌우 페이드 마스크 */}
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-8 sm:w-12 bg-gradient-to-r from-white to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-8 sm:w-12 bg-gradient-to-l from-white to-transparent" />
-    </div>
-  </div>
-</section>
-
+              {/* 좌우 페이드 마스크 */}
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-8 sm:w-12 bg-gradient-to-r from-white to-transparent" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 sm:w-12 bg-gradient-to-l from-white to-transparent" />
+            </div>
+          </div>
+        </section>
 
         {/* 인기 상품 */}
         {bestProducts.length > 0 && (
           <section className="w-full px-4 sm:px-8 xl:px-60 mt-8 sm:mt-10">
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide text-[#2D4739] mb-4">⭐ 인기 상품</h2>
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide text-[#2D4739] mb-4">
+              ⭐ 인기 상품
+            </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {bestProducts.map((product) => (
                 <div
@@ -245,11 +253,15 @@ const StoreMain: React.FC = () => {
                       src={product.pimgUrl}
                       alt={product.productName}
                       className="w-full h-full object-cover hover:scale-105 transition-transform"
-                      onError={(e) => { e.currentTarget.src = '/placeholder-image.jpg'; }}
+                      onError={(e) => {
+                        e.currentTarget.src = '/placeholder-image.jpg';
+                      }}
                     />
                   </div>
                   <div className="p-4">
-                    <h3 className="text-sm sm:text-base mb-2 line-clamp-2">{product.productName}</h3>
+                    <h3 className="text-sm sm:text-base mb-2 line-clamp-2">
+                      {product.productName}
+                    </h3>
                     <p className="text-[#2D4739] font-normal">{formatPrice(product.price)}</p>
                   </div>
                 </div>
@@ -261,7 +273,9 @@ const StoreMain: React.FC = () => {
         {/* 대표 상품 */}
         {mainProducts.length > 0 && (
           <section className="w-full px-4 sm:px-8 xl:px-60 mt-8 sm:mt-10">
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide text-[#2D4739] mb-4">⭐ 대표 상품</h2>
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide text-[#2D4739] mb-4">
+              ⭐ 대표 상품
+            </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {mainProducts.map((product) => (
                 <div
@@ -274,12 +288,18 @@ const StoreMain: React.FC = () => {
                       src={product.pimgUrl}
                       alt={product.productName}
                       className="w-full h-full object-cover hover:scale-105 transition-transform"
-                      onError={(e) => { e.currentTarget.src = '/placeholder-image.jpg'; }}
+                      onError={(e) => {
+                        e.currentTarget.src = '/placeholder-image.jpg';
+                      }}
                     />
                   </div>
                   <div className="p-4">
-                    <h3 className="text-sm sm:text-base mb-2 line-clamp-2">{product.productName}</h3>
-                    <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">{truncateText(product.productDetail, 50)}</p>
+                    <h3 className="text-sm sm:text-base mb-2 line-clamp-2">
+                      {product.productName}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
+                      {truncateText(product.productDetail, 50)}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -338,11 +358,9 @@ const StoreMain: React.FC = () => {
 }
 
 `}</style>
-
       </div>
       <Footer />
     </>
-    
   );
 };
 

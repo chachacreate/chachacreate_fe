@@ -412,7 +412,7 @@ const ProductEdit: FC = () => {
       .filter((img) => img.serverImageId && img.markedForDelete)
       .map((img) => img.serverImageId);
 
-    console.log('삭제할 서버 이미지 ID:', seqsToDelete);
+    // console.log('삭제할 서버 이미지 ID:', seqsToDelete);
 
     seqsToDelete.forEach((id) => {
       if (id != null) {

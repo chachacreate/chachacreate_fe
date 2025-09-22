@@ -171,14 +171,6 @@ function toFullCalendarEvents(
   return events;
 }
 
-function daysInMonth(yyyyMm: string): number {
-  const [yStr, mStr] = yyyyMm.split('-');
-  const y = Number(yStr);
-  const m = Number(mStr);
-  if (!y || !m) return 31;
-  return new Date(y, m, 0).getDate();
-}
-
 const formatCurrency = (n?: number | null) => Intl.NumberFormat('ko-KR').format(n ?? 0);
 
 /** ========== 페이지 ========== */
@@ -281,7 +273,6 @@ export default function ClassesDetailPage() {
   }, [inlineCtaRef.current]);
 
   /** 파생 값 */
-  const storeName = summary?.storeName ?? '';
   const address = useMemo(() => {
     const road = summary?.addressRoad ?? '';
     const detail = summary?.addressDetail ?? '';
@@ -298,17 +289,6 @@ export default function ClassesDetailPage() {
     if (imageList.length <= 1) return [];
     return imageList.slice(1).map(pickImageSrc);
   }, [imageList]);
-
-  const availableDates = useMemo(() => Array.from(scheduleMap.keys()), [scheduleMap]);
-
-  const currentMonth = useMemo(() => {
-    const base = selectedDate || availableDates[0];
-    if (base) return base.slice(0, 7);
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  }, [selectedDate, availableDates]);
-
-  const dim = useMemo(() => daysInMonth(currentMonth), [currentMonth]);
 
   const timeList = useMemo(
     () => (selectedDate ? (scheduleMap.get(selectedDate) ?? []) : []),

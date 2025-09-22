@@ -9,7 +9,6 @@ import { useNavigate } from 'react-router-dom';
 // import StoresSubnavbar from "@src/shared/areas/navigation/features/subnavbar/stores/StoresSubnavbar";
 
 import { legacyGet, legacyPost } from '@src/libs/request'; // ✅ 레거시 API 유틸
-import { goToMain } from '@src/shared/util/LegacyNavigate';
 // import { get, post, patch } from "@src/libs/request"; // 부트 API가 필요하면 추가
 
 type CheckState = 'idle' | 'checking' | 'valid' | 'invalid';

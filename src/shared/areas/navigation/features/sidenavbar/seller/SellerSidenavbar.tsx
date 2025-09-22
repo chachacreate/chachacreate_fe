@@ -1,6 +1,6 @@
 // src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar.tsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Home,
   ChevronDown,
@@ -20,7 +20,6 @@ import {
   Plus,
   ExternalLink,
 } from 'lucide-react';
-import { goToStoreMain } from '@src/shared/util/LegacyNavigate';
 import { legacyGet } from '@src/libs/request';
 
 type SellerSidenavbarProps = {
@@ -43,6 +42,7 @@ export default function SellerSidenavbar({
   const { storeUrl, store } = useParams<{ storeUrl?: string; store?: string }>();
   const storeSegment = storeSegmentOverride ?? storeUrl ?? store ?? 'main';
   const base = `/seller/${storeSegment}`;
+  const navigate = useNavigate();
 
   /** 모바일 전용 확장 토글 (>> / <<) */
   const [expanded, setExpanded] = useState(false);
@@ -77,7 +77,7 @@ export default function SellerSidenavbar({
 
   /** 스토어 메인으로 이동 */
   const handleGoToStoreMain = () => {
-    goToStoreMain(storeSegment);
+    navigate(`/${storeSegment}`);
     handleNavClick(); // 모바일에서 사이드바 접기
   };
 

@@ -1,13 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Searchbar from '@src/shared/areas/navigation/features/searchbar/Searchbar';
-import {
-  goToLogin,
-  goToMain,
-  goToMessage,
-  goToSignup,
-  logOut,
-} from '@src/shared/util/LegacyNavigate';
+import { goToLogin, goToSignup, logOut } from '@src/shared/util/LegacyNavigate';
 import { clearTokens, getCurrentUser } from '@src/shared/util/jwtUtils';
 import mobLogo from '@src/shared/resources/images/logo/mainlogo_mob.png';
 import { legacyGet, post } from '@src/libs/request';
@@ -41,6 +35,7 @@ const RESERVED_PREFIXES = new Set([
 
 export default function Header({ user, storeSlug, hideTopBar = false }: HeaderProps) {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [me, setMe] = useState<UserLite>(user ?? null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -57,7 +52,7 @@ export default function Header({ user, storeSlug, hideTopBar = false }: HeaderPr
     clearTokens(); // 로컬 토큰 정리
     setMe(null);
     setMenuOpen(false);
-    goToMain();
+    navigate('/main');
     alert('로그아웃 성공!');
   };
 
@@ -159,14 +154,14 @@ export default function Header({ user, storeSlug, hideTopBar = false }: HeaderPr
       });
 
       // console.log('채팅방 생성/연결 완료:', chatData);
-      window.location.href = `/${storeUrl}/mypage/message`;
+      navigate(`/${storeUrl}/mypage/message`);
     } catch (error: any) {
       console.error('채팅방 생성 실패:', error);
 
       // 409 상태 코드(이미 존재)인 경우에도 메시지 페이지로 이동
       if (error?.response?.status === 409 || error?.response?.status === 200) {
         // console.log('기존 채팅방 사용');
-        window.location.href = `/${storeUrl}/mypage/message`;
+        navigate(`/${storeUrl}/mypage/message`);
       } else {
         alert('채팅방 생성에 실패했습니다. 다시 시도해주세요.');
       }
@@ -190,7 +185,7 @@ export default function Header({ user, storeSlug, hideTopBar = false }: HeaderPr
     if (isMainPage || !storeInfo) {
       return {
         text: '메시지',
-        action: () => goToMessage(),
+        action: () => navigate(`/main/mypage/message`),
       };
     }
 
@@ -198,7 +193,7 @@ export default function Header({ user, storeSlug, hideTopBar = false }: HeaderPr
     if (isStoreOwner) {
       return {
         text: '메시지',
-        action: () => goToMessage(storeInfo.storeUrl),
+        action: () => navigate(`/${storeSlug}/mypage/message`),
       };
     }
 
@@ -298,9 +293,9 @@ export default function Header({ user, storeSlug, hideTopBar = false }: HeaderPr
       <div className="md:hidden w-full bg-[#2d4739] text-white">
         <div className="mx-auto w-full max-w-[1920px] px-4 min-[1920px]:px-60 h-[50px] flex items-center gap-3">
           {/* 로고 (왼쪽) */}
-          <button onClick={goToMain} className="flex items-center gap-2 flex-shrink-0">
+          <Link to={'/main'} className="flex items-center gap-2 flex-shrink-0">
             <img src={mobLogo} alt="뜨락상회 로고" className="h-8 w-auto" />
-          </button>
+          </Link>
 
           {/* 검색바 (중앙, flex-1로 공간 차지) */}
           <div className="flex-1 min-w-0">

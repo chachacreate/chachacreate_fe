@@ -1,11 +1,10 @@
 // src/main.tsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import App from '@src/App/App';
 
 // 페이지
-import MainLandingPage from '@src/domains/main/areas/home/features/main-landing/pages/MainLandingPage';
 import './routes/index.css';
 
 import { sellerRoutes } from '@src/domains/seller/routes';
@@ -18,7 +17,7 @@ export const router = createBrowserRouter([
     path: '/',
     element: <App />,
     children: [
-      { index: true, element: <MainLandingPage /> },
+      { index: true, element: <Navigate to="/main" replace /> },
       ...loginRoutes,
       ...mainRoutes,
       ...sellerRoutes,

@@ -17,7 +17,6 @@ type UserLite = { name: string } | null;
 type HeaderProps = {
   user?: UserLite;
   storeSlug?: string | null;
-  onLogout?: () => Promise<void> | void;
   hideTopBar?: boolean;
 };
 
@@ -40,7 +39,7 @@ const RESERVED_PREFIXES = new Set([
   '',
 ]);
 
-export default function Header({ user, storeSlug, onLogout, hideTopBar = false }: HeaderProps) {
+export default function Header({ user, storeSlug, hideTopBar = false }: HeaderProps) {
   const location = useLocation();
 
   const [me, setMe] = useState<UserLite>(user ?? null);
@@ -54,16 +53,12 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
 
   // 공통 로그아웃
   const handleLogout = async () => {
-    try {
-      if (onLogout) await onLogout();
-    } finally {
-      clearTokens(); // 로컬 토큰 정리
-      setMe(null);
-      setMenuOpen(false);
-      goToMain();
-      await logOut();
-      alert('로그아웃 성공!');
-    }
+    await logOut();
+    clearTokens(); // 로컬 토큰 정리
+    setMe(null);
+    setMenuOpen(false);
+    goToMain();
+    alert('로그아웃 성공!');
   };
 
   // 유저 상태 로딩

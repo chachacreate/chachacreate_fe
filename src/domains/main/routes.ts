@@ -25,12 +25,11 @@ const mainRoutes: RouteObject[] = [
       // classes
       { path: 'classes', element: React.createElement(MainClassesPage) },
       { path: 'classes/:classId', element: React.createElement(ClassesDetailPage) },
-      { path: 'classes/order', element: React.createElement(MainClassOrderPage) },
-      { path: 'classes/order/result', element: React.createElement(MainClassOrderResultPage) },
-
       // 🟢 주문/결제 페이지들 - 방법 1: 일반적인 경로 구조 사용
       ...wrapRoutesWithProtection(
         [
+          { path: 'classes/order', element: React.createElement(MainClassOrderPage) },
+          { path: 'classes/order/result', element: React.createElement(MainClassOrderResultPage) },
           { path: 'order', element: React.createElement(MainProductsorder) },
           { path: 'order/result/:result', element: React.createElement(ProductsOrderSuccess) },
         ],

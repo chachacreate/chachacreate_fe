@@ -66,13 +66,13 @@ export default function Mainnavbar() {
           {/* 데스크톱 */}
           <div className="hidden md:flex h-20 items-center justify-between">
             <div className="flex items-center">
-              <a href="/main" className="inline-flex items-center gap-2 hover:opacity-90">
+              <Link to="/main" className="inline-flex items-center gap-2 hover:opacity-90">
                 <img
                   src="/resources/images/logo/logohorizon_green.png"
                   alt="뜨락상회 로고"
                   className="h-9 md:h-20 w-auto"
                 />
-              </a>
+              </Link>
             </div>
 
             {/* 데스크톱 메뉴: 레거시 간격(≈20px) 매칭 */}

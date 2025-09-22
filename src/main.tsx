@@ -11,6 +11,8 @@ import { sellerRoutes } from '@src/domains/seller/routes';
 import { buyerRoutes } from '@src/domains/buyer/routes';
 import loginRoutes from '@src/domains/common/auth/routes';
 import mainRoutes from '@src/domains/main/routes';
+import NotFoundPage from './shared/areas/error/NotFoundPage';
+import { errorRoutes } from './shared/areas/error/routes';
 
 export const router = createBrowserRouter([
   {
@@ -22,6 +24,11 @@ export const router = createBrowserRouter([
       ...mainRoutes,
       ...sellerRoutes,
       ...buyerRoutes,
+      ...errorRoutes,
+      {
+        path: '*',
+        element: <NotFoundPage />,
+      },
     ],
   },
 ]);

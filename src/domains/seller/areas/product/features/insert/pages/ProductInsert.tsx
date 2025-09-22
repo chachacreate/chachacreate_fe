@@ -214,6 +214,7 @@ const ProductInsert: FC = () => {
   };
 
   // AI 예측 정보 툴팁 생성
+  // AI 예측 정보 툴팁 생성 (4분위수 및 마케팅 전략 포함)
   const generatePredictionTooltip = (formId: string): string => {
     const predictionInfo = aiPredictionInfo[formId];
     if (!predictionInfo) return '';
@@ -222,11 +223,24 @@ const ProductInsert: FC = () => {
 
     predictionInfo.predictions.forEach((pred: any, index: number) => {
       if (pred.price_info) {
-        tooltip += `📊 카테고리 '${pred.price_info.db_category}' 가격 통계:\n`;
-        tooltip += `   평균: ${pred.price_info.average_price.toLocaleString()}원\n`;
-        tooltip += `   범위: ${pred.price_info.min_price.toLocaleString()}원 ~ ${pred.price_info.max_price.toLocaleString()}원\n`;
-        tooltip += `   중앙값: ${pred.price_info.median_price.toLocaleString()}원\n`;
-        tooltip += `   상품수: ${pred.price_info.product_count}개`;
+        const priceInfo = pred.price_info;
+
+        tooltip += `📊 카테고리 '${priceInfo.db_category}' 가격 통계:\n`;
+        tooltip += `   평균: ${priceInfo.average_price.toLocaleString()}원\n`;
+        tooltip += `   범위: ${priceInfo.min_price.toLocaleString()}원 ~ ${priceInfo.max_price.toLocaleString()}원\n`;
+        tooltip += `   중앙값: ${priceInfo.median_price.toLocaleString()}원\n`;
+
+        // 4분위수 정보 추가
+        if (priceInfo.q1_price && priceInfo.q3_price) {
+          tooltip += `   1분위: ${priceInfo.q1_price.toLocaleString()}원 (하위 25%)\n`;
+          tooltip += `   3분위: ${priceInfo.q3_price.toLocaleString()}원 (상위 25%)\n`;
+
+          // 4분위수 기반 마케팅 전략 제안
+          const strategy = getPricingStrategy(priceInfo);
+          tooltip += `\n💡 마케팅 전략:\n${strategy}\n`;
+        }
+
+        tooltip += `   상품수: ${priceInfo.product_count}개`;
       } else {
         tooltip += `📭 카테고리 '${pred.category}'에 대한 가격 정보가 없습니다.`;
       }
@@ -234,6 +248,45 @@ const ProductInsert: FC = () => {
     });
 
     return tooltip;
+  };
+
+  // 4분위수 기반 가격 전략 제안 함수
+  const getPricingStrategy = (priceInfo: any): string => {
+    const { q1_price, median_price, q3_price, average_price, min_price, max_price } = priceInfo;
+
+    let strategy = '';
+
+    // 가격 구간별 전략
+    strategy += `🎯 가격 구간별 전략:\n`;
+    strategy += `   • 저가 구간 (${min_price.toLocaleString()}~${q1_price.toLocaleString()}원): 가성비 어필, 신규고객 유치\n`;
+    strategy += `   • 중가 구간 (${q1_price.toLocaleString()}~${q3_price.toLocaleString()}원): 품질-가격 균형, 메인 타겟\n`;
+    strategy += `   • 고가 구간 (${q3_price.toLocaleString()}~${max_price.toLocaleString()}원): 프리미엄 품질, 차별화 전략\n`;
+
+    // 추천 가격대 제안
+    const iqr = q3_price - q1_price; // 사분위간 범위
+    const recommendedPrice = Math.round(median_price);
+
+    strategy += `\n📈 추천 전략:\n`;
+
+    if (iqr < average_price * 0.3) {
+      // 가격 변동성이 낮은 경우
+      strategy += `   • 시장 가격이 안정적 (변동성 낮음)\n`;
+      strategy += `   • 중앙값 근처 가격 (${recommendedPrice.toLocaleString()}원) 권장\n`;
+      strategy += `   • 품질이나 서비스로 차별화 필요`;
+    } else if (iqr > average_price * 0.6) {
+      // 가격 변동성이 높은 경우
+      strategy += `   • 시장 가격 변동성 높음 → 포지셔닝 중요\n`;
+      strategy += `   • 저가 전략: ${Math.round(q1_price * 0.9).toLocaleString()}원 (시장 진입)\n`;
+      strategy += `   • 중가 전략: ${recommendedPrice.toLocaleString()}원 (안전한 선택)\n`;
+      strategy += `   • 고가 전략: ${Math.round(q3_price * 1.1).toLocaleString()}원 (프리미엄)`;
+    } else {
+      // 적당한 가격 변동성
+      strategy += `   • 균형잡힌 시장 구조\n`;
+      strategy += `   • 중앙값 기준 가격 (${recommendedPrice.toLocaleString()}원) 권장\n`;
+      strategy += `   • 상위 25% 진입시 ${Math.round(q3_price).toLocaleString()}원 이상 필요`;
+    }
+
+    return strategy;
   };
 
   const onChangeLarge = (formId: string, largeId: string) => {

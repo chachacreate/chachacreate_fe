@@ -144,7 +144,7 @@ const SellerChat: React.FC = () => {
 
       const response: ApiResponse<ChatRoom[]> = await get(`/chat/rooms/${currentUser.memberId}`);
 
-      console.log('API Response:', response);
+      // console.log('API Response:', response);
 
       // ApiResponse 구조에서 실제 데이터 추출
       const allChatrooms = response.data || [];
@@ -156,12 +156,12 @@ const SellerChat: React.FC = () => {
         return;
       }
 
-      console.log('전체 채팅방:', allChatrooms);
-      console.log('현재 사용자 이름:', currentUser.name);
+      // console.log('전체 채팅방:', allChatrooms);
+      // console.log('현재 사용자 이름:', currentUser.name);
 
       // ✅ 필터링 로직: personal_상대방이름_내이름 패턴만 조회
       const filteredChatrooms = allChatrooms.filter((room) => {
-        console.log('채팅방 검사 중:', room.chatroomId);
+        // console.log('채팅방 검사 중:', room.chatroomId);
 
         // 1. personal_로 시작하지 않으면 제외
         if (!room.chatroomId || !room.chatroomId.startsWith('personal_')) {
@@ -173,7 +173,7 @@ const SellerChat: React.FC = () => {
         const namesPart = room.chatroomId.substring('personal_'.length);
         const names = namesPart.split('_');
 
-        console.log('이름 분석:', names);
+        // console.log('이름 분석:', names);
 
         // 3. 정확히 2개의 이름이 있어야 함
         if (names.length !== 2) {
@@ -182,24 +182,24 @@ const SellerChat: React.FC = () => {
         }
 
         const [partnerName, myName] = names;
-        console.log(
-          `상대방: "${partnerName}", 내이름: "${myName}", 현재사용자: "${currentUser.name}"`
-        );
+        // console.log(
+        //   `상대방: "${partnerName}", 내이름: "${myName}", 현재사용자: "${currentUser.name}"`
+        // );
 
         // 4. 두 번째 이름이 현재 사용자와 일치하는지 확인
         const isMatch = myName === currentUser.name;
-        console.log(`매칭 결과: ${isMatch}`);
+        // console.log(`매칭 결과: ${isMatch}`);
 
         return isMatch;
       });
 
-      console.log('=== 필터링 결과 ===');
-      console.log('전체 채팅방 수:', allChatrooms.length);
-      console.log('필터링된 채팅방 수:', filteredChatrooms.length);
-      console.log(
-        '필터링된 채팅방:',
-        filteredChatrooms.map((r) => r.chatroomId)
-      );
+      // console.log('=== 필터링 결과 ===');
+      // console.log('전체 채팅방 수:', allChatrooms.length);
+      // console.log('필터링된 채팅방 수:', filteredChatrooms.length);
+      // console.log(
+      //   '필터링된 채팅방:',
+      //   filteredChatrooms.map((r) => r.chatroomId)
+      // );
 
       setRooms(filteredChatrooms);
     } catch (error) {
@@ -250,13 +250,13 @@ const SellerChat: React.FC = () => {
     const host = window.location.hostname;
     const wsUrl = `${protocol}//${host}/ws/chat/${encodedChatroomId}`;
 
-    console.log('WebSocket URL:', wsUrl); // 디버깅용
+    // console.log('WebSocket URL:', wsUrl); // 디버깅용
 
     const socket = new WebSocket(wsUrl);
     socketRef.current = socket;
 
     socket.onopen = (): void => {
-      console.log('WebSocket 연결됨: ' + chatroomId);
+      // console.log('WebSocket 연결됨: ' + chatroomId);
       setMessages([]);
 
       // 연결 성공 시 채팅 히스토리 로드
@@ -274,7 +274,7 @@ const SellerChat: React.FC = () => {
     };
 
     socket.onclose = (event: CloseEvent): void => {
-      console.log('WebSocket 닫힘:', event.code, event.reason);
+      // console.log('WebSocket 닫힘:', event.code, event.reason);
       if (event.code !== 1000) {
         // 정상 종료가 아닌 경우
         console.warn('WebSocket 비정상 종료');

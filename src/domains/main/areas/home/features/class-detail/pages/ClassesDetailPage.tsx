@@ -67,7 +67,28 @@ function unwrapData<T>(res: unknown): T {
   return res as T;
 }
 
-/** ========== 유틸 ========== */
+/** ========== 시간 비교 유틸리티 ========== */
+function isPastTime(date: string, time: string): boolean {
+  const now = new Date();
+  const slotDateTime = new Date(`${date}T${time}:00`);
+  return slotDateTime <= now;
+}
+
+function isReservableSlot(
+  slot: { reservable: boolean; seatsLeft: number },
+  date: string,
+  time: string
+): boolean {
+  // 기존 조건 (예약 가능하고 여석이 있는지)
+  const basicReservable = slot.reservable && slot.seatsLeft > 0;
+
+  // 시간 조건 (현재 시간 이후인지)
+  const timeReservable = !isPastTime(date, time);
+
+  return basicReservable && timeReservable;
+}
+
+/** ========== 기존 유틸 ========== */
 function sanitizeImageUrl(url?: string): string {
   if (!url) return '';
   const s = url.trim();
@@ -112,13 +133,24 @@ function splitSlot(slotRaw: string): { date: string; time: string } | null {
 function buildScheduleMap(rows: SlotDTO[], onlyReservable = false): ScheduleMap {
   const byDate: ScheduleMap = new Map();
   rows.forEach((row) => {
-    if (onlyReservable && (!row.reservable || row.seatsLeft <= 0)) return;
     const parsed = splitSlot(row.slot);
     if (!parsed) return;
+
+    // onlyReservable이 true일 때 시간 체크도 포함
+    if (onlyReservable) {
+      const timeReservable = !isPastTime(parsed.date, parsed.time);
+      if (!row.reservable || row.seatsLeft <= 0 || !timeReservable) return;
+    }
+
     const list = byDate.get(parsed.date) ?? [];
-    list.push({ time: parsed.time, seatsLeft: row.seatsLeft, reservable: row.reservable });
+    list.push({
+      time: parsed.time,
+      seatsLeft: row.seatsLeft,
+      reservable: row.reservable,
+    });
     byDate.set(parsed.date, list);
   });
+
   for (const [, v] of byDate) v.sort((a, b) => (a.time > b.time ? 1 : a.time < b.time ? -1 : 0));
   return byDate;
 }
@@ -133,30 +165,37 @@ function toFullCalendarEvents(
     slots.forEach((s, i) => {
       const eventId = `${date}-${s.time}-${i}`;
       const isSelected = selectedEventId === eventId;
-      const isReservable = s.reservable && s.seatsLeft > 0;
+      const isTimeReservable = !isPastTime(date, s.time);
+      const isReservable = s.reservable && s.seatsLeft > 0 && isTimeReservable;
 
       events.push({
         id: eventId,
-        title: isReservable ? `여석 ${s.seatsLeft}` : '예약불가',
+        title: isReservable ? `여석 ${s.seatsLeft}` : !isTimeReservable ? '시간경과' : '예약불가',
         start: `${date}T${s.time}:00`,
         allDay: false,
         display: 'block',
-        // 선택 상태에 따른 동적 색상 설정
+        // 선택 상태와 시간 조건에 따른 동적 색상 설정
         backgroundColor: isSelected
           ? '#3B82F6' // blue-500
           : isReservable
             ? '#F9FAFB' // gray-50
-            : '#E5E7EB', // gray-200
+            : !isTimeReservable
+              ? '#FEF2F2' // red-50
+              : '#E5E7EB', // gray-200
         borderColor: isSelected
           ? '#2563EB' // blue-600
           : isReservable
             ? '#2D4739' // 기존 브랜드 컬러
-            : '#D1D5DB', // gray-300
+            : !isTimeReservable
+              ? '#EF4444' // red-500
+              : '#D1D5DB', // gray-300
         textColor: isSelected
           ? '#FFFFFF' // white
           : isReservable
             ? '#111827' // gray-900
-            : '#6B7280', // gray-500
+            : !isTimeReservable
+              ? '#DC2626' // red-600
+              : '#6B7280', // gray-500
         extendedProps: {
           date,
           time: s.time,
@@ -164,6 +203,7 @@ function toFullCalendarEvents(
           reservable: s.reservable,
           isSelected,
           isReservable,
+          isTimeReservable,
         },
       });
     });
@@ -232,25 +272,51 @@ export default function ClassesDetailPage() {
         setImageList(imgs);
         setScheduleMap(schedMap);
 
-        const dates = Array.from(schedMap.keys());
-        const firstDate = dates[0] ?? '';
-        const firstReservable = firstDate
-          ? ((schedMap.get(firstDate) ?? []).find((t) => t.reservable && t.seatsLeft > 0)?.time ??
-            '')
-          : '';
-        setSelectedDate(firstDate);
-        setSelectedTime(firstReservable);
+        // 현재 시간 기준으로 예약 가능한 첫 번째 슬롯 찾기
+        const dates = Array.from(schedMap.keys()).sort();
+        let firstDate = '';
+        let firstReservable = '';
+        let firstEventId = '';
 
-        // 첫 번째 예약 가능한 이벤트를 선택 상태로 설정
-        if (firstDate && firstReservable) {
-          const firstSlots = schedMap.get(firstDate) ?? [];
-          const slotIndex = firstSlots.findIndex((slot) => slot.time === firstReservable);
-          if (slotIndex >= 0) {
-            setSelectedEventId(`${firstDate}-${firstReservable}-${slotIndex}`);
+        for (const date of dates) {
+          const slots = schedMap.get(date) ?? [];
+          const reservableSlot = slots.find((t) => isReservableSlot(t, date, t.time));
+
+          if (reservableSlot) {
+            firstDate = date;
+            firstReservable = reservableSlot.time;
+            const slotIndex = slots.findIndex((slot) => slot.time === reservableSlot.time);
+            firstEventId = `${date}-${reservableSlot.time}-${slotIndex}`;
+            break;
           }
         }
-      } catch (err) {
-        setLoadError(err instanceof Error ? err.message : '데이터를 불러오지 못했어요.');
+
+        setSelectedDate(firstDate);
+        setSelectedTime(firstReservable);
+        setSelectedEventId(firstEventId);
+      } catch (err: any) {
+        console.error('데이터 로딩 실패:', err);
+
+        // HTTP 상태 코드에 따른 에러 처리
+        const statusCode = err.response?.status;
+
+        switch (statusCode) {
+          case 404:
+            nav('/error/404', { replace: true });
+            break;
+          case 401:
+            nav('/error/401', { replace: true });
+            break;
+          case 500:
+          case 502:
+          case 503:
+            nav('/error/500', { replace: true });
+            break;
+          default:
+            // 네트워크 에러나 기타 에러
+            setLoadError(err instanceof Error ? err.message : '데이터를 불러오지 못했어요.');
+            setTimeout(() => nav('/error/404', { replace: true }), 2000);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -258,7 +324,7 @@ export default function ClassesDetailPage() {
     return () => {
       alive = false;
     };
-  }, [classId]);
+  }, [classId, nav]);
 
   /** 인라인 CTA 가시성 */
   useEffect(() => {
@@ -315,6 +381,13 @@ export default function ClassesDetailPage() {
       alert('예약 가능한 날짜/시간을 선택해주세요.');
       return;
     }
+
+    // 선택된 시간이 현재 시간 이후인지 다시 한번 확인
+    if (isPastTime(selectedDate, selectedTime)) {
+      alert('이미 지난 시간입니다. 다른 시간을 선택해주세요.');
+      return;
+    }
+
     nav('/main/classes/order', {
       state: {
         classId,
@@ -354,7 +427,7 @@ export default function ClassesDetailPage() {
     setSelectedDate(date);
 
     const slots = scheduleMap.get(date) ?? [];
-    const firstReservable = slots.find((t) => t.reservable && t.seatsLeft > 0);
+    const firstReservable = slots.find((t) => isReservableSlot(t, date, t.time));
 
     if (firstReservable) {
       setSelectedTime(firstReservable.time);
@@ -373,10 +446,11 @@ export default function ClassesDetailPage() {
       seatsLeft?: number;
       reservable?: boolean;
       isReservable?: boolean;
+      isTimeReservable?: boolean;
     };
 
     if (!p?.date || !p?.time) return;
-    if (!p.isReservable) return; // 예약 불가능한 이벤트 클릭 방지
+    if (!p.isReservable || !p.isTimeReservable) return; // 예약 불가능하거나 시간이 지난 이벤트 클릭 방지
 
     setSelectedDate(p.date);
     setSelectedTime(p.time);
@@ -499,17 +573,17 @@ export default function ClassesDetailPage() {
                     firstDay={0}
                     locale="ko"
                     eventTimeFormat={{
-                      hour: '2-digit', // 두 자리 숫자
-                      minute: '2-digit', // 분 표시
-                      hour12: false, // 24시간제 (오전/오후 제거)
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false,
                     }}
                     // Tailwind 클래스를 적용하는 eventClassNames
                     eventClassNames={(arg) => {
                       const isSelected = arg.event.extendedProps.isSelected;
                       const isReservable = arg.event.extendedProps.isReservable;
+                      const isTimeReservable = arg.event.extendedProps.isTimeReservable;
 
                       return [
-                        // 기본 스타일
                         'transition-all',
                         'duration-200',
                         'cursor-pointer',
@@ -531,16 +605,19 @@ export default function ClassesDetailPage() {
                             ]
                           : isReservable
                             ? ['fc-event-reservable', 'hover:shadow-md', 'hover:scale-102']
-                            : ['fc-event-disabled', 'opacity-60', 'cursor-not-allowed']),
+                            : !isTimeReservable
+                              ? ['fc-event-past', 'opacity-60', 'cursor-not-allowed']
+                              : ['fc-event-disabled', 'opacity-60', 'cursor-not-allowed']),
                       ];
                     }}
                     // 추가적인 DOM 조작
                     eventDidMount={(info) => {
                       const isSelected = info.event.extendedProps.isSelected;
                       const isReservable = info.event.extendedProps.isReservable;
+                      const isTimeReservable = info.event.extendedProps.isTimeReservable;
 
-                      // 예약 불가능한 이벤트는 클릭 방지
-                      if (!isReservable) {
+                      // 예약 불가능하거나 시간이 지난 이벤트는 클릭 방지
+                      if (!isReservable || !isTimeReservable) {
                         info.el.style.pointerEvents = 'none';
                       }
 
@@ -563,14 +640,15 @@ export default function ClassesDetailPage() {
                       <div className="grid grid-cols-2 gap-3 mb-6">
                         {timeList.map((t) => {
                           const isSelected = selectedTime === t.time;
-                          const disabled = !t.reservable || t.seatsLeft <= 0;
+                          const isTimeReservable = !isPastTime(selectedDate, t.time);
+                          const disabled = !t.reservable || t.seatsLeft <= 0 || !isTimeReservable;
+
                           return (
                             <button
                               key={`${selectedDate}_${t.time}`}
                               onClick={() => {
                                 if (!disabled) {
                                   setSelectedTime(t.time);
-                                  // 해당 시간의 이벤트 ID 찾아서 설정
                                   const slotIndex = timeList.findIndex(
                                     (slot) => slot.time === t.time
                                   );
@@ -581,7 +659,9 @@ export default function ClassesDetailPage() {
                               className={[
                                 'py-3 px-4 rounded-lg text-sm font-medium transition-all text-left',
                                 disabled
-                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  ? !isTimeReservable
+                                    ? 'bg-red-100 text-red-400 cursor-not-allowed' // 시간 경과
+                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed' // 기타 불가
                                   : isSelected
                                     ? 'bg-[#2D4739] text-white shadow-lg scale-105'
                                     : 'bg-gray-50 hover:bg-gray-100 text-gray-700 hover:shadow-md',
@@ -589,7 +669,9 @@ export default function ClassesDetailPage() {
                             >
                               <div className="flex items-center justify-between">
                                 <span>{t.time}</span>
-                                <span className="text-xs opacity-80">여석 {t.seatsLeft}</span>
+                                <span className="text-xs opacity-80">
+                                  {!isTimeReservable ? '시간경과' : `여석 ${t.seatsLeft}`}
+                                </span>
                               </div>
                             </button>
                           );
@@ -599,9 +681,10 @@ export default function ClassesDetailPage() {
                       <button
                         ref={inlineCtaRef}
                         onClick={handleApply}
-                        className="w-full py-4 bg-[#2D4739] text-white font-semibold rounded-xl hover:opacity-90 transition-opacity"
+                        disabled={!selectedTime || isPastTime(selectedDate, selectedTime)}
+                        className="w-full py-4 bg-[#2D4739] text-white font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:bg-gray-300 disabled:cursor-not-allowed"
                       >
-                        신청하기
+                        {!selectedTime ? '시간을 선택해주세요' : '신청하기'}
                       </button>
                     </>
                   ) : (
@@ -713,15 +796,20 @@ export default function ClassesDetailPage() {
             </div>
           )}
 
-          {/* 플로팅 CTA */}
-          {showFixedButton && !isLoading && !loadError && summary && (
-            <button
-              onClick={scrollToCalendar}
-              className="fixed bottom-5 right-5 z-50 h-14 px-6 rounded-full bg-[#2D4739] text-white font-semibold shadow-[0_8px_20px_rgba(0,0,0,0.15)] hover:opacity-90 transition-opacity lg:right-8 xl:right-12"
-            >
-              신청하기
-            </button>
-          )}
+          {/* 플로팅 CTA - 조건부 표시 */}
+          {showFixedButton &&
+            !isLoading &&
+            !loadError &&
+            summary &&
+            selectedTime &&
+            !isPastTime(selectedDate, selectedTime) && (
+              <button
+                onClick={scrollToCalendar}
+                className="fixed bottom-5 right-5 z-50 h-14 px-6 rounded-full bg-[#2D4739] text-white font-semibold shadow-[0_8px_20px_rgba(0,0,0,0.15)] hover:opacity-90 transition-opacity lg:right-8 xl:right-12"
+              >
+                신청하기
+              </button>
+            )}
         </div>
       </main>
     </>

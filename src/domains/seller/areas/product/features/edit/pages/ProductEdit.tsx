@@ -207,36 +207,32 @@ const ProductEdit: FC = () => {
     // 기존 서버 이미지 + 새로 추가하는 파일 합쳐서 3개까지 허용
     const chosen = Array.from(files);
     setForm((prev) => {
-      const currentCount = prev.images?.length ?? 0;
+      const currentCount = prev.images?.filter((img) => !img.markedForDelete).length ?? 0;
       const remain = Math.max(0, 3 - currentCount);
 
       const toAdd = chosen.slice(0, remain).map((file) => ({
         id: crypto.randomUUID(),
         file,
         url: URL.createObjectURL(file),
-        isNew: true,
       }));
 
-      return { ...prev, images: [...toAdd, ...(prev.images ?? [])] };
+      // return { ...prev, images: [...toAdd, ...(prev.images ?? [])] };
+      return { ...prev, images: [...(prev.images ?? []), ...toAdd] };
     });
 
     e.target.value = '';
   };
 
-  const removeImage = (index: number) => {
+  const removeImage = (imgId: string) => {
     setForm((prev) => {
-      const img = prev.images[index];
-      if (!img) return prev;
-
-      if (img.serverImageId) {
-        // 기존 서버 이미지이면 markedForDelete = true
-        const newImages = [...prev.images];
-        newImages[index] = { ...img, markedForDelete: true };
-        return { ...prev, images: newImages };
-      } else {
-        // 새로 업로드한 이미지면 그냥 제거
-        return { ...prev, images: prev.images.filter((_, i) => i !== index) };
-      }
+      return {
+        ...prev,
+        images: prev.images
+          .map((img) =>
+            img.id === imgId ? (img.serverImageId ? { ...img, markedForDelete: true } : null) : img
+          )
+          .filter(Boolean) as ProductImage[],
+      };
     });
   };
 
@@ -537,7 +533,7 @@ const ProductEdit: FC = () => {
                         <img src={img.url} alt="preview" className="w-full h-40 object-cover" />
                         <button
                           type="button"
-                          onClick={() => removeImage(index)}
+                          onClick={() => removeImage(img.id)}
                           className="absolute top-2 right-2 rounded-md bg-black/60 text-white text-xs px-2 py-1"
                         >
                           삭제

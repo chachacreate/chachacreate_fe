@@ -80,6 +80,125 @@ const createEmptyProductForm = (no = 1): ProductForm => ({
   categorySmall: '',
 });
 
+// 가격 상세 정보 모달 컴포넌트
+const PriceDetailModal: FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  formId: string | null;
+  aiPredictionInfo: Record<string, any>;
+  getPricingStrategy: (priceInfo: any) => string;
+}> = ({ isOpen, onClose, formId, aiPredictionInfo, getPricingStrategy }) => {
+  if (!isOpen || !formId) return null;
+
+  const predictionInfo = aiPredictionInfo[formId];
+  if (!predictionInfo) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold">AI 가격 분석 상세정보</h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 text-xl px-2"
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-semibold text-blue-800 mb-2">
+                🎯 예측 결과: {predictionInfo.top_category}
+              </h4>
+              <p className="text-blue-700">
+                신뢰도: {(predictionInfo.top_confidence * 100).toFixed(2)}%
+              </p>
+            </div>
+
+            {predictionInfo.predictions.map((pred: any, index: number) => (
+              <div key={index} className="border rounded-lg p-4">
+                {pred.price_info ? (
+                  <div className="space-y-3">
+                    <h5 className="font-semibold text-gray-800">
+                      📊 카테고리 '{pred.price_info.db_category}' 가격 통계
+                    </h5>
+                    
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">평균:</span>
+                        <span className="ml-2 font-medium">
+                          {pred.price_info.average_price.toLocaleString()}원
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">중앙값:</span>
+                        <span className="ml-2 font-medium">
+                          {pred.price_info.median_price.toLocaleString()}원
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">최저가:</span>
+                        <span className="ml-2 font-medium">
+                          {pred.price_info.min_price.toLocaleString()}원
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">최고가:</span>
+                        <span className="ml-2 font-medium">
+                          {pred.price_info.max_price.toLocaleString()}원
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">상품수:</span>
+                        <span className="ml-2 font-medium">
+                          {pred.price_info.product_count}개
+                        </span>
+                      </div>
+                    </div>
+
+                    {pred.price_info.q1_price && pred.price_info.q3_price && (
+                      <div className="space-y-3 mt-4 pt-4 border-t">
+                        <h6 className="font-semibold text-gray-800">📈 4분위수 분석</h6>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-600">1분위 (하위 25%):</span>
+                            <span className="ml-2 font-medium">
+                              {pred.price_info.q1_price.toLocaleString()}원
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">3분위 (상위 25%):</span>
+                            <span className="ml-2 font-medium">
+                              {pred.price_info.q3_price.toLocaleString()}원
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                          <h6 className="font-semibold text-green-800 mb-2">💡 마케팅 전략</h6>
+                          <div className="text-sm text-green-700 whitespace-pre-line">
+                            {getPricingStrategy(pred.price_info)}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-gray-500">
+                    📭 카테고리 '{pred.category}'에 대한 가격 정보가 없습니다.
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ProductInsert: FC = () => {
   const navigate = useNavigate();
   const { storeUrl = '' } = useParams<Params>();
@@ -93,6 +212,12 @@ const ProductInsert: FC = () => {
 
   // AI 예측 정보 저장
   const [aiPredictionInfo, setAiPredictionInfo] = useState<Record<string, any>>({});
+
+  // 가격 상세 모달 상태
+  const [priceDetailModal, setPriceDetailModal] = useState<{
+    isOpen: boolean;
+    formId: string | null;
+  }>({ isOpen: false, formId: null });
 
   // 에디터 refs
   const editorRefs = useRef<Record<string, EditorHandle | null>>({});
@@ -213,40 +338,20 @@ const ProductInsert: FC = () => {
     }
   };
 
-  // AI 예측 정보 툴팁 생성
-  const generatePredictionTooltip = (formId: string): string => {
+  // 툴팁용 간단한 예측 정보 생성
+  const generateSimpleTooltip = (formId: string): string => {
     const predictionInfo = aiPredictionInfo[formId];
     if (!predictionInfo) return '';
 
-    let tooltip = `🎯 예측 완료: ${predictionInfo.top_category} (신뢰도: ${(predictionInfo.top_confidence * 100).toFixed(2)}%)\n`;
+    const firstPred = predictionInfo.predictions[0];
+    if (!firstPred?.price_info) return '';
 
-    predictionInfo.predictions.forEach((pred: any, index: number) => {
-      if (pred.price_info) {
-        const priceInfo = pred.price_info;
-
-        tooltip += `📊 카테고리 '${priceInfo.db_category}' 가격 통계:\n`;
-        tooltip += `   평균: ${priceInfo.average_price.toLocaleString()}원\n`;
-        tooltip += `   범위: ${priceInfo.min_price.toLocaleString()}원 ~ ${priceInfo.max_price.toLocaleString()}원\n`;
-        tooltip += `   중앙값: ${priceInfo.median_price.toLocaleString()}원\n`;
-
-        // 4분위수 정보 추가
-        if (priceInfo.q1_price && priceInfo.q3_price) {
-          tooltip += `   1분위: ${priceInfo.q1_price.toLocaleString()}원 (하위 25%)\n`;
-          tooltip += `   3분위: ${priceInfo.q3_price.toLocaleString()}원 (상위 25%)\n`;
-
-          // 4분위수 기반 마케팅 전략 제안
-          const strategy = getPricingStrategy(priceInfo);
-          tooltip += `\n💡 마케팅 전략:\n${strategy}\n`;
-        }
-
-        tooltip += `   상품수: ${priceInfo.product_count}개`;
-      } else {
-        tooltip += `📭 카테고리 '${pred.category}'에 대한 가격 정보가 없습니다.`;
-      }
-      if (index < predictionInfo.predictions.length - 1) tooltip += '\n';
-    });
-
-    return tooltip;
+    const priceInfo = firstPred.price_info;
+    return `📊 카테고리 '${priceInfo.db_category}' 가격 통계:
+   평균: ${priceInfo.average_price.toLocaleString()}원
+   범위: ${priceInfo.min_price.toLocaleString()}원 ~ ${priceInfo.max_price.toLocaleString()}원
+   중앙값: ${priceInfo.median_price.toLocaleString()}원
+   상품수: ${priceInfo.product_count}개`;
   };
 
   // 4분위수 기반 가격 전략 제안 함수
@@ -541,20 +646,29 @@ const ProductInsert: FC = () => {
                           )}
                           {isAiPriceLoading ? 'AI 분석 중...' : 'AI 가격 추천'}
                         </button>
-                        <div className="relative flex-1">
+                        <div className="relative flex-1 flex gap-1">
                           <input
                             readOnly
-                            className="border rounded-md px-3 py-2 w-full bg-gray-50 cursor-help"
+                            className="border rounded-md px-3 py-2 flex-1 bg-gray-50 cursor-help"
                             placeholder="AI 추천가"
                             value={
                               form.aiPrice ? `${Number(form.aiPrice).toLocaleString()} 원` : ''
                             }
                             title={
                               form.aiPrice && aiPredictionInfo[form.id]
-                                ? generatePredictionTooltip(form.id)
+                                ? generateSimpleTooltip(form.id)
                                 : ''
                             }
                           />
+                          {form.aiPrice && aiPredictionInfo[form.id] && (
+                            <button
+                              type="button"
+                              className="px-2 py-1 text-xs border rounded-md hover:bg-gray-50 whitespace-nowrap"
+                              onClick={() => setPriceDetailModal({ isOpen: true, formId: form.id })}
+                            >
+                              상세보기
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -685,6 +799,15 @@ const ProductInsert: FC = () => {
           </div>
         </div>
       </SellerSidenavbar>
+
+      {/* 가격 상세 정보 모달 */}
+      <PriceDetailModal
+        isOpen={priceDetailModal.isOpen}
+        onClose={() => setPriceDetailModal({ isOpen: false, formId: null })}
+        formId={priceDetailModal.formId}
+        aiPredictionInfo={aiPredictionInfo}
+        getPricingStrategy={getPricingStrategy}
+      />
     </>
   );
 };

@@ -214,7 +214,6 @@ const ProductInsert: FC = () => {
   };
 
   // AI 예측 정보 툴팁 생성
-  // AI 예측 정보 툴팁 생성 (4분위수 및 마케팅 전략 포함)
   const generatePredictionTooltip = (formId: string): string => {
     const predictionInfo = aiPredictionInfo[formId];
     if (!predictionInfo) return '';

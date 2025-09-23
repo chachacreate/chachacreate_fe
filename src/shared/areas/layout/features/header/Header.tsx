@@ -24,12 +24,13 @@ type StoreInfo = {
 const RESERVED_PREFIXES = new Set([
   'main',
   'auth',
-  'login',
-  'signup',
+  'auth',
   'admin',
   'api',
   'assets',
   'static',
+  'seller',
+  'resources',
   '',
 ]);
 
@@ -76,8 +77,8 @@ export default function Header({ user, storeSlug, hideTopBar = false }: HeaderPr
     const path = location.pathname.replace(/^\/+/, ''); // 앞 / 제거
     const segments = path.split('/');
 
-    // 첫 번째가 seller라면 두 번째, 아니면 첫 번째(스토어 관리자 페이지일 경우)
-    let slugCandidate = segments[0] === 'seller' ? segments[1] : segments[0];
+    // 무조건 첫번째를 가져옴
+    let slugCandidate = segments[0];
 
     if (!slugCandidate || RESERVED_PREFIXES.has(slugCandidate)) return null;
     return slugCandidate;

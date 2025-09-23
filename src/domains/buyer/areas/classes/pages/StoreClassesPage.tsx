@@ -284,31 +284,49 @@ const handleSortChange = (key: SortKey) => {
       <Header />
       <Storenavbar />
 
-     {/* 1920 x 400 배너 */}
+     {/* 1920 x 400 배너 - 반응형 개선 */}
 <section className="w-full bg-[#5B7A67] animate-fade-up">
-  <div className="mx-auto w-full max-w-[1920px] h-[400px] flex items-center">
-    {/* 내부 1440 + 좌우 20px */}
-    <div className="mx-auto w-full max-w-[1440px] px-5 h-full flex items-center">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full h-full items-center">
+  <div className="mx-auto w-full max-w-[1920px] h-[300px] sm:h-[350px] md:h-[400px] flex items-center">
+    {/* 내부 1440 + 좌우 패딩 */}
+    <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-5 lg:px-8 h-full flex items-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8 w-full h-full items-center">
         {/* 왼쪽: 이미지 */}
-        <div className="w-full h-full flex items-center justify-center animate-fade-right [animation-delay:120ms]">
+        <div className="w-full h-full flex items-center justify-center animate-fade-right [animation-delay:120ms] order-2 md:order-1">
           <img
             src={storeHero}
             alt="스토어 배너 이미지"
-            className="h-[400px] w-auto object-contain"
+            className="h-[180px] sm:h-[220px] md:h-[300px] lg:h-[400px] w-auto object-contain max-w-full"
             loading="eager"
           />
         </div>
 
         {/* 오른쪽: 문구 */}
-        <div className="w-full h-full flex items-center animate-fade-left [animation-delay:200ms]">
-          <div className="text-left font-jua text-white">
-            {/* 글자 크기 업그레이드 */}
-            <p className="text-[40px] sm:text-[40px] lg:text-[52px] leading-tight">
-              <span className="text-white">{storeName || storeUrl}</span>의
-              <br />
-              원데이 클래스를 수강해보세요!
+        <div className="w-full h-full flex items-center animate-fade-left [animation-delay:200ms] order-1 md:order-2">
+          <div className="text-center md:text-left font-jua text-white w-full">
+            {/* 모바일 대응 텍스트 크기 */}
+            <p className="text-[22px] xs:text-[26px] sm:text-[32px] md:text-[36px] lg:text-[44px] xl:text-[52px] leading-tight px-2 sm:px-0">
+              <span className="text-white break-keep">
+                {storeName || storeUrl}
+              </span>
+              <span className="text-white">의</span>
+              <br className="hidden sm:block" />
+              <span className="sm:hidden"> </span>
+              <span className="text-white break-keep">
+                원데이 클래스를
+              </span>
+              <br className="hidden sm:block" />
+              <span className="sm:hidden"> </span>
+              <span className="text-white break-keep">
+                수강해보세요!
+              </span>
             </p>
+            
+            {/* 모바일용 서브텍스트 (선택사항) */}
+            <div className="mt-3 sm:mt-4 md:hidden">
+              <p className="text-sm sm:text-base text-white/90 font-normal">
+                특별한 원데이 클래스 경험을 만나보세요
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -317,12 +335,10 @@ const handleSortChange = (key: SortKey) => {
 </section>
 
 
-
-
       <main className="w-full">
         <div className="mx-auto max-w-[1920px] px-4 sm:px-8 lg:px-12 xl:px-20 2xl:px-[240px]">
           {/* 검색 섹션: 페이지 전환 시 여기를 기준으로 스크롤 복구 */}
-          <div id="search-section" className="py-10 lg:py-14" />
+          <div id="search-section" className="py-4 lg:py-12" />
 
           {/* 검색바: Searchbar 원본 유지 + onSubmitCapture로 가로채기 + 초기화 버튼 옆 배치 */}
           <section className="mb-4">

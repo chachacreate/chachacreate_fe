@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Search, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Search, ChevronDown, X, Check } from 'lucide-react';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import { legacyGet } from '@src/libs/request';
@@ -54,16 +54,13 @@ type CategoryBaseResponse = {
 
 type DCategoryItem = { id: number; name: string };
 
-const PAGE_SIZE = 12;
-
 const sortOptions: FilterOption[] = [
-  { value: 'latest', label: '최신순' },      
-  { value: 'popular', label: '주문 많은 순' }, 
-  { value: 'views', label: '조회순' },        
-  { value: 'lowprice', label: '낮은가격순' }, 
-  { value: 'highprice', label: '높은가격순' }, 
+  { value: 'latest', label: '최신순' },
+  { value: 'popular', label: '주문 많은 순' },
+  { value: 'views', label: '조회순' },
+  { value: 'lowprice', label: '낮은가격순' },
+  { value: 'highprice', label: '높은가격순' },
 ];
-
 
 const MainProductsPage = () => {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -74,62 +71,60 @@ const MainProductsPage = () => {
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
-
   const [hasMore, setHasMore] = useState(false);
 
-// 상품 조회
-const fetchProducts = useCallback(
-  async (
-    sort = 'latest',
-    keyword = '',
-    dcategoryIds: number[] = [],
-    uIds: number[] = [],
-    typeIds: number[] = []
-  ) => {
-    setLoading(true);
-    try {
-      const qs = new URLSearchParams();
-      if (sort) qs.set('sort', sort);
-      if (keyword && keyword.trim()) qs.set('keyword', keyword.trim());
+  const [mounted, setMounted] = useState(false);
+  const [showSortSheet, setShowSortSheet] = useState(false);
 
-      typeIds.forEach((id) => qs.append('type', String(id)));
-      uIds.forEach((id) => qs.append('u', String(id)));
-      dcategoryIds.forEach((id) => qs.append('d', String(id)));
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-      const resp = await legacyGet<ApiEnvelope<HomeProductDTO[]>>(`/main/products?${qs.toString()}`);
-      const raw = unwrap<HomeProductDTO[]>(resp) ?? [];
+  // 상품 조회
+  const fetchProducts = useCallback(
+    async (sort = 'latest', keyword = '', dcategoryIds: number[] = [], uIds: number[] = [], typeIds: number[] = []) => {
+      setLoading(true);
+      try {
+        const qs = new URLSearchParams();
+        if (sort) qs.set('sort', sort);
+        if (keyword && keyword.trim()) qs.set('keyword', keyword.trim());
 
-      const mapped: Product[] = raw.map((p) => ({
-        id: p.productId,
-        name: p.productName,
-        price: p.price,
-        image: p.pimgUrl || '/placeholder-image.jpg',
-        categories: [p.typeCategoryName, p.ucategoryName, p.dcategoryName].filter(Boolean) as string[],
-        orderCount: p.saleCnt ?? 0,
-        viewCount: p.viewCnt ?? 0,
-        storeName: p.storeName || '뜨락상회',
-        storeUrl: p.storeUrl || 'main',
-      }));
+        typeIds.forEach((id) => qs.append('type', String(id)));
+        uIds.forEach((id) => qs.append('u', String(id)));
+        dcategoryIds.forEach((id) => qs.append('d', String(id)));
 
-      setAllProducts(mapped);
-      setTotalCount(mapped.length);
-      setHasMore(false);
-    } catch (err) {
-      console.error('상품 불러오기 실패:', err);
-      setAllProducts([]);
-      setTotalCount(0);
-    } finally {
-      setLoading(false);
-    }
-  },
-  []
-);
+        const resp = await legacyGet<ApiEnvelope<HomeProductDTO[]>>(`/main/products?${qs.toString()}`);
+        const raw = unwrap<HomeProductDTO[]>(resp) ?? [];
 
+        const mapped: Product[] = raw.map((p) => ({
+          id: p.productId,
+          name: p.productName,
+          price: p.price,
+          image: p.pimgUrl || '/placeholder-image.jpg',
+          categories: [p.typeCategoryName, p.ucategoryName, p.dcategoryName].filter(Boolean) as string[],
+          orderCount: p.saleCnt ?? 0,
+          viewCount: p.viewCnt ?? 0,
+          storeName: p.storeName || '뜨락상회',
+          storeUrl: p.storeUrl || 'main',
+        }));
 
-  // 초기 전체상품 + 카테고리 로드
+        setAllProducts(mapped);
+        setTotalCount(mapped.length);
+        setHasMore(false);
+      } catch (err) {
+        console.error('상품 불러오기 실패:', err);
+        setAllProducts([]);
+        setTotalCount(0);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  // 초기 로드
   useEffect(() => {
     fetchProducts('latest', '', []);
-
     (async () => {
       try {
         const baseResp = await legacyGet<ApiEnvelope<CategoryBaseResponse>>(`/main/categories`);
@@ -143,7 +138,7 @@ const fetchProducts = useCallback(
     })();
   }, [fetchProducts]);
 
-  // d카테고리 병렬 로드
+  // d카테고리 로드
   useEffect(() => {
     if (!showCategoryFilter) return;
     const needNames = categories.filter((c) => c.subcategories.length === 0).map((c) => c.name);
@@ -172,12 +167,10 @@ const fetchProducts = useCallback(
     })();
   }, [showCategoryFilter, categories]);
 
-  // 카테고리 선택
   const handleCategoryChange = (id: number, checked: boolean) => {
     setSelectedCategories((prev) => (checked ? [...prev, id] : prev.filter((c) => c !== id)));
   };
 
-  // u카테고리 전체선택
   const handleSelectAllCategories = (uId: number, checked: boolean) => {
     const cat = categories.find((c) => c.id === uId);
     if (!cat) return;
@@ -187,7 +180,6 @@ const fetchProducts = useCallback(
     );
   };
 
-  // 필터 초기화
   const resetFilters = () => {
     setSelectedCategories([]);
     setSearchTerm('');
@@ -195,29 +187,55 @@ const fetchProducts = useCallback(
     fetchProducts('latest', '', []);
   };
 
-  // 필터/검색/정렬 시 상품 새로 로드
   useEffect(() => {
     fetchProducts(sortBy, searchTerm, selectedCategories);
   }, [selectedCategories, sortBy, searchTerm, fetchProducts]);
 
   const formatPrice = (price: number) => new Intl.NumberFormat('ko-KR').format(price);
 
+  const selectedChips = useMemo(() => {
+    const map = new Map<number, string>();
+    categories.forEach((c) =>
+      c.subcategories.forEach((s) => {
+        if (selectedCategories.includes(s.id)) map.set(s.id, `${c.name} · ${s.name}`);
+      })
+    );
+    return Array.from(map.entries());
+  }, [categories, selectedCategories]);
+
+  const isMobile = typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false;
+
   return (
     <div className="min-h-screen bg-white">
       <Header />
       <Mainnavbar />
 
-      <div className="px-4 sm:px-6 xl:px-[240px]">
+      <div className="px-4 sm:px-6 xl:px-[240px] pb-12 md:pb-16">
         <div className="w-full max-w-[1440px] mx-auto py-8">
           {/* 헤더 */}
           <div className="mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">전체 상품</h1>
-            <p className="text-gray-600">다양한 상품을 만나보세요</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 ">
+              전체 상품
+            </h1>
+            <p className="text-gray-600 hover:text-gray-800 transition-colors duration-300">
+              다양한 상품을 만나보세요
+            </p>
           </div>
+
+          <style>{`
+            /* 필요한 애니메이션만 추가 */
+            h1 { animation: slideIn 0.5s ease-out; }
+            p { animation: slideIn 0.5s ease-out 0.2s both; }
+            
+            @keyframes slideIn {
+              from { opacity: 0; transform: translateY(10px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
 
           {/* 검색바 */}
           <div className="relative mb-6">
-            <div className="relative">
+            <div className="relative group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
@@ -229,43 +247,65 @@ const fetchProducts = useCallback(
             </div>
           </div>
 
-          {/* 필터 바 */}
-          <div className="flex flex-col md:flex-row gap-4 mb-8">
-            {/* 정렬 */}
-            <div className="relative w-full max-w-[220px]">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full appearance-none bg-white border border-gray-300 rounded-lg px-4 pr-10 py-2 md:py-2.5 focus:outline-none focus:ring-2 focus:ring-[#2d4739]"
-              >
-                {sortOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              </span>
-            </div>
-
-            {/* 카테고리 토글 */}
-            <button
-              onClick={() => setShowCategoryFilter(!showCategoryFilter)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              카테고리별
-              <ChevronDown className={`w-4 h-4 transition-transform ${showCategoryFilter ? 'rotate-180' : ''}`} />
-            </button>
-
-            {selectedCategories.length > 0 && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span>선택된 카테고리: {selectedCategories.length}개</span>
-                <button onClick={resetFilters} className="text-[#2d4739] hover:underline">
-                  전체 해제
+          {/* 필터 바 (sticky 제거 → 일반 div) */}
+          <div className="mb-8 border-b border-gray-100 bg-white">
+            <div className="py-3 flex flex-col md:flex-row gap-3 md:gap-4 items-start md:items-center">
+              {/* 정렬 */}
+              {!isMobile ? (
+                <div className="relative w-full max-w-[220px]">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="w-full appearance-none bg-white border border-gray-300 rounded-lg px-4 pr-10 py-2 md:py-2.5 focus:outline-none focus:ring-2 focus:ring-[#2d4739]"
+                  >
+                    {sortOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  </span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowSortSheet(true)}
+                  className="inline-flex items-center justify-between w-full max-w-[220px] px-4 py-2 border border-gray-300 rounded-lg text-gray-700"
+                >
+                  <span>
+                    정렬: {sortOptions.find((o) => o.value === sortBy)?.label ?? '최신순'}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
                 </button>
-              </div>
-            )}
+              )}
+
+              {/* 카테고리 토글 */}
+              <button
+                onClick={() => setShowCategoryFilter(!showCategoryFilter)}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                카테고리별
+                <ChevronDown className={`w-4 h-4 transition-transform ${showCategoryFilter ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* 선택된 카테고리 칩 */}
+              {selectedChips.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedChips.map(([id, label]) => (
+                    <span key={id} className="inline-flex items-center gap-1 text-xs bg-[#2d4739]/10 text-[#2d4739] px-2 py-1 rounded-full">
+                      {label}
+                      <button onClick={() => setSelectedCategories((prev) => prev.filter((c) => c !== id))}>
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                  <button onClick={resetFilters} className="text-sm text-[#2d4739] hover:underline">
+                    전체 해제
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 카테고리 필터 */}
@@ -304,7 +344,6 @@ const fetchProducts = useCallback(
                   </div>
                 );
               })}
-
               <div className="flex justify-end">
                 <button onClick={resetFilters} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
                   ↻ 필터 초기화
@@ -312,14 +351,6 @@ const fetchProducts = useCallback(
               </div>
             </div>
           )}
-
-          {/* 총 개수 */}
-          <div className="mb-6">
-            <p className="text-gray-600">
-              총 <span className="font-semibold text-[#2d4739]">{totalCount}</span>개의 상품
-              {selectedCategories.length > 0 && <span className="text-sm text-gray-500 ml-2">(필터 적용됨)</span>}
-            </p>
-          </div>
 
           {/* 상품 그리드 */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
@@ -340,59 +371,54 @@ const fetchProducts = useCallback(
                 <div className="p-4">
                   <div className="flex flex-wrap gap-1 mb-2">
                     {product.categories.map((c, idx) => (
-                      <span
-                        key={idx}
-                        className="text-xs bg-[#2d4739]/10 text-[#2d4739] px-2 py-1 rounded-full"
-                      >
+                      <span key={idx} className="text-xs bg-[#2d4739]/10 text-[#2d4739] px-2 py-1 rounded-full">
                         {c}
                       </span>
                     ))}
                   </div>
-
-                  <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2 mb-2">
-                    {product.name}
-                  </h3>
-
-                  <p className="text-xs text-gray-500 mb-3">
-                    주문 {product.orderCount}회 · 조회 {product.viewCount}회
-                  </p>
-
-                  <p className="text-lg font-extrabold text-[#2d4739]">
-                    {formatPrice(product.price)}원
-                  </p>
+                  <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2 mb-2">{product.name}</h3>
+                  <p className="text-xs text-gray-500 mb-3">주문 {product.orderCount}회 · 조회 {product.viewCount}회</p>
+                  <p className="text-lg font-extrabold text-[#2d4739]">{formatPrice(product.price)}원</p>
                 </div>
               </div>
             ))}
           </div>
-
-          {/* 로딩 */}  
-          {loading && (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#2d4739]" />
-              <p className="mt-2 text-gray-600">상품을 불러오는 중...</p>
-            </div>
-          )}
-
-          {/* 더 이상 없음 */}
-          {!hasMore && !loading && allProducts.length > 0 && (
-            <div className="text-center py-8">
-              <p className="text-gray-600">모든 상품을 확인했습니다.</p>
-            </div>
-          )}
-
-          {/* 결과 없음 */}
-          {allProducts.length === 0 && !loading && (
-            <div className="text-center py-16">
-              <div className="text-gray-400 mb-4">
-                <Search className="w-16 h-16 mx-auto mb-4" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">검색 결과가 없습니다</h3>
-              <p className="text-gray-600">다른 검색어나 필터를 시도해보세요</p>
-            </div>
-          )}
-
         </div>
       </div>
+
+      {/* 모바일 정렬 바텀시트 */}
+      {showSortSheet && (
+        <div className="fixed inset-0 z-50" onClick={() => setShowSortSheet(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl p-4 pt-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto w-12 h-1.5 bg-gray-300 rounded-full mb-4" />
+            <h4 className="text-base font-semibold mb-3">정렬</h4>
+            <div className="flex flex-col divide-y">
+              {sortOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setSortBy(opt.value);
+                    setShowSortSheet(false);
+                  }}
+                  className="flex items-center justify-between py-3 text-left"
+                >
+                  <span className={`text-[15px] ${opt.value === sortBy ? 'text-[#2d4739] font-semibold' : 'text-gray-700'}`}>
+                    {opt.label}
+                  </span>
+                  {opt.value === sortBy && <Check className="w-5 h-5 text-[#2d4739]" />}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setShowSortSheet(false)} className="mt-4 w-full py-2 rounded-lg border border-gray-300 text-gray-700">
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

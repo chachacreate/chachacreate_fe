@@ -309,65 +309,65 @@ transition-all duration-300 shadow-md hover:shadow-lg"
         <SellSubnavbar />
 
         {/* 🔶 240px padding + max 1440 */}
-        <div className="px-4 sm:px-6 xl:px-[240px] relative z-10">
-          <div className="w-full max-w-[1440px] mx-auto py-6 md:py-10">
+        <div className="px-4 sm:px-6 xl:px-[240px] pb-20 md:pb-20 relative z-10">
+          <div className="w-full max-w-[1440px] mx-auto md:py-2">
             {/* --- HERO --- */}
             <section
               className={[
-                'relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500',
-                'px-6 md:px-10 py-8 md:py-12',
+                'relative overflow-hidden rounded-xl md:rounded-2xl border border-gray-200/80 bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500',
+                'px-4 sm:px-6 md:px-10 py-6 sm:py-8 md:py-12',
                 mounted ? 'reveal' : 'opacity-0',
               ].join(' ')}
             >
-              {/* Decorations */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-100/60 to-purple-100/60 rounded-full blur-3xl transform translate-x-32 -translate-y-32 animate-floaty" />
+              {/* Decorations - 모바일에서 크기 조정 */}
+              <div className="absolute top-0 right-0 w-32 sm:w-48 md:w-64 h-32 sm:h-48 md:h-64 bg-gradient-to-br from-indigo-100/60 to-purple-100/60 rounded-full blur-2xl md:blur-3xl transform translate-x-16 sm:translate-x-24 md:translate-x-32 -translate-y-16 sm:-translate-y-24 md:-translate-y-32 animate-floaty" />
               <div
-                className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-emerald-100/60 to-cyan-100/60 rounded-full blur-2xl transform -translate-x-24 translate-y-24 animate-floaty"
+                className="absolute bottom-0 left-0 w-24 sm:w-36 md:w-48 h-24 sm:h-36 md:h-48 bg-gradient-to-tr from-emerald-100/60 to-cyan-100/60 rounded-full blur-xl md:blur-2xl transform -translate-x-12 sm:-translate-x-18 md:-translate-x-24 translate-y-12 sm:translate-y-18 md:translate-y-24 animate-floaty"
                 style={{ animationDelay: '1.5s' }}
               />
               <div
-                className="absolute top-1/2 left-1/2 w-32 h-32 bg-gradient-to-r from-pink-100/40 to-rose-100/40 rounded-lg rotate-12 blur-xl transform -translate-x-16 -translate-y-16 animate-floaty"
+                className="absolute top-1/2 left-1/2 w-16 sm:w-24 md:w-32 h-16 sm:h-24 md:h-32 bg-gradient-to-r from-pink-100/40 to-rose-100/40 rounded-lg rotate-12 blur-lg md:blur-xl transform -translate-x-8 sm:-translate-x-12 md:-translate-x-16 -translate-y-8 sm:-translate-y-12 md:-translate-y-16 animate-floaty"
                 style={{ animationDelay: '3s' }}
               />
 
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                <div>
-                  <h1 className="text-2xl md:text-[32px] font-extrabold tracking-[-0.02em] text-gray-900 flex items-center gap-3">
-                    <span className="text-3xl md:text-4xl">🛒</span>
-                    개인 판매를 시작해보세요
+              <div className="relative z-10 flex flex-col gap-4 sm:gap-6 md:flex-row md:items-center md:justify-between">
+                <div className="flex-1">
+                  <h1 className="text-xl sm:text-2xl md:text-[32px] font-extrabold tracking-[-0.02em] text-gray-900 flex items-center gap-2 sm:gap-3 leading-tight">
+                    <span className="text-2xl sm:text-3xl md:text-4xl">🛒</span>
+                    <span className="break-keep">개인 판매를 시작해보세요</span>
                   </h1>
                   <p
-                    className="text-gray-700 mt-2 opacity-0 animate-fade-in-slide"
+                    className="text-sm sm:text-base text-gray-700 mt-2 opacity-0 animate-fade-in-slide leading-relaxed break-keep"
                     style={{ animationDelay: '0.2s' }}
                   >
                     간단한 절차만 거치면 누구나 자신의 상품을 판매할 수 있습니다! 이미 개인판매자로
-                    등록되어 있다면 스토어 개설을 해보세요 !
+                    등록되어 있다면 스토어 개설을 해보세요!
                   </p>
 
-                  {/* 혜택 배지 */}
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {/* 혜택 배지 - 모바일에서 세로 배치 */}
+                  <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2">
                     <span
-                      className="inline-flex items-center rounded-full bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 text-xs font-semibold px-3 py-1.5 hover:from-amber-200 hover:to-yellow-200 transform hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md opacity-0 animate-fade-in-scale"
+                      className="inline-flex items-center rounded-full bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 text-xs font-semibold px-3 py-1.5 hover:from-amber-200 hover:to-yellow-200 transform hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md opacity-0 animate-fade-in-scale whitespace-nowrap"
                       style={{ animationDelay: '0.4s' }}
                     >
-                      수수료 0원 (한시적)
+                      🎉 수수료 0원 (한시적)
                     </span>
                     <span
                       className="inline-flex items-center rounded-full bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800 text-xs font-semibold px-3 py-1.5 hover:from-emerald-200 hover:to-green-200 transform hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md opacity-0 animate-fade-in-scale"
                       style={{ animationDelay: '0.5s' }}
                     >
-                      별도 검수 없이 1일 이내 등록
+                      ⚡ 별도 검수 없이 1일 이내 등록
                     </span>
                     <span
                       className="inline-flex items-center rounded-full bg-gradient-to-r from-sky-100 to-blue-100 text-sky-800 text-xs font-semibold px-3 py-1.5 hover:from-sky-200 hover:to-blue-200 transform hover:scale-105 transition-all duration-300 shadow-sm hover:shadow-md opacity-0 animate-fade-in-scale"
                       style={{ animationDelay: '0.6s' }}
                     >
-                      정산·배송 시스템 플랫폼 책임
+                      📦 정산·배송 시스템 플랫폼 책임
                     </span>
                   </div>
 
                   <p
-                    className="text-xs md:text-sm text-gray-500 mt-3 leading-relaxed opacity-0 animate-fade-in-slide"
+                    className="text-xs text-gray-500 mt-3 leading-relaxed opacity-0 animate-fade-in-slide break-keep"
                     style={{ animationDelay: '0.7s' }}
                   >
                     ※ 판매자는 상품의 내용과 배송 정보를 성실히 기재해야 하며, 허위 정보 등록 시
@@ -375,31 +375,33 @@ transition-all duration-300 shadow-md hover:shadow-lg"
                   </p>
                 </div>
 
-                {/* CTA */}
-                <div className="md:text-right">{renderCTAButton()}</div>
+                {/* CTA - 모바일에서 전체 너비 */}
+                <div className="w-full md:w-auto md:text-right mt-2 sm:mt-0">
+                  {renderCTAButton()}
+                </div>
               </div>
             </section>
 
-            {/* Benefits grid */}
-            <section className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-8 md:mt-10">
+            {/* Benefits grid - 모바일 반응형 최적화 */}
+            <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 md:gap-6 mt-6 sm:mt-8 md:mt-10">
               <Benefit
                 title="안전한 거래/정산"
                 desc="결제·정산 프로세스는 플랫폼이 안전하게 관리합니다."
-                icon={<ShieldCheck className="w-5 h-5 text-[#2d4739]" />}
+                icon={<ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-[#2d4739]" />}
                 delay={100}
                 isVisible={isVisible}
               />
               <Benefit
                 title="간편한 배송 연동"
                 desc="송장/배송 추적까지 시스템에서 자동으로 연동합니다."
-                icon={<Truck className="w-5 h-5 text-[#2d4739]" />}
+                icon={<Truck className="w-4 h-4 sm:w-5 sm:h-5 text-[#2d4739]" />}
                 delay={200}
                 isVisible={isVisible}
               />
               <Benefit
                 title="다양한 결제 수단"
                 desc="카드/계좌이체/간편결제 등 여러 수단을 지원합니다."
-                icon={<CreditCard className="w-5 h-5 text-[#2d4739]" />}
+                icon={<CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-[#2d4739]" />}
                 delay={300}
                 isVisible={isVisible}
               />
@@ -503,7 +505,7 @@ transition-all duration-300 shadow-md hover:shadow-lg"
             {/* --- 하단 CTA --- */}
             {(userIsSeller || userIsPersonalSeller || userIsUser) && (
               <div
-                className="mt-10 md:mt-14 text-center opacity-0 animate-fade-in-slide"
+                className="mt-2 md:mt-12 text-center opacity-0 animate-fade-in-slide"
                 style={{ animationDelay: '0.6s' }}
               >
                 {renderBottomCTAButton()}

@@ -245,7 +245,6 @@ const StoreProducts = () => {
   const handleSortChange = (newSort: string) => {
     setSortBy(newSort);
     setCurrentPage(1);
-
     fetchProducts(1, newSort, searchTerm, selectedCategories);
   };
 
@@ -278,7 +277,6 @@ const StoreProducts = () => {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-
     fetchProducts(page, sortBy, searchTerm, selectedCategories);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -427,9 +425,19 @@ const StoreProducts = () => {
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:underline">
               {storeInfo.storeName || '스토어'} 전체 상품
             </h1>
-
             <p className="text-gray-600">다양한 상품을 만나보세요</p>
           </div>
+
+          <style>{`
+            /* 필요한 애니메이션만 추가 */
+            h1 { animation: slideIn 0.5s ease-out; }
+            p { animation: slideIn 0.5s ease-out 0.2s both; }
+            
+            @keyframes slideIn {
+              from { opacity: 0; transform: translateY(10px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
 
           {/* 검색바 */}
           <div className="relative mb-6">
@@ -454,49 +462,50 @@ const StoreProducts = () => {
           </div>
 
           {/* 필터 바 */}
-          <div className="flex flex-col md:flex-row gap-4 mb-8">
-            {/* 정렬 */}
-            <div className="relative w-full max-w-[220px]">
-              <select
-                value={sortBy}
-                onChange={(e) => handleSortChange(e.target.value)}
-                className="w-full appearance-none bg-white border border-gray-300 rounded-lg px-4 pr-10 py-2 md:py-2.5 focus:outline-none focus:ring-2 focus:ring-[#2d4739]"
-                disabled={loading}
-              >
-                {sortOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              </span>
-            </div>
-
-            {/* 카테고리 필터 토글 */}
-            <button
-              onClick={() => setShowCategoryFilter(!showCategoryFilter)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-              disabled={loading}
-              aria-expanded={showCategoryFilter}
-            >
-              카테고리별
-              <ChevronDown
-                className={`w-4 h-4 transition-transform ${showCategoryFilter ? 'rotate-180' : ''}`}
-              />
-            </button>
-
-            {/* 선택된 필터 표시 */}
-            {selectedCategories.length > 0 && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span>선택된 카테고리: {selectedCategories.length}개</span>
-
-                <button onClick={resetFilters} className="text-[#2d4739] hover:underline">
-                  전체 해제
-                </button>
+          <div className="mb-8 border-b border-gray-100 bg-white">
+            <div className="py-3 flex flex-col md:flex-row gap-3 md:gap-4 items-start md:items-center">
+              {/* 정렬 */}
+              <div className="relative w-full max-w-[220px]">
+                <select
+                  value={sortBy}
+                  onChange={(e) => handleSortChange(e.target.value)}
+                  className="w-full appearance-none bg-white border border-gray-300 rounded-lg px-4 pr-10 py-2 md:py-2.5 focus:outline-none focus:ring-2 focus:ring-[#2d4739]"
+                  disabled={loading}
+                >
+                  {sortOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                </span>
               </div>
-            )}
+
+              {/* 카테고리 필터 토글 */}
+              <button
+                onClick={() => setShowCategoryFilter(!showCategoryFilter)}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                disabled={loading}
+                aria-expanded={showCategoryFilter}
+              >
+                카테고리별
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform ${showCategoryFilter ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {/* 선택된 필터 표시 */}
+              {selectedCategories.length > 0 && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <span>선택된 카테고리: {selectedCategories.length}개</span>
+                  <button onClick={resetFilters} className="text-[#2d4739] hover:underline">
+                    전체 해제
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 카테고리 필터 섹션 */}
@@ -670,7 +679,9 @@ const StoreProducts = () => {
           )}
 
           {/* 페이지네이션 */}
-          {!loading && allProducts.length > 0 && <div className="mt-8">{renderPagination()}</div>}
+          {!loading && allProducts.length > 0 && (
+            <div className="mt-8">{renderPagination()}</div>
+          )}
         </div>
       </div>
     </div>

@@ -89,6 +89,7 @@ export default function Storenavbar({ cpath: cpathProp }: StorenavbarProps) {
     const id = currentUser?.memberId;
     return !!(id && storeInfo?.storeOwnerId && String(id) === String(storeInfo.storeOwnerId));
   }, [storeInfo?.storeOwnerId]);
+
   // 스토어 정보 로드 (store/cpath 변경 시마다)
   useEffect(() => {
     const controller = new AbortController();
@@ -103,7 +104,6 @@ export default function Storenavbar({ cpath: cpathProp }: StorenavbarProps) {
         const url = `/${store}/seller`.replace(/\/{2,}/g, '/');
 
         const res: ApiResponse<StoreInfo> = await legacyGet(url);
-        // console.log(res);
         const storeData: StoreInfo = res.data;
 
         setStoreInfo({
@@ -152,7 +152,7 @@ export default function Storenavbar({ cpath: cpathProp }: StorenavbarProps) {
     [location.pathname, cpath]
   );
 
-  // 메뉴 구성
+  // 메뉴 구성 (데스크톱용은 메인 홈 포함 유지)
   const DESKTOP_MENU = useMemo<MenuItem[]>(() => {
     const items: MenuItem[] = [
       { label: '전체상품', href: base('/products') },
@@ -167,16 +167,15 @@ export default function Storenavbar({ cpath: cpathProp }: StorenavbarProps) {
     return items;
   }, [isStoreOwner, store, cpath]);
 
+  // ✅ 모바일 상단 메뉴: "메인 홈" 제거 + 균등 분할(Grid 4)
   const MOBILE_TOP_MENU = useMemo<MenuItem[]>(() => {
-    const items: MenuItem[] = [
+    return [
       { label: '전체상품', href: base('/products') },
       { label: '스토어정보', href: base('/info') },
       { label: '클래스', href: base('/classes') },
       { label: '공지/소식', href: base('/notices') },
     ];
-    items.push({ label: '메인 홈', href: `${cpath}/main` });
-    return items;
-  }, [isStoreOwner, store, cpath]);
+  }, [store, cpath]); // 굳이 isStoreOwner 필요X
 
   return (
     <div className="font-jua">
@@ -251,28 +250,29 @@ export default function Storenavbar({ cpath: cpathProp }: StorenavbarProps) {
             </nav>
           </div>
 
-          {/* 모바일 상단 메뉴 (스크롤 영역 상단) */}
-          <nav className="md:hidden flex h-12 items-center justify-between overflow-x-auto">
-            <div className="flex gap-4 min-w-max px-2">
+          {/* ✅ 모바일 상단 메뉴: 균등 그리드 4, 스크롤 제거 */}
+          <nav className="md:hidden">
+            <ul className="grid grid-cols-4">
               {MOBILE_TOP_MENU.map((m) => {
                 const normalizedHref = stripCpath(m.href, cpath);
                 const active = currentPath === normalizedHref || currentPath === m.href;
                 return (
-                  <a
-                    key={m.href}
-                    href={m.href}
-                    className={[
-                      'text-center text-[14px] py-2 leading-none border-b-2 whitespace-nowrap px-2',
-                      active
-                        ? 'font-bold text-[#2D4739] border-transparent'
-                        : 'text-[#2D4739] hover:text-[#1b2e23] border-transparent hover:border-[#2D4739]',
-                    ].join(' ')}
-                  >
-                    {m.label}
-                  </a>
+                  <li key={m.href} className="col-span-1">
+                    <a
+                      href={m.href}
+                      className={[
+                        'flex h-12 items-center justify-center text-[14px] border-b-2',
+                        active
+                          ? 'font-bold text-[#2D4739] border-transparent'
+                          : 'text-[#2D4739] hover:text-[#1b2e23] border-transparent hover:border-[#2D4739]',
+                      ].join(' ')}
+                    >
+                      {m.label}
+                    </a>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           </nav>
         </div>
       </header>
@@ -321,8 +321,8 @@ export default function Storenavbar({ cpath: cpathProp }: StorenavbarProps) {
         </div>
       </nav>
 
-      {/* 하단바 가려짐 방지 */}
-      <div className="md:hidden h-14" style={{ marginBottom: safeBottom }} />
+      {/* 하단바 가려짐 방지 여백이 필요하면 주석 해제 */}
+      {/* <div className="md:hidden h-14" style={{ marginBottom: safeBottom }} /> */}
     </div>
   );
 }
@@ -352,12 +352,23 @@ function HomeExpander({ store, cpath }: { store: string; cpath: string }) {
 
   return (
     <div ref={rootRef} className="relative">
+      {/* ✅ 배경 오버레이 */}
+      {open && (
+        <button
+          aria-hidden
+          tabIndex={-1}
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px]"
+        />
+      )}
+
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls="home-expander-panel"
         className={[
+          'relative z-50',
           'flex flex-col items-center justify-center gap-1 w-20 h-14',
           open ? 'text-[#2D4739]' : 'text-[#2D4739] opacity-90 hover:opacity-100',
           'active:scale-95 transition-transform',
@@ -370,8 +381,8 @@ function HomeExpander({ store, cpath }: { store: string; cpath: string }) {
       <div
         id="home-expander-panel"
         className={[
-          'absolute top-1/2 -translate-y-1/2 left-full ml-2',
-          'rounded-full bg-white/80 backdrop-blur px-2',
+          'absolute top-1/2 -translate-y-1/2 left-full ml-2 z-50',
+          'rounded-full bg-white/85 backdrop-blur px-2',
           'overflow-hidden shadow-sm border border-[#e5e7eb]',
           'transition-all duration-200',
           open ? 'w-56 opacity-100' : 'w-0 opacity-0 pointer-events-none',
@@ -395,7 +406,6 @@ function HomeExpander({ store, cpath }: { store: string; cpath: string }) {
             onClick={() => setOpen(false)}
           >
             <Store className="h-4 w-4" />
-
             <span>{store}</span>
           </a>
         </div>

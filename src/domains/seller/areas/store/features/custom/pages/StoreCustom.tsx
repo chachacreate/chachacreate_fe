@@ -1,9 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Star, ChevronRight } from 'lucide-react';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
+import { get, patch } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
 
+// ==== 타입 (필요시 프로젝트 공용 타입으로 이동 가능) ====
 interface Product {
   id: string;
   title: string;
@@ -12,16 +15,26 @@ interface Product {
   imageUrl?: string;
   purchases?: number;
 }
-
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string; // ← heroBgColor와 매핑
+  createdAt: string;
+  updatedAt: string;
+}
 interface StoreSettings {
-  fontFamily: string;
+  fontId?: number; // ✅ 옵션 순서=ID
+  iconId?: number; // ✅ 옵션 순서=ID
   fontColor: string;
   headerFooterBg: string;
   descriptionColor: string;
   noticeColor: string;
-  highlightColor: string;
-  heroBgColor: string;
-  iconType: string;
+  heroBgColor: string; // 저장 시 popularColor로 저장
 }
 
 const fontOptions = [
@@ -103,48 +116,120 @@ const mockStoreInfo = {
 };
 
 const formatPrice = (n: number) => n.toLocaleString('ko-KR') + '원';
+const toHex6 = (v: string) => (v ? v.trim().toUpperCase() : v);
 
 export default function StoreCustom() {
   const { storeUrl = 'main' } = useParams<{ storeUrl: string }>();
 
-  const defaultSettings: StoreSettings = {
-    fontFamily: "'Noto Sans KR', sans-serif",
-    fontColor: '#1f2937',
-    headerFooterBg: '#FDFAF2',
-    descriptionColor: '#4b5563',
-    noticeColor: '#7A241F',
-    highlightColor: '#2D4739',
-    heroBgColor: '#F3F0E8',
-    iconType: 'star',
-  };
-
-  // Initialize settings from localStorage based on storeUrl
-  const [settings, setSettings] = useState<StoreSettings>(() => {
-    const savedSettings = localStorage.getItem(`storeSettings_${storeUrl}`);
-    return savedSettings ? JSON.parse(savedSettings) : defaultSettings;
+  const [loading, setLoading] = useState(false);
+  const [settings, setSettings] = useState<StoreSettings>({
+    fontId: undefined,
+    iconId: undefined,
+    fontColor: '#000000',
+    headerFooterBg: '#676F58',
+    descriptionColor: '#FFF6EE',
+    noticeColor: '#FFF7DB',
+    heroBgColor: '#FFF7DB', // = popularColor 기본값
   });
+
+  // ===== 초기 로드(GET) =====
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const res: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+          `/api/seller/${storeUrl}/store/custom`
+        );
+        const d = res.data;
+        if (mounted && d) {
+          setSettings((prev) => ({
+            ...prev,
+            fontId: d.font?.id ?? prev.fontId,
+            iconId: d.icon?.id ?? prev.iconId,
+            fontColor: d.fontColor ?? prev.fontColor,
+            headerFooterBg: d.headerFooterColor ?? prev.headerFooterBg,
+            descriptionColor: d.descriptionColor ?? prev.descriptionColor,
+            noticeColor: d.noticeColor ?? prev.noticeColor,
+            heroBgColor: d.popularColor ?? prev.heroBgColor, // ✅ popular_color → heroBgColor
+          }));
+        }
+      } catch {
+        // 404 등: 최초 생성 전일 수 있음 → 무시
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [storeUrl]);
+
+  // 미리보기용 폰트/아이콘 매핑 (옵션 순서=ID)
+  const previewFontFamily =
+    (settings.fontId && fontOptions[settings.fontId - 1]?.value) || "'Noto Sans KR', sans-serif";
+  const previewIconType = (settings.iconId && iconOptions[settings.iconId - 1]?.value) || 'star';
 
   const themeVars = useMemo(
     () => ({
       ['--store-font-color']: settings.fontColor,
-      ['--store-highlight']: settings.highlightColor,
       ['--store-notice']: settings.noticeColor,
       ['--store-desc']: settings.descriptionColor,
       ['--store-header-bg']: settings.headerFooterBg,
       ['--store-hero-bg']: settings.heroBgColor,
-      fontFamily: settings.fontFamily,
+      fontFamily: previewFontFamily,
       color: settings.fontColor,
     }),
-    [settings]
+    [settings, previewFontFamily]
   );
 
-  const handleInputChange = (field: keyof StoreSettings, value: string) => {
-    setSettings((prev) => ({ ...prev, [field]: value }));
+  const handleSelectId = (field: 'fontId' | 'iconId', value: string) => {
+    setSettings((p) => ({ ...p, [field]: value ? Number(value) : undefined }));
+  };
+  const handleColor = (field: keyof StoreSettings, value: string) => {
+    setSettings((p) => ({ ...p, [field]: value }));
   };
 
-  const handleSave = () => {
-    localStorage.setItem(`storeSettings_${storeUrl}`, JSON.stringify(settings));
-    alert('설정이 저장되었습니다. 스토어 페이지에서 확인할 수 있습니다.');
+  // ===== 저장(PATCH) =====
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const payload = {
+        fontId: settings.fontId,
+        iconId: settings.iconId,
+        fontColor: toHex6(settings.fontColor),
+        headerFooterColor: toHex6(settings.headerFooterBg),
+        descriptionColor: toHex6(settings.descriptionColor),
+        noticeColor: toHex6(settings.noticeColor),
+        popularColor: toHex6(settings.heroBgColor), // ✅ hero → popular_color
+      };
+      const res: ApiResponse<StoreCustomDTO> = await patch<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`,
+        payload
+      );
+      const d = res.data;
+      if (d) {
+        setSettings((prev) => ({
+          ...prev,
+          fontId: d.font?.id ?? prev.fontId,
+          iconId: d.icon?.id ?? prev.iconId,
+          fontColor: d.fontColor ?? prev.fontColor,
+          headerFooterBg: d.headerFooterColor ?? prev.headerFooterBg,
+          descriptionColor: d.descriptionColor ?? prev.descriptionColor,
+          noticeColor: d.noticeColor ?? prev.noticeColor,
+          heroBgColor: d.popularColor ?? prev.heroBgColor,
+        }));
+      }
+      alert(res.message || '저장 완료되었습니다.');
+    } catch (e: any) {
+      alert(
+        e?.response?.data?.message ||
+          e?.message ||
+          '저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -158,228 +243,241 @@ export default function StoreCustom() {
               <h1 className="text-xl sm:text-2xl font-bold">스토어 정보 관리</h1>
               <p className="text-gray-600 mt-1">스토어와 판매자 정보를 관리하세요.</p>
             </div>
+            {loading && <div className="text-sm text-gray-500">저장/불러오는 중…</div>}
           </div>
 
-          {/* Customization Form */}
+          {/* Form */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* 글꼴(ID) */}
             <div>
-              <label className="block text-sm font-medium mb-1">글꼴 종류 *</label>
+              <label className="block text-sm font-medium mb-1">글꼴 *</label>
               <select
-                value={settings.fontFamily}
-                onChange={(e) => handleInputChange('fontFamily', e.target.value)}
+                value={settings.fontId ?? ''}
+                onChange={(e) => handleSelectId('fontId', e.target.value)}
                 className="w-full p-2 border rounded"
               >
-                {fontOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
+                <option value="">선택하세요</option>
+                {fontOptions.map((opt, idx) => (
+                  <option key={opt.label} value={idx + 1}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
             </div>
+
+            {/* 아이콘(ID) */}
+            <div>
+              <label className="block text-sm font-medium mb-1">아이콘 *</label>
+              <select
+                value={settings.iconId ?? ''}
+                onChange={(e) => handleSelectId('iconId', e.target.value)}
+                className="w-full p-2 border rounded"
+              >
+                <option value="">선택하세요</option>
+                {iconOptions.map((opt, idx) => (
+                  <option key={opt.label} value={idx + 1}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 색상들 */}
             <div>
               <label className="block text-sm font-medium mb-1">글꼴 색상 *</label>
               <input
                 type="color"
                 value={settings.fontColor}
-                onChange={(e) => handleInputChange('fontColor', e.target.value)}
+                onChange={(e) => handleColor('fontColor', e.target.value)}
                 className="w-full h-10 border rounded"
               />
             </div>
+
             <div>
               <label className="block text-sm font-medium mb-1">헤더 & 풋터 색상 *</label>
               <input
                 type="color"
                 value={settings.headerFooterBg}
-                onChange={(e) => handleInputChange('headerFooterBg', e.target.value)}
+                onChange={(e) => handleColor('headerFooterBg', e.target.value)}
                 className="w-full h-10 border rounded"
               />
             </div>
+
             <div>
               <label className="block text-sm font-medium mb-1">스토어 설명 색상 *</label>
               <input
                 type="color"
                 value={settings.descriptionColor}
-                onChange={(e) => handleInputChange('descriptionColor', e.target.value)}
+                onChange={(e) => handleColor('descriptionColor', e.target.value)}
                 className="w-full h-10 border rounded"
               />
             </div>
+
             <div>
               <label className="block text-sm font-medium mb-1">공지사항 색상 *</label>
               <input
                 type="color"
                 value={settings.noticeColor}
-                onChange={(e) => handleInputChange('noticeColor', e.target.value)}
+                onChange={(e) => handleColor('noticeColor', e.target.value)}
                 className="w-full h-10 border rounded"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">인기상품 & 대표상품 색상 *</label>
-              <input
-                type="color"
-                value={settings.highlightColor}
-                onChange={(e) => handleInputChange('highlightColor', e.target.value)}
-                className="w-full h-10 border rounded"
-              />
-            </div>
+
+            {/* 요구사항: 인기&대표 색상 입력 제거 */}
+
             <div>
               <label className="block text-sm font-medium mb-1">히어로 배경 색상 *</label>
               <input
                 type="color"
                 value={settings.heroBgColor}
-                onChange={(e) => handleInputChange('heroBgColor', e.target.value)}
+                onChange={(e) => handleColor('heroBgColor', e.target.value)}
                 className="w-full h-10 border rounded"
               />
+              <p className="mt-1 text-xs text-gray-400">
+                * 이 값은 서버의 <code>popular_color</code> 컬럼으로 저장됩니다.
+              </p>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">아이콘 종류 *</label>
-              <select
-                value={settings.iconType}
-                onChange={(e) => handleInputChange('iconType', e.target.value)}
-                className="w-full p-2 border rounded"
-              >
-                {iconOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+
             <div className="md:col-span-2">
               <button
                 onClick={handleSave}
-                className="w-full md:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                disabled={loading}
+                className="w-full md:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-60"
               >
                 저장하기
               </button>
             </div>
           </div>
 
-          {/* Preview Section */}
-          <div className="w-full max-w-[1440px] mx-auto px-[240px]" style={themeVars}>
-            {/* Hero Section */}
-            <section className="w-full">
-              <div className="w-full" style={{ backgroundColor: 'var(--store-hero-bg)' }}>
-                <div className="h-[200px] sm:h-[240px] lg:h-[280px]" />
-              </div>
-              <div className="relative">
-                <div className="-mt-[88px] sm:-mt-[100px]">
-                  <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">
-                    <div className="flex items-start gap-6">
-                      <img
-                        src={mockStoreInfo.logoUrl}
-                        alt={`${mockStoreInfo.name} logo`}
-                        className="w-20 h-20 rounded-xl object-cover border border-gray-200"
-                      />
-                      <div className="flex-1">
-                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                          {mockStoreInfo.name}
-                        </h1>
-                        {mockStoreInfo.description && (
-                          <p
-                            className="mt-2 text-sm sm:text-base leading-relaxed"
-                            style={{ color: 'var(--store-desc)' }}
-                          >
-                            {mockStoreInfo.description}
-                          </p>
-                        )}
-                        <div className="mt-4 flex flex-wrap gap-3">
-                          <Link
-                            to={`/${storeUrl}/products`}
-                            className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white hover:opacity-95"
-                            style={{ backgroundColor: 'var(--store-highlight)' }}
-                          >
-                            전체 상품 보기
-                            <ChevronRight className="w-4 h-4 ml-1" />
-                          </Link>
-                          <Link
-                            to={`/store/${storeUrl}/notices`}
-                            className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50"
-                          >
-                            공지사항
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="h-6" />
-                </div>
-              </div>
-            </section>
-
-            {/* Notice Section */}
-            {mockStoreInfo.noticeImportant && (
-              <section className="w-full">
-                <div className="rounded-xl border p-5 sm:p-6 bg-white">
-                  <div
-                    className="text-sm font-semibold mb-2"
-                    style={{ color: 'var(--store-notice)' }}
-                  >
-                    중요 공지사항
-                  </div>
-                  <p className="text-sm sm:text-base leading-relaxed">
-                    {mockStoreInfo.noticeImportant}
-                  </p>
-                </div>
-              </section>
-            )}
-
-            {/* Popular Products */}
-            <StoreSection
-              title="인기 상품 TOP 3"
-              subtitle="구매수가 많은 상품을 모았어요"
-              highlight="var(--store-highlight)"
-              moreLink={`/store/${storeUrl}/products?sort=popular`}
-            >
-              <ProductGrid3
-                products={mockStoreInfo.popularTop3}
-                emptyLabel="인기 상품을 준비 중이에요"
-                iconType={settings.iconType}
-              />
-            </StoreSection>
-
-            {/* Featured Products */}
-            <StoreSection
-              title="대표 상품"
-              subtitle="판매자가 추천하는 스토어 대표작"
-              highlight="var(--store-highlight)"
-              moreLink={`/store/${storeUrl}/products?filter=featured`}
-            >
-              <ProductGrid3
-                products={mockStoreInfo.featured3}
-                emptyLabel="대표 상품을 곧 보여드릴게요"
-                badge="대표"
-                iconType={settings.iconType}
-              />
-            </StoreSection>
-
-            {/* Footer */}
-            <footer className="mt-12 w-full" style={{ backgroundColor: 'var(--store-header-bg)' }}>
-              <div className="w-full py-8 text-sm text-gray-500">
-                © {new Date().getFullYear()} {mockStoreInfo.name}. All rights reserved.
-              </div>
-            </footer>
-          </div>
+          {/* Preview */}
+          <PreviewArea themeVars={themeVars} storeUrl={storeUrl} iconType={previewIconType} />
         </div>
       </SellerSidenavbar>
     </>
   );
 }
 
+function PreviewArea({
+  themeVars,
+  storeUrl,
+  iconType,
+}: {
+  themeVars: React.CSSProperties;
+  storeUrl: string;
+  iconType: string;
+}) {
+  return (
+    <div className="w-full max-w-[1440px] mx-auto px-[240px]" style={themeVars}>
+      {/* Hero Section */}
+      <section className="w-full">
+        <div className="w-full" style={{ backgroundColor: 'var(--store-hero-bg)' }}>
+          <div className="h-[200px] sm:h-[240px] lg:h-[280px]" />
+        </div>
+        <div className="relative">
+          <div className="-mt-[88px] sm:-mt-[100px]">
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">
+              <div className="flex items-start gap-6">
+                <img
+                  src={mockStoreInfo.logoUrl}
+                  alt={`${mockStoreInfo.name} logo`}
+                  className="w-20 h-20 rounded-xl object-cover border border-gray-200"
+                />
+                <div className="flex-1">
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                    {mockStoreInfo.name}
+                  </h1>
+                  {mockStoreInfo.description && (
+                    <p
+                      className="mt-2 text-sm sm:text-base leading-relaxed"
+                      style={{ color: 'var(--store-desc)' }}
+                    >
+                      {mockStoreInfo.description}
+                    </p>
+                  )}
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Link
+                      to={`/${storeUrl}/products`}
+                      className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white hover:opacity-95"
+                      style={{ backgroundColor: 'var(--store-desc)' }}
+                    >
+                      전체 상품 보기
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Link>
+                    <Link
+                      to={`/store/${storeUrl}/notices`}
+                      className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50"
+                    >
+                      공지사항
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="h-6" />
+          </div>
+        </div>
+      </section>
+
+      {/* Notice */}
+      {mockStoreInfo.noticeImportant && (
+        <section className="w-full">
+          <div className="rounded-xl border p-5 sm:p-6 bg-white">
+            <div className="text-sm font-semibold mb-2" style={{ color: 'var(--store-notice)' }}>
+              중요 공지사항
+            </div>
+            <p className="text-sm sm:text-base leading-relaxed">{mockStoreInfo.noticeImportant}</p>
+          </div>
+        </section>
+      )}
+
+      {/* Popular / Featured */}
+      <StoreSection
+        title="인기 상품 TOP 3"
+        subtitle="구매수가 많은 상품을 모았어요"
+        moreLink={`/store/${storeUrl}/products?sort=popular`}
+      >
+        <ProductGrid3
+          products={mockStoreInfo.popularTop3}
+          emptyLabel="인기 상품을 준비 중이에요"
+          iconType={iconType}
+        />
+      </StoreSection>
+
+      <StoreSection
+        title="대표 상품"
+        subtitle="판매자가 추천하는 스토어 대표작"
+        moreLink={`/store/${storeUrl}/products?filter=featured`}
+      >
+        <ProductGrid3
+          products={mockStoreInfo.featured3}
+          emptyLabel="대표 상품을 곧 보여드릴게요"
+          badge="대표"
+          iconType={iconType}
+        />
+      </StoreSection>
+
+      {/* Footer */}
+      <footer className="mt-12 w-full" style={{ backgroundColor: 'var(--store-header-bg)' }}>
+        <div className="w-full py-8 text-sm text-gray-500">
+          © {new Date().getFullYear()} {mockStoreInfo.name}. All rights reserved.
+        </div>
+      </footer>
+    </div>
+  );
+}
+
 function StoreSection(props: {
   title: string;
   subtitle?: string;
-  highlight?: string;
   moreLink?: string;
   children: React.ReactNode;
 }) {
-  const { title, subtitle, highlight = '#2D4739', moreLink, children } = props;
+  const { title, subtitle, moreLink, children } = props;
   return (
     <section className="w-full mt-10">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: highlight }}>
-            {title}
-          </h2>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{title}</h2>
           {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
         </div>
         {moreLink && (

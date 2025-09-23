@@ -4,8 +4,20 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import Footer from '@src/shared/areas/layout/features/footer/Footer';
 import { ChevronDown, X } from 'lucide-react';
-import { legacyGet } from '@src/libs/request';
+import { legacyGet, get } from '@src/libs/request';
 import { Link } from 'react-router-dom';
+interface HomeClassItem {
+  id: number;
+  title: string;
+  price: number;
+  thumbnailUrl: string;
+  storeName: string | null;
+  startDate: string; // ISO
+  endDate: string; // ISO
+  remainSeat: number;
+  availableTimes?: string[];
+}
+
 interface Store {
   storeId: string;
   storeUrl: string;
@@ -41,6 +53,26 @@ const MainLandingPage = () => {
   const [mainData, setMainData] = useState<MainHomeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [mainClasses, setMainClasses] = useState<HomeClassItem[]>([]);
+  const [classesLoading, setClassesLoading] = useState(true);
+  const [classesError, setClassesError] = useState<string | null>(null);
+
+  const fetchMainClasses = async () => {
+    try {
+      setClassesLoading(true);
+      // 잔여석 오름차순으로 limit 만큼 반환 (원하면 limit 값 변경)
+      const res = await get<HomeClassItem[]>('/main/class', { limit: 10 });
+      setMainClasses(res.data ?? []);
+      setClassesError(null);
+    } catch (e) {
+      console.error('메인 클래스 조회 실패:', e);
+      setMainClasses([]);
+      setClassesError('클래스 정보를 불러오지 못했습니다.');
+    } finally {
+      setClassesLoading(false);
+    }
+  };
 
   const fetchMainHomeInfo = async () => {
     try {
@@ -109,7 +141,17 @@ const MainLandingPage = () => {
 
   useEffect(() => {
     fetchMainHomeInfo();
+    fetchMainClasses();
   }, []);
+
+  const formatAvail = (times: string[] | undefined, remainSeat: number, max = 4) => {
+    if (Array.isArray(times) && times.length > 0) {
+      const shown = times.slice(0, max).join(', ');
+      const more = times.length - max;
+      return more > 0 ? `오늘: ${shown} 외 ${more}` : `오늘: ${shown}`;
+    }
+    return `오늘 예약 가능 • 잔여 ${remainSeat}석`;
+  };
 
   if (loading) {
     return (
@@ -231,28 +273,75 @@ const MainLandingPage = () => {
 
             {/* 핸드메이드 클래스 */}
             <div className="bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 flex-1 lg:flex-none lg:h-[200px] flex flex-col min-h-[200px] sm:min-h-[220px]">
-              <div className="flex h-full">
-                <div className="w-44 sm:w-40 lg:w-48 bg-gray-200 flex items-center justify-center flex-shrink-0">
-                  <span className="text-gray-600 text-xs sm:text-sm">클래스 사진</span>
+              {classesLoading ? (
+                <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
+                  클래스 불러오는 중…
                 </div>
-                <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between min-h-0">
-                  <div className="flex-1 min-h-0">
-                    <h3 className="font-bold text-[#2d4739] mb-1 text-sm sm:text-base">클래스명</h3>
-                    <p className="text-xs sm:text-sm text-gray-600 mb-2">스토어명</p>
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="font-semibold text-[#2d4739] text-sm sm:text-base">
-                        가격
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="text-xs sm:text-sm text-gray-500">시간</span>
-                    </div>
-                  </div>
-                  <button className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-colors text-sm sm:text-base flex-shrink-0 mt-auto">
-                    신청하기
-                  </button>
+              ) : classesError ? (
+                <div className="flex-1 flex items-center justify-center text-red-600 text-sm">
+                  {classesError}
                 </div>
-              </div>
+              ) : mainClasses.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
+                  표시할 클래스가 없습니다.
+                </div>
+              ) : (
+                // 잔여석 오름차순 정렬로 받은 리스트의 첫 번째 클래스
+                (() => {
+                  const cls = mainClasses[0];
+                  return (
+                    <div className="flex h-full">
+                      <div className="w-44 sm:w-40 lg:w-48 bg-gray-200 flex items-center justify-center flex-shrink-0">
+                        {cls.thumbnailUrl ? (
+                          <img
+                            src={cls.thumbnailUrl}
+                            alt={cls.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-gray-600 text-xs sm:text-sm">클래스 사진</span>
+                        )}
+                      </div>
+                      <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between min-h-0">
+                        <div className="flex-1 min-h-0">
+                          <h3 className="font-bold text-[#2d4739] mb-1 text-sm sm:text-base line-clamp-2">
+                            {cls.title}
+                          </h3>
+                          <p className="text-xs sm:text-sm text-gray-600 mb-2">
+                            스토어명: {cls.storeName ?? '스토어명'}
+                          </p>
+
+                          <div className="flex justify-between items-center mb-3">
+                            <span className="font-semibold text-[#2d4739] text-sm sm:text-base">
+                              {/* 현재 DTO에 price가 없으므로 ‘—’ 처리 (필요시 DTO에 price 추가해주세요) */}
+                              가격: {cls.price}
+                            </span>
+                            <span className="text-xs sm:text-sm text-gray-500">
+                              잔여석 {cls.remainSeat}석
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center mb-3">
+                            <span className="text-xs sm:text-sm text-gray-500 min-w-0">
+                              <span className="whitespace-nowrap overflow-hidden text-ellipsis block">
+                                {formatAvail(cls.availableTimes, cls.remainSeat, 4)}
+                              </span>
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-colors text-sm sm:text-base flex-shrink-0 mt-auto"
+                          // TODO: 상세 경로 정의되면 연결 (e.g. `/main/classes/${cls.id}` or `/${storeUrl}/classes/${cls.id}`)
+                          onClick={() => (window.location.href = `/main/classes/${cls.id}`)}
+                        >
+                          신청하기
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
             </div>
           </div>
         </section>

@@ -15,6 +15,12 @@ const productDetailPage = lazy(
   () => import('@src/domains/main/areas/home/features/products/pages/MainProductsDetail')
 );
 
+const StoreInfoPage = lazy(() => import('@src/domains/buyer/areas/info/pages/StoreInfo'));
+
+const StoreNoticesPage = lazy(
+  () => import('@src/domains/buyer/areas/notice/pages/StoreNotice')
+);
+
 const suspense = (Comp: LazyExoticComponent<ComponentType<any>>) =>
   createElement(
     Suspense,
@@ -42,13 +48,16 @@ export const buyerRoutes: RouteObject[] = [
           { path: ':productId', element: suspense(productDetailPage) }, // 상품 상세
         ],
       },
+       { path: 'info', 
+        element: suspense(StoreInfoPage) 
+      },
       {
         path: 'classes',
         element: suspense(StoreClassesPage),
       },
       {
         path: 'notices',
-        element: createElement('div', { className: 'p-6' }, '스토어 공지 페이지가 곧 준비됩니다.'),
+        element: suspense(StoreNoticesPage),
       },
       ...mypageRoutes,
     ],

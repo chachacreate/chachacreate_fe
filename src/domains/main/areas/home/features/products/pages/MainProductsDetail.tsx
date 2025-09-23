@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, type JSX } from 'react';
+import { useState, useEffect, useMemo, type JSX } from 'react';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import { Star, ShoppingCart, CreditCard, Flag, Edit, Minus, Plus, ThumbsUp, X } from 'lucide-react';
@@ -241,7 +241,7 @@ const MainProductsDetail = () => {
 
   // 스토어 이름 클릭 시 스토어 정보 페이지로 이동
   const handleStoreClick = () => {
-    window.location.href = `/${product?.storeUrl}/info`;
+    navigate(`/${product?.storeUrl}/info`);
   };
 
   const handleReport = () => {
@@ -268,9 +268,15 @@ const MainProductsDetail = () => {
         console.error('장바구니 추가 실패:', response.message);
         alert('장바구니 추가에 실패했습니다. 다시 시도해주세요.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('API 호출 실패', error);
-      alert('장바구니 추가 중 오류가 발생했습니다.');
+      if (error.code === 'ERR_BAD_REQUEST') {
+        alert('로그인이 필요합니다!');
+        window.location.href = `/auth/login`;
+      } else {
+        alert('장바구니 추가 중 오류가 발생했습니다.');
+        navigate(`/main`);
+      }
     }
   };
 

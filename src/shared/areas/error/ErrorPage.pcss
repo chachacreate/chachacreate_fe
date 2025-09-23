@@ -1,0 +1,111 @@
+.error {
+  margin: 0;
+  padding: 0;
+  font-family: 'Noto Sans KR', sans-serif;
+  background-color: #f8f6ec;
+  color: #2d4739;
+}
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  text-align: center;
+  padding: 30px;
+  max-width: 480px;
+  width: 90%;
+  margin: 0 auto;
+  animation: fadeIn 1.2s ease-in;
+}
+
+.error-image {
+  width: 80%;
+  max-width: 300px;
+  margin-bottom: 30px;
+  animation: breathe 2.5s ease-in-out infinite;
+}
+
+.error-container h1 {
+  font-size: 24px;
+  margin: 10px 0;
+  opacity: 0;
+  animation: fadeInText 1.5s ease forwards;
+  animation-delay: 0.5s;
+}
+
+.error-container p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #555;
+  margin-bottom: 30px;
+  opacity: 0;
+  animation: fadeInText 1.5s ease forwards;
+  animation-delay: 0.8s;
+}
+
+.home-button {
+  display: inline-block;
+  padding: 12px 24px;
+  background-color: #6e8b7c;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  animation: popUp 0.7s ease 1.5s forwards;
+  transform: scale(0.9);
+  opacity: 0;
+}
+
+.home-button:hover {
+  background-color: #56705e;
+  transform: scale(1.05);
+  color: #fff;
+  text-decoration: none;
+}
+
+/* 애니메이션 정의 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInText {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes popUp {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}

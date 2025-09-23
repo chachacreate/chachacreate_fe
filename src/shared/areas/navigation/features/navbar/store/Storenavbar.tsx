@@ -103,7 +103,7 @@ export default function Storenavbar({ cpath: cpathProp }: StorenavbarProps) {
         const url = `/${store}/seller`.replace(/\/{2,}/g, '/');
 
         const res: ApiResponse<StoreInfo> = await legacyGet(url);
-        console.log(res);
+        // console.log(res);
         const storeData: StoreInfo = res.data;
 
         setStoreInfo({

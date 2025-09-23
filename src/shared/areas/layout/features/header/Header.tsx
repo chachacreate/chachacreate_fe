@@ -1,13 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Searchbar from '@src/shared/areas/navigation/features/searchbar/Searchbar';
-import {
-  goToLogin,
-  goToMain,
-  goToMessage,
-  goToSignup,
-  logOut,
-} from '@src/shared/util/LegacyNavigate';
+import { goToLogin, goToSignup, logOut } from '@src/shared/util/LegacyNavigate';
 import { clearTokens, getCurrentUser } from '@src/shared/util/jwtUtils';
 import mobLogo from '@src/shared/resources/images/logo/mainlogo_mob.png';
 import { legacyGet, post } from '@src/libs/request';
@@ -17,7 +11,6 @@ type UserLite = { name: string } | null;
 type HeaderProps = {
   user?: UserLite;
   storeSlug?: string | null;
-  onLogout?: () => Promise<void> | void;
   hideTopBar?: boolean;
 };
 
@@ -31,17 +24,19 @@ type StoreInfo = {
 const RESERVED_PREFIXES = new Set([
   'main',
   'auth',
-  'login',
-  'signup',
+  'auth',
   'admin',
   'api',
   'assets',
   'static',
+  'seller',
+  'resources',
   '',
 ]);
 
-export default function Header({ user, storeSlug, onLogout, hideTopBar = false }: HeaderProps) {
+export default function Header({ user, storeSlug, hideTopBar = false }: HeaderProps) {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [me, setMe] = useState<UserLite>(user ?? null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -54,16 +49,12 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
 
   // 공통 로그아웃
   const handleLogout = async () => {
-    try {
-      if (onLogout) await onLogout();
-    } finally {
-      clearTokens(); // 로컬 토큰 정리
-      setMe(null);
-      setMenuOpen(false);
-      goToMain();
-      await logOut();
-      alert('로그아웃 성공!');
-    }
+    await logOut();
+    clearTokens(); // 로컬 토큰 정리
+    setMe(null);
+    setMenuOpen(false);
+    navigate('/main');
+    alert('로그아웃 성공!');
   };
 
   // 유저 상태 로딩
@@ -83,12 +74,15 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
 
   // 스토어 슬러그 추론
   const inferredStoreSlug = useMemo(() => {
-    if (typeof storeSlug === 'string') return storeSlug;
-    const path = location.pathname.replace(/^\/+/, '');
-    const first = path.split('/')[0] || '';
-    if (!RESERVED_PREFIXES.has(first)) return first;
-    return null;
-  }, [location.pathname, storeSlug]);
+    const path = location.pathname.replace(/^\/+/, ''); // 앞 / 제거
+    const segments = path.split('/');
+
+    // 무조건 첫번째를 가져옴
+    let slugCandidate = segments[0];
+
+    if (!slugCandidate || RESERVED_PREFIXES.has(slugCandidate)) return null;
+    return slugCandidate;
+  }, [location.pathname]);
 
   // 스토어 정보 로드 (스토어 페이지일 때만)
   useEffect(() => {
@@ -101,11 +95,12 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
 
     const loadStoreInfo = async () => {
       try {
-        const url = `/${inferredStoreSlug}/seller`.replace(/\/{2,}/g, '/');
+        const url = `/info/store/${inferredStoreSlug}`.replace(/\/{2,}/g, '/');
 
         // API 응답이 { data: {...}, message: "...", status: 200 } 형태로 래핑되어 있음
         const response = await legacyGet<{ data: StoreInfo; message: string; status: number }>(url);
 
+        // console.log('스토어 정보 로드 성공:', response);
         if (controller.signal.aborted) return;
 
         // response.data에서 실제 스토어 데이터 추출
@@ -117,7 +112,7 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
           storeUrl: storeData.storeUrl,
         });
 
-        console.log('스토어 정보 설정 완료:', storeData.storeName);
+        // console.log('스토어 정보 설정 완료:', storeData.storeName);
       } catch (error: any) {
         if (error?.name === 'AbortError') return;
         console.error('스토어 정보 로드 실패:', error);
@@ -153,21 +148,21 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
     }
 
     try {
-      console.log('채팅방 생성 중...');
+      // console.log('채팅방 생성 중...');
 
       const chatData = await post<any>(`/api/chat/personal/${storeUrl}`, {
         buyerId: buyerId,
       });
 
-      console.log('채팅방 생성/연결 완료:', chatData);
-      window.location.href = `/${storeUrl}/mypage/message`;
+      // console.log('채팅방 생성/연결 완료:', chatData);
+      navigate(`/${storeUrl}/mypage/message`);
     } catch (error: any) {
       console.error('채팅방 생성 실패:', error);
 
       // 409 상태 코드(이미 존재)인 경우에도 메시지 페이지로 이동
       if (error?.response?.status === 409 || error?.response?.status === 200) {
-        console.log('기존 채팅방 사용');
-        window.location.href = `/${storeUrl}/mypage/message`;
+        // console.log('기존 채팅방 사용');
+        navigate(`/${storeUrl}/mypage/message`);
       } else {
         alert('채팅방 생성에 실패했습니다. 다시 시도해주세요.');
       }
@@ -191,7 +186,7 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
     if (isMainPage || !storeInfo) {
       return {
         text: '메시지',
-        action: () => goToMessage(),
+        action: () => navigate(`/main/mypage/message`),
       };
     }
 
@@ -199,7 +194,7 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
     if (isStoreOwner) {
       return {
         text: '메시지',
-        action: () => goToMessage(storeInfo.storeUrl),
+        action: () => navigate(`/${storeSlug}/mypage/message`),
       };
     }
 
@@ -299,9 +294,9 @@ export default function Header({ user, storeSlug, onLogout, hideTopBar = false }
       <div className="md:hidden w-full bg-[#2d4739] text-white">
         <div className="mx-auto w-full max-w-[1920px] px-4 min-[1920px]:px-60 h-[50px] flex items-center gap-3">
           {/* 로고 (왼쪽) */}
-          <button onClick={goToMain} className="flex items-center gap-2 flex-shrink-0">
+          <Link to={'/main'} className="flex items-center gap-2 flex-shrink-0">
             <img src={mobLogo} alt="뜨락상회 로고" className="h-8 w-auto" />
-          </button>
+          </Link>
 
           {/* 검색바 (중앙, flex-1로 공간 차지) */}
           <div className="flex-1 min-w-0">

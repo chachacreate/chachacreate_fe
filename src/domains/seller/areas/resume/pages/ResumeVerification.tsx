@@ -172,7 +172,7 @@ export default function ResumeVerification() {
       const res = await post<ResumeResponseDTO>(`/api/seller/${storeUrl}/resumes`, formData);
 
       alert('이력서 등록 완료!');
-      console.log('등록 응답:', res.data);
+      // console.log('등록 응답:', res.data);
 
       // 미리보기 URL 전부 해제 후 초기화
       previews.forEach(revokeUrl);

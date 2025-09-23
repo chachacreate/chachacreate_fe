@@ -61,7 +61,7 @@ const ProductsOrderSuccess: React.FC = () => {
       try {
         // 상태 변경이므로 POST 사용
         const res = await legacyPost<any>(`/inventory/adjustments/orders/${orderId}`);
-        console.log('[stock-decrease][OK]', res);
+        // console.log('[stock-decrease][OK]', res);
         sessionStorage.setItem(onceKey, '1');
       } catch (err) {
         console.error('[stock-decrease][FAIL]', err);

@@ -6,6 +6,11 @@ import Footer from '@src/shared/areas/layout/features/footer/Footer';
 import { ChevronDown, X } from 'lucide-react';
 import { legacyGet, get } from '@src/libs/request';
 import { Link } from 'react-router-dom';
+// 1. import 부분에 이미지 추가 (파일 상단에)
+import banner1 from '@src/domains/buyer/areas/main/resources/banner1.png';
+import banner2 from '@src/domains/buyer/areas/main/resources/banner2.png';
+import banner3 from '@src/domains/buyer/areas/main/resources/banner3.png';
+
 interface HomeClassItem {
   id: number;
   title: string;
@@ -57,6 +62,7 @@ const MainLandingPage = () => {
   const [mainClasses, setMainClasses] = useState<HomeClassItem[]>([]);
   const [classesLoading, setClassesLoading] = useState(true);
   const [classesError, setClassesError] = useState<string | null>(null);
+
 
   const fetchMainClasses = async () => {
     try {
@@ -118,12 +124,8 @@ const MainLandingPage = () => {
     return price ? `${price.toLocaleString()}원` : '가격 정보 없음';
   };
 
-  useEffect(() => {
-    const bannerInterval = setInterval(() => {
-      setBannerIndex((prev) => (prev + 1) % 3);
-    }, 4000);
-    return () => clearInterval(bannerInterval);
-  }, []);
+  
+  
 
   useEffect(() => {
     const storeInterval = setInterval(() => {
@@ -144,6 +146,18 @@ const MainLandingPage = () => {
     fetchMainClasses();
   }, []);
 
+  // 4. useEffect도 수정 (bannerData 길이에 맞게)
+useEffect(() => {
+  const bannerInterval = setInterval(() => {
+    setBannerIndex((prevIndex) => {
+      // 0 -> 1 -> 2 -> 0 순서로 순환
+      return (prevIndex + 1) % 3;
+    });
+  }, 4000);
+  
+  return () => clearInterval(bannerInterval);
+}, []);
+
   const formatAvail = (times: string[] | undefined, remainSeat: number, max = 4) => {
     if (Array.isArray(times) && times.length > 0) {
       const shown = times.slice(0, max).join(', ');
@@ -152,6 +166,36 @@ const MainLandingPage = () => {
     }
     return `오늘 예약 가능 • 잔여 ${remainSeat}석`;
   };
+
+  const bannerData = [
+  {
+    id: 1,
+    image: banner1,
+    title: "나만의 작품,\n바로 판매하세요!",
+    subtitle: "첫걸음은 어렵지 않아요",
+    description: "손끝에서 탄생한 당신의 작품을 세상과 나눌 수 있습니다. \n지금 바로 개인판매를 시작해보세요." ,
+    buttonText: "판매 시작하기",
+    buttonLink: "/main/sell/sellguide"
+  },
+  {
+    id: 2,
+    image: banner2,
+    title: "나만의 스토어,\n손쉽게 오픈!",
+    subtitle: "브랜드를 만들 시간입니다.",
+    description: "스토어를 개설하고 나만의 브랜드 공간을 꾸며보세요. \n고객과 만나는 첫 관문이 열립니다." ,
+    buttonText: "스토어 개설하기",
+    buttonLink: "/main/store/description"
+  },
+  {
+    id: 3,
+    image: banner3,
+    title: "공예 클래스,\n지금 바로 체험!",
+    subtitle: "만드는 즐거움, 배우는 기쁨",
+    description: "검증된 장인들과 함께하는 클래스에서 새로운 기술을 배우고 \n특별한 경험을 쌓아보세요" ,
+    buttonText: "클래스 찾아보기",
+    buttonLink: "/main/classes"
+  }
+];
 
   if (loading) {
     return (
@@ -200,28 +244,115 @@ const MainLandingPage = () => {
       <Header />
       <Mainnavbar />
 
-      <main className="max-w-[1440px] mx-auto px-4 py-4 sm:py-8 space-y-6 sm:space-y-10">
+      <main className="max-w-[1440px] mx-auto px-4 py-4 sm:py-8 space-y-6 sm:space-y-10 font-jua">
+
+
+
         {/* 배너 영역 */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 relative isolate">
-          <div className="lg:col-span-2 relative overflow-hidden rounded-xl sm:rounded-2xl shadow-lg sm:shadow-2xl bg-gray-200 h-96 sm:h-[500px] lg:h-[500px]">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center text-gray-600 px-4">
-                <h2 className="text-xl sm:text-2xl lg:text-4xl font-bold mb-2">
-                  자동 스와이프 광고 영역
-                </h2>
-                <p className="text-sm sm:text-lg lg:text-xl">3개 배너 자동 전환</p>
+<section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 relative isolate">
+  <div className="lg:col-span-2 relative overflow-hidden rounded-xl sm:rounded-2xl shadow-lg sm:shadow-2xl h-96 sm:h-[500px] lg:h-[500px]">
+    {/* 배너 슬라이드 컨테이너 */}
+    <div className="relative w-full h-full">
+      <div 
+        className="flex transition-transform duration-1000 ease-in-out h-full"
+        style={{ transform: `translateX(-${Number(bannerIndex) * 100}%)` }}
+      >
+        {bannerData.map((banner, index) => (
+          <div 
+            key={banner.id} 
+            className="w-full h-full flex-shrink-0 relative"
+          >
+            {/* 배경 이미지 */}
+            <img 
+              src={banner.image} 
+              alt={banner.title}
+              className="w-full h-full object-cover sm:object-center"
+              style={{objectPosition: window.innerWidth <640 ? '80% center' :'center'}}
+            />
+            
+            {/* 오버레이 */}
+            <div className="absolute inset-0 bg-black/30"></div>
+            
+            {/* 텍스트 콘텐츠 */}
+            <div className="absolute inset-0 flex items-center">
+              <div className="text-left text-white pl-10 sm:pl-10 lg:pl-24 pr-6 sm:pr-8 lg:pr-12 max-w-2xl">
+                <div className="mb-6 sm:mb-8 lg:mb-12">
+                  <h2 className="text-2xl sm:text-3xl lg:text-5xl mb-2 sm:mb-4 whitespace-pre-line">
+                    {banner.title}
+                  </h2>
+                  {/* 다른 애니메이션 효과로 변경하고 싶다면 클래스를 바꾸세요 */}
+                  {/* animate-fade-in-up: 페이드인 + 슬라이드 (현재) */}
+                  {/* animate-typing: 타이핑 효과 */}
+                  {/* animate-glow: 글로우 효과 */}
+                  {/* animate-bounce-in: 바운스 효과 */}
+                  <p className="text-sm sm:text-lg lg:text-xl mb-2 sm:mb-4 font-medium whitespace-pre-line animate-fade-in-up">
+                    {banner.subtitle}
+                  </p>
+                  <p className="text-xs sm:text-base lg:text-lg opacity-90 leading-relaxed whitespace-pre-line">
+                    {banner.description}
+                  </p>
+                </div>
+                
+                {/* 바로가기 버튼 */}
+                <button
+                  onClick={() => {
+                    if (banner.buttonLink.startsWith('http')) {
+                      window.open(banner.buttonLink, '_blank');
+                    } else {
+                      window.location.href = banner.buttonLink;
+                    }
+                  }}
+                  className="inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 hover:border-white/50 rounded-lg transition-all duration-300 group"
+                >
+                  <span className="text-sm sm:text-base mr-2">
+                    {banner.buttonText}
+                  </span>
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform duration-300" />
+                </button>
               </div>
             </div>
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-              {[0, 1, 2].map((index) => (
-                <button
-                  key={index}
-                  className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all ${index === bannerIndex ? 'bg-gray-800' : 'bg-gray-400'}`}
-                  onClick={() => setBannerIndex(index)}
-                />
-              ))}
-            </div>
+
+            
           </div>
+        ))}
+      </div>
+    </div>
+    
+    {/* 인디케이터 점들 */}
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
+      {bannerData.map((_, index) => (
+        <button
+          key={index}
+          className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all duration-300 ${
+            index === bannerIndex ? 'bg-white scale-110' : 'bg-white/60 hover:bg-white/80'
+          }`}
+          onClick={() => setBannerIndex(index)}
+        />
+      ))}
+    </div>
+    
+        {/* 좌우 네비게이션 버튼 (선택사항) */}
+        <button
+      onClick={() => setBannerIndex(bannerIndex === 0 ? bannerData.length - 1 : bannerIndex - 1)}
+      className="absolute left-1 sm:left-4 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-10 sm:h-10 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-300 group"
+    >
+      <svg className="w-3 h-3 sm:w-5 sm:h-5 text-white group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+      </svg>
+    </button>
+    
+    <button
+      onClick={() => setBannerIndex(bannerIndex === bannerData.length - 1 ? 0 : bannerIndex + 1)}
+      className="absolute right-1 sm:right-4 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-10 sm:h-10 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-300 group"
+    >
+      <svg className="w-3 h-3 sm:w-5 sm:h-5 text-white group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
+      </div>
+
+
+
 
           <div className="space-y-4 sm:space-y-6 flex flex-col">
             {/* 금주의 인기스토어 */}
@@ -237,7 +368,7 @@ const MainLandingPage = () => {
                         <img
                           src={topRankStore.logoImg}
                           alt={topRankStore.storeName}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover object-right sm:object-center"
                         />
                       </div>
                       <div className="min-w-0 flex-1">

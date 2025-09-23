@@ -335,70 +335,108 @@ export default function MainClassesPage() {
           style={{ transform: isDesktop && isCalendar ? 'translateX(-50%)' : 'translateX(0)' }}
         >
           {/* Panel 1: 히어로 */}
-          <div id="home" ref={homePanelRef} className="w-full lg:w-1/2 min-h-screen lg:min-h-auto">
-            <div className="h-full w-full max-w-[1920px] mx-auto bg-cover bg-center bg-no-repeat relative">
-              {/* 배경 비디오 */}
-              <video
-                src={classVideo}
-                autoPlay
-                muted
-                loop
-                playsInline
-                className="absolute inset-0 w-full h-full object-cover"
-              />
+<div id="home" ref={homePanelRef} className="w-full lg:w-1/2 min-h-screen lg:min-h-auto">
+  <div className="h-full w-full max-w-[1920px] mx-auto bg-cover bg-center bg-no-repeat relative">
+    {/* 배경 비디오 */}
+    <video
+      src={classVideo}
+      autoPlay
+      muted
+      loop
+      playsInline
+      className="absolute inset-0 w-full h-full object-cover"
+    />
 
-              {/* 은은한 대비 오버레이 (가독성) */}
-              <div className="absolute inset-0 bg-black/10"></div>
-              <div className="absolute inset-0 bg-white/40"></div>
+    {/* 은은한 대비 오버레이 (가독성) */}
+    <div className="absolute inset-0 bg-black/10"></div>
+    <div className="absolute inset-0 bg-white/40"></div>
 
-              <div className="h-full w-full flex items-center justify-center relative z-10">
-                <div className="relative w-full flex items-center min-h-screen lg:min-h-[calc(100vh-98px)]">
-                  <div className="w-full max-w-6xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-                    {/* 메인 타이틀 */}
-                    <div className="relative mb-8 sm:mb-10">
-                      <div className="relative">
-                        {/* 글로우 효과 배경 */}
-                        <div className="absolute -inset-1 sm:-inset-2 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 blur-xl sm:blur-3xl rounded-2xl sm:rounded-3xl animate-pulse"></div>
+    <div className="h-full w-full flex items-start sm:items-center justify-center relative z-10">
+      <div className="relative w-full flex items-start sm:items-center min-h-screen lg:min-h-[calc(100vh-98px)]">
+        <div className="w-full max-w-6xl mx-auto text-center px-4 sm:px-6 lg:px-8 pt-20 sm:pt-0">
+          {/* 메인 타이틀 */}
+          <div className="relative mb-8 sm:mb-10 lg:mb-12">
+            <div className="relative">
+              {/* 글로우 효과 배경 */}
+              <div className="absolute -inset-1 sm:-inset-2 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 blur-xl sm:blur-3xl rounded-2xl sm:rounded-3xl animate-pulse"></div>
 
-                        <h1 className="relative text-3xl sm:text-4xl md:text-6xl lg:text-8xl xl:text-9xl font-black leading-tight tracking-tight">
-                          <div className="mb-2 sm:mb-4 transition-transform duration-700">
-                            <span className="inline-block bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300 bg-clip-text text-transparent drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)]">
-                              Create
-                            </span>
-                            <span className="mx-2 sm:mx-4 text-white/95 font-light drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
-                              your
-                            </span>
-                            <span className="inline-block bg-gradient-to-r from-pink-300 via-rose-300 to-orange-300 bg-clip-text text-transparent drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)]">
-                              Story
-                            </span>
-                          </div>
-                          <div className="transition-transform duration-700">
-                            <span className="text-white/90 font-light text-2xl sm:text-3xl md:text-5xl lg:text-7xl xl:text-8xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
-                              with
-                            </span>
-                            <span className="ml-2 sm:ml-4 md:ml-6 inline-block bg-gradient-to-r from-emerald-300 via-teal-300 to-blue-300 bg-clip-text text-transparent drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)]">
-                              Professionals
-                            </span>
-                          </div>
-                        </h1>
-                      </div>
-                    </div>
-
-                    {/* 서브 타이틀 */}
-                    <div className="relative mb-6 sm:mb-10 max-w-xs sm:max-w-md lg:max-w-3xl mx-auto px-2 sm:px-4">
-                      <div className="bg-white/70 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-3 sm:py-5 shadow-xl">
-                        <p className="text-xs sm:text-sm md:text-base lg:text-lg text-[#2D4739] font-jua leading-relaxed text-center">
-                          오늘 하루, <span className="font-semibold">원데이 클래스</span>로 새로운 경험을 시작해보세요.
-                          <br className="hidden sm:block" />
-                          재료와 공간이 모두 준비되어 있어 <span className="font-semibold">가볍게 배우고 즐길 수 있는 클래스</span>입니다.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+              <h1 className="relative text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-black leading-tight tracking-tight">
+                {/* 첫 줄 */}
+                <div className="mb-2 sm:mb-4 transition-transform duration-700">
+                  <span
+                    className="
+                      inline-block bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300
+                      bg-clip-text text-transparent
+                      drop-shadow-[0_6px_8px_rgba(0,0,0,0.4)] sm:drop-shadow-[0_10px_2px_rgba(0,0,0,0.55)]
+                      motion-safe:animate-bounce
+                      [animation-delay:800ms] [animation-duration:8s]
+                      [animation-iteration-count:1]
+                    "
+                  >
+                    Create
+                  </span>
+                  <span
+                    className="
+                      mx-2 sm:mx-4 text-white/95 font-light
+                      drop-shadow-[0_6px_8px_rgba(0,0,0,0.7)] sm:drop-shadow-[0_10px_10px_rgba(0,0,0,0.85)]
+                    "
+                  >
+                    your
+                  </span>
+                  <span
+                    className="
+                      inline-block bg-gradient-to-r from-pink-300 via-rose-300 to-orange-300
+                      bg-clip-text text-transparent
+                      drop-shadow-[0_6px_8px_rgba(0,0,0,0.4)] sm:drop-shadow-[0_10px_2px_rgba(0,0,0,0.55)]
+                      motion-safe:animate-bounce
+                      [animation-delay:800ms] [animation-duration:8s]
+                      [animation-iteration-count:1]
+                    "
+                  >
+                    Story
+                  </span>
                 </div>
-              </div>
+
+                {/* 둘째 줄 */}
+                <div className="transition-transform duration-700">
+                  <span
+                    className="
+                      text-white/90 font-light text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl
+                      drop-shadow-[0_6px_8px_rgba(0,0,0,0.7)] sm:drop-shadow-[0_10px_20px_rgba(0,0,0,0.85)]
+                    "
+                  >
+                    with
+                  </span>
+                  <span
+                    className="
+                      ml-2 sm:ml-4 md:ml-6 inline-block
+                      bg-gradient-to-r from-emerald-300 via-teal-300 to-blue-300
+                      bg-clip-text text-transparent
+                      drop-shadow-[0_6px_8px_rgba(0,0,0,0.4)] sm:drop-shadow-[0_10px_2px_rgba(0,0,0,0.55)]
+                    "
+                  >
+                    Professionals
+                  </span>
+                </div>
+              </h1>
             </div>
           </div>
+
+          {/* 서브 타이틀 */}
+          <div className="relative mb-6 sm:mb-10 lg:mb-12 max-w-xs sm:max-w-md lg:max-w-3xl mx-auto px-2 sm:px-4">
+            <div className="bg-white/70 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-3 sm:py-5 shadow-xl">
+              <p className="text-xs sm:text-sm md:text-base lg:text-lg text-[#2D4739] font-jua leading-relaxed text-center">
+                오늘 하루, <span className="font-semibold">원데이 클래스</span>로 새로운 경험을 시작해보세요.
+                <br className="hidden sm:block" />
+                재료와 공간이 모두 준비되어 있어 <span className="font-semibold">가볍게 배우고 즐길 수 있는 클래스</span>입니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
           {/* Panel 2: 캘린더 */}
           <div
@@ -425,7 +463,7 @@ export default function MainClassesPage() {
       {/* ===== 메인 콘텐츠 ===== */}
       <main className="relative">
         {/* 1920px 기준 양옆 240px 패딩, 내부 콘텐츠 1440px */}
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-16 xl:px-[240px]">
+        <div className="max-w-[1920px] mx-auto pt-16 px-4 sm:px-6 md:px-8 lg:px-16 xl:px-[240px]">
           <div className="max-w-[1440px] mx-auto">
             {/* ⬇⬇ 여백 축소: 모바일은 최소, 데스크톱은 넉넉 */}
             <div id="search-section" className="" ref={searchSectionRef} />

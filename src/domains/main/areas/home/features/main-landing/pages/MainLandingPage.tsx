@@ -249,158 +249,254 @@ useEffect(() => {
 
 
         {/* 배너 영역 */}
-<section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 relative isolate">
-  <div className="lg:col-span-2 relative overflow-hidden rounded-xl sm:rounded-2xl shadow-lg sm:shadow-2xl h-96 sm:h-[500px] lg:h-[500px]">
-    {/* 배너 슬라이드 컨테이너 */}
-    <div className="relative w-full h-full">
-      <div 
-        className="flex transition-transform duration-1000 ease-in-out h-full"
-        style={{ transform: `translateX(-${Number(bannerIndex) * 100}%)` }}
-      >
-        {bannerData.map((banner, index) => (
-          <div 
-            key={banner.id} 
-            className="w-full h-full flex-shrink-0 relative"
-          >
-            {/* 배경 이미지 */}
-            <img 
-              src={banner.image} 
-              alt={banner.title}
-              className="w-full h-full object-cover sm:object-center"
-              style={{objectPosition: window.innerWidth <640 ? '80% center' :'center'}}
-            />
-            
-            {/* 오버레이 */}
-            <div className="absolute inset-0 bg-black/30"></div>
-            
-            {/* 텍스트 콘텐츠 */}
-            <div className="absolute inset-0 flex items-center">
-              <div className="text-left text-white pl-10 sm:pl-10 lg:pl-24 pr-6 sm:pr-8 lg:pr-12 max-w-2xl">
-                <div className="mb-6 sm:mb-8 lg:mb-12">
-                  <h2 className="text-2xl sm:text-3xl lg:text-5xl mb-2 sm:mb-4 whitespace-pre-line">
-                    {banner.title}
-                  </h2>
-                  {/* 다른 애니메이션 효과로 변경하고 싶다면 클래스를 바꾸세요 */}
-                  {/* animate-fade-in-up: 페이드인 + 슬라이드 (현재) */}
-                  {/* animate-typing: 타이핑 효과 */}
-                  {/* animate-glow: 글로우 효과 */}
-                  {/* animate-bounce-in: 바운스 효과 */}
-                  <p className="text-sm sm:text-lg lg:text-xl mb-2 sm:mb-4 font-medium whitespace-pre-line animate-fade-in-up">
-                    {banner.subtitle}
-                  </p>
-                  <p className="text-xs sm:text-base lg:text-lg opacity-90 leading-relaxed whitespace-pre-line">
-                    {banner.description}
-                  </p>
-                </div>
-                
-                {/* 바로가기 버튼 */}
-                <button
-                  onClick={() => {
-                    if (banner.buttonLink.startsWith('http')) {
-                      window.open(banner.buttonLink, '_blank');
-                    } else {
-                      window.location.href = banner.buttonLink;
-                    }
-                  }}
-                  className="inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 hover:border-white/50 rounded-lg transition-all duration-300 group"
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 relative isolate">
+            <div className="lg:col-span-2 relative overflow-hidden rounded-xl sm:rounded-2xl shadow-lg sm:shadow-2xl h-96 sm:h-[500px] lg:h-[500px]">
+              {/* 배너 슬라이드 컨테이너 */}
+              <div className="relative w-full h-full">
+                <div 
+                  className="flex transition-transform duration-1000 ease-in-out h-full"
+                  style={{ transform: `translateX(-${Number(bannerIndex) * 100}%)` }}
                 >
-                  <span className="text-sm sm:text-base mr-2">
-                    {banner.buttonText}
-                  </span>
-                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform duration-300" />
-                </button>
-              </div>
-            </div>
+                  {bannerData.map((banner, index) => (
+                    <div 
+                      key={banner.id} 
+                      className="w-full h-full flex-shrink-0 relative"
+                    >
+                      {/* 배경 이미지 */}
+                      <img 
+                        src={banner.image} 
+                        alt={banner.title}
+                        className="w-full h-full object-cover sm:object-center"
+                        style={{objectPosition: window.innerWidth <640 ? '80% center' :'center'}}
+                      />
+                      
+                      {/* 오버레이 */}
+                      <div className="absolute inset-0 bg-black/30"></div>
+                      
+                      {/* 텍스트 콘텐츠 */}
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="text-left text-white pl-10 sm:pl-10 lg:pl-24 pr-6 sm:pr-8 lg:pr-12 max-w-2xl">
+                          <div className="mb-6 sm:mb-8 lg:mb-12">
+                            <h2 className="text-2xl sm:text-3xl lg:text-5xl mb-2 sm:mb-4 whitespace-pre-line">
+                              {banner.title}
+                            </h2>
+                            {/* 다른 애니메이션 효과로 변경하고 싶다면 클래스를 바꾸세요 */}
+                            {/* animate-fade-in-up: 페이드인 + 슬라이드 (현재) */}
+                            {/* animate-typing: 타이핑 효과 */}
+                            {/* animate-glow: 글로우 효과 */}
+                            {/* animate-bounce-in: 바운스 효과 */}
+                            <p className="text-sm sm:text-lg lg:text-xl mb-2 sm:mb-4 font-medium whitespace-pre-line animate-fade-in-up">
+                              {banner.subtitle}
+                            </p>
+                            <p className="text-xs sm:text-base lg:text-lg opacity-90 leading-relaxed whitespace-pre-line">
+                              {banner.description}
+                            </p>
+                          </div>
+                          
+                          {/* 바로가기 버튼 */}
+                          <button
+                            onClick={() => {
+                              if (banner.buttonLink.startsWith('http')) {
+                                window.open(banner.buttonLink, '_blank');
+                              } else {
+                                window.location.href = banner.buttonLink;
+                              }
+                            }}
+                            className="inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 hover:border-white/50 rounded-lg transition-all duration-300 group"
+                          >
+                            <span className="text-sm sm:text-base mr-2">
+                              {banner.buttonText}
+                            </span>
+                            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform duration-300" />
+                          </button>
+                        </div>
+                      </div>
 
-            
-          </div>
-        ))}
-      </div>
-    </div>
-    
-    {/* 인디케이터 점들 */}
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-      {bannerData.map((_, index) => (
-        <button
-          key={index}
-          className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all duration-300 ${
-            index === bannerIndex ? 'bg-white scale-110' : 'bg-white/60 hover:bg-white/80'
-          }`}
-          onClick={() => setBannerIndex(index)}
-        />
-      ))}
-    </div>
-    
-        {/* 좌우 네비게이션 버튼 (선택사항) */}
-        <button
-      onClick={() => setBannerIndex(bannerIndex === 0 ? bannerData.length - 1 : bannerIndex - 1)}
-      className="absolute left-1 sm:left-4 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-10 sm:h-10 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-300 group"
-    >
-      <svg className="w-3 h-3 sm:w-5 sm:h-5 text-white group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-      </svg>
-    </button>
-    
-    <button
-      onClick={() => setBannerIndex(bannerIndex === bannerData.length - 1 ? 0 : bannerIndex + 1)}
-      className="absolute right-1 sm:right-4 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-10 sm:h-10 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-300 group"
-    >
-      <svg className="w-3 h-3 sm:w-5 sm:h-5 text-white group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-      </svg>
-    </button>
-      </div>
+                      
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* 인디케이터 점들 */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
+                {bannerData.map((_, index) => (
+                  <button
+                    key={index}
+                    className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all duration-300 ${
+                      index === bannerIndex ? 'bg-white scale-110' : 'bg-white/60 hover:bg-white/80'
+                    }`}
+                    onClick={() => setBannerIndex(index)}
+                  />
+                ))}
+              </div>
+              
+                  {/* 좌우 네비게이션 버튼 (선택사항) */}
+                  <button
+                onClick={() => setBannerIndex(bannerIndex === 0 ? bannerData.length - 1 : bannerIndex - 1)}
+                className="absolute left-1 sm:left-4 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-10 sm:h-10 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-300 group"
+              >
+                <svg className="w-3 h-3 sm:w-5 sm:h-5 text-white group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              <button
+                onClick={() => setBannerIndex(bannerIndex === bannerData.length - 1 ? 0 : bannerIndex + 1)}
+                className="absolute right-1 sm:right-4 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-10 sm:h-10 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-300 group"
+              >
+                <svg className="w-3 h-3 sm:w-5 sm:h-5 text-white group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+                </div>
 
 
 
 
           <div className="space-y-4 sm:space-y-6 flex flex-col">
-            {/* 금주의 인기스토어 */}
-            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all duration-300 flex-1 lg:flex-none lg:h-[256px] flex flex-col justify-between min-h-[220px] sm:min-h-[240px]">
-              <div className="flex-1">
-                <h3 className="font-bold text-base sm:text-lg mb-3 sm:mb-4 text-[#2d4739]">
-                  금주의 인기스토어
-                </h3>
-                {topRankStore ? (
-                  <>
-                    <div className="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-4">
-                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-full flex-shrink-0 overflow-hidden">
-                        <img
-                          src={topRankStore.logoImg}
-                          alt={topRankStore.storeName}
-                          className="w-full h-full object-cover object-right sm:object-center"
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-semibold text-gray-800 text-sm sm:text-base">
-                          {topRankStore.storeName}
-                        </h4>
-                        <span className="text-xs text-gray-500">{topRankStore.categoryName}</span>
-                      </div>
-                    </div>
-                    <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 line-clamp-2">
-                      {topRankStore.storeDetail}
-                    </p>
-                  </>
-                ) : (
-                  <div className="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-4">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-full flex-shrink-0"></div>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="font-semibold text-gray-800 text-sm sm:text-base">스토어명</h4>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <button
-                className="w-full bg-[#2d4739] text-white py-2 rounded-lg hover:bg-[#1e3428] transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base flex-shrink-0 mt-auto"
-                onClick={() =>
-                  topRankStore && handleStoreClick(topRankStore.storeId, topRankStore.storeUrl)
-                }
-              >
-                <span>바로가기</span>
-                <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
-              </button>
+            {/* 금주의 인기스토어 - 프리미엄 디자인 */}
+<div className="group relative bg-gradient-to-br from-white via-amber-50/30 to-orange-50/40 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg hover:shadow-2xl transition-all duration-500 flex-1 lg:flex-none lg:w-full lg:max-w-none lg:h-[256px] flex flex-col justify-between min-h-[220px] sm:min-h-[240px] overflow-hidden border border-amber-200/30">
+  
+  {/* 반짝이는 테두리 효과 */}
+  <div className="absolute inset-[1px] rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-400/10 via-yellow-300/20 via-amber-400/10 to-orange-400/10 group-hover:from-amber-500/20 group-hover:via-yellow-400/30 group-hover:via-amber-500/20 group-hover:to-orange-500/20 transition-all duration-500 -z-10">
+  </div>
+  
+  {/* 움직이는 반짝이 효과 */}
+  <div className="absolute inset-0 rounded-xl sm:rounded-2xl overflow-hidden pointer-events-none">
+    <div className="absolute -top-full -left-full w-full h-full bg-gradient-to-r from-transparent via-white/15 to-transparent transform rotate-45 animate-[shimmer_3s_ease-in-out_infinite] group-hover:animate-[shimmer_1.5s_ease-in-out_infinite]"></div>
+  </div>
+  
+  {/* 배경 장식 요소들 */}
+  <div className="absolute top-2 right-2 w-8 h-8 bg-gradient-to-br from-amber-200/15 to-orange-200/15 rounded-full blur-md animate-pulse pointer-events-none"></div>
+  <div className="absolute bottom-3 left-3 w-6 h-6 bg-gradient-to-br from-yellow-200/10 to-amber-200/10 rounded-full blur-sm animate-pulse delay-1000 pointer-events-none"></div>
+  
+  {/* 메인 콘텐츠 */}
+  <div className="relative z-10 flex-1">
+    <div className="flex items-center gap-4 mb-2 sm:mb-8">
+      {/* 크라운 아이콘 */}
+      <div className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full shadow-lg group-hover:scale-110 transition-transform duration-300">
+        <svg className="w-3 h-3 sm:w-4 sm:h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M5 4a1 1 0 00-.894.553L2.382 8H2a1 1 0 000 2h16a1 1 0 100-2h-.382l-1.724-3.447A1 1 0 0015 4H5zM3 12v4a2 2 0 002 2h10a2 2 0 002-2v-4H3z" />
+        </svg>
+      </div>
+      
+      <h3 className="font-bold text-base sm:text-lg text-transparent bg-gradient-to-r from-[#2d4739] via-amber-700 to-[#2d4739] bg-clip-text">
+        금주의 인기스토어
+      </h3>
+      
+      {/* 불꽃 이모티콘 */}
+      <div className="animate-bounce delay-500">
+        <span className="text-lg sm:text-xl">🔥</span>
+      </div>
+    </div>
+
+    {topRankStore ? (
+      <>
+        <div className="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-4 lg:pr-0">
+          <div className="relative w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0">
+            {/* 로고 배경 효과 */}
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full animate-pulse"></div>
+            <div className="relative w-full h-full bg-gray-200 rounded-full overflow-hidden border-2 border-white shadow-lg group-hover:scale-110 transition-transform duration-300">
+              <img
+                src={topRankStore.logoImg}
+                alt={topRankStore.storeName}
+                className="w-full h-full object-cover object-right sm:object-center"
+              />
             </div>
+            {/* HOT 뱃지 */}
+            <div className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+              <span className="text-white text-[8px] sm:text-[9px] font-bold">HOT</span>
+            </div>
+          </div>
+          
+          <div className="min-w-0 flex-1 lg:flex-none lg:w-auto">
+            <h4 className="font-semibold text-gray-800 text-sm sm:text-base group-hover:text-[#2d4739] transition-colors duration-300">
+              {topRankStore.storeName}
+            </h4>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                {topRankStore.categoryName}
+              </span>
+              <div className="flex items-center gap-1">
+                <svg className="w-3 h-3 text-amber-400 fill-current" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+                <span className="text-xs text-amber-600 font-medium">인기</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 웹에서만 보이는 우측 버튼 */}
+          <div className="hidden lg:flex lg:flex-shrink-0 lg:ml-auto lg:pl-6">
+            <button
+              className="relative bg-gradient-to-r from-[#2d4739] via-emerald-800 to-[#2d4739] text-white px-5 py-2.5 rounded-lg hover:from-[#1e3428] hover:via-emerald-800 hover:to-[#1e3428] transition-all duration-300 flex items-center space-x-2 text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] overflow-hidden group/btn whitespace-nowrap"
+              onClick={() =>
+                topRankStore && handleStoreClick(topRankStore.storeId, topRankStore.storeUrl)
+              }
+            >
+              {/* 버튼 반짝이 효과 */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 to-transparent transform -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 pointer-events-none"></div>
+              
+              <span className="relative z-10">바로가기</span>
+              <ArrowRight className="relative z-10 w-3 h-3 group-hover/btn:translate-x-1 transition-transform duration-300" />
+            </button>
+          </div>
+        </div>
+        
+        <div className="relative bg-white/50 backdrop-blur-sm rounded-lg p-2.5 mb-2 border border-amber-100/40">
+          <p className="text-xs sm:text-sm text-gray-700 line-clamp-2 leading-relaxed pr-4">
+            {topRankStore.storeDetail}
+          </p>
+          {/* 인용부호 장식 */}
+          <div className="absolute top-0.5 left-1 text-amber-300/30 text-sm font-serif pointer-events-none">"</div>
+          <div className="absolute bottom-0.5 right-1 text-amber-300/30 text-sm font-serif pointer-events-none">"</div>
+        </div>
+      </>
+    ) : (
+      <div className="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-4 lg:pr-0">
+        <div className="relative w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0">
+          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 rounded-full animate-pulse"></div>
+        </div>
+        <div className="min-w-0 flex-1 lg:flex-none lg:w-auto">
+          <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded animate-pulse mb-2"></div>
+          <div className="h-3 w-2/3 bg-gradient-to-r from-gray-100 to-gray-200 rounded animate-pulse"></div>
+        </div>
+        
+        {/* 웹에서만 보이는 우측 버튼 (로딩 상태) */}
+        <div className="hidden lg:flex lg:flex-shrink-0 lg:ml-auto lg:pl-6">
+          <div className="w-24 h-10 bg-gradient-to-r from-gray-300 to-gray-400 rounded-lg animate-pulse"></div>
+        </div>
+      </div>
+    )}
+  </div>
+  
+  {/* 모바일에서만 보이는 하단 버튼 */}
+  <button
+    className="relative z-10 w-full bg-gradient-to-r from-[#2d4739] via-emerald-700 to-[#2d4739] text-white py-2 sm:py-2.5 rounded-lg hover:from-[#1e3428] hover:via-emerald-800 hover:to-[#1e3428] transition-all duration-300 flex items-center justify-center space-x-2 text-sm sm:text-base flex-shrink-0 mt-1 shadow-lg hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] overflow-hidden group/btn lg:hidden"
+    onClick={() =>
+      topRankStore && handleStoreClick(topRankStore.storeId, topRankStore.storeUrl)
+    }
+  >
+    {/* 버튼 반짝이 효과 */}
+    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 to-transparent transform -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 pointer-events-none"></div>
+    
+    <span className="relative z-10 font-semibold">바로가기</span>
+    <ArrowRight className="relative z-10 w-3 h-3 sm:w-4 sm:h-4 group-hover/btn:translate-x-1 transition-transform duration-300" />
+  </button>
+</div>
+
+<style>{`
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%) translateY(-100%) rotate(45deg);
+    }
+    100% {
+      transform: translateX(200%) translateY(200%) rotate(45deg);
+    }
+  }
+`}</style>
+
 
             {/* 핸드메이드 클래스 */}
             <div className="bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 flex-1 lg:flex-none lg:h-[200px] flex flex-col min-h-[200px] sm:min-h-[220px]">

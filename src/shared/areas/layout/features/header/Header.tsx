@@ -304,7 +304,6 @@ export default function Header({ user, storeSlug, hideTopBar = false }: HeaderPr
               variant="navDark"
               hideButton
               wrapperClassName="[&>svg]:hidden w-full"
-              inputClassName="w-full px-3 py-1.5 text-sm bg-white/10 border border-white/20 rounded-full text-white placeholder-white/60 focus:outline-none focus:bg-white/20 focus:border-white/40"
               placeholder="검색어를 입력하세요"
             />
           </div>

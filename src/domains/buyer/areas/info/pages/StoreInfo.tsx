@@ -12,6 +12,8 @@ import {
   Sparkles,
   Award,
   Calendar,
+  Star,
+  Shield,
 } from 'lucide-react';
 
 // ✅ 레이아웃 컴포넌트
@@ -108,101 +110,138 @@ export default function StoreInfo() {
             
             {/* 제목 섹션 - 개선된 디자인 */}
             <div className="mb-8 text-center">
-              <div className="inline-flex items-center gap-3 mb-4 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-white/30 shadow-lg">
-                <Sparkles className="h-5 w-5 text-blue-500 animate-pulse" />
-                <span className="text-sm font-medium text-gray-600 tracking-wide">Store Information</span>
+              <div className="inline-flex items-center gap-3 mb-6 px-6 py-3 bg-gradient-to-r from-slate-50/90 to-gray-50/90 backdrop-blur-md rounded-2xl border border-gray-200/50 shadow-xl">
+                <div className="relative">
+                  <div className="p-2 bg-gradient-to-br from-slate-100 to-gray-100 rounded-xl">
+                    <StoreIcon className="h-5 w-5 text-gray-600" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full animate-pulse"></div>
+                </div>
+                <span className="text-sm font-semibold text-gray-700 tracking-wide">Store Information</span>
               </div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-[#2d4739] to-indigo-800 bg-clip-text text-transparent mb-3">
+              
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold bg-gradient-to-r from-gray-900 via-slate-800 to-gray-900 bg-clip-text text-transparent mb-4 tracking-tight">
                 스토어 정보
               </h1>
-              <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-                판매자와 스토어에 대한 상세한 정보를 확인하세요
+              
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <div className="h-px w-16 bg-gradient-to-r from-transparent to-gray-300"></div>
+                <div className="flex items-center gap-1">
+                  <Star className="h-4 w-4 text-amber-400 fill-current" />
+                  <Star className="h-3 w-3 text-amber-300 fill-current" />
+                  <Star className="h-4 w-4 text-amber-400 fill-current" />
+                </div>
+                <div className="h-px w-16 bg-gradient-to-l from-transparent to-gray-300"></div>
+              </div>
+              
+              <p className="text-gray-600 text-lg max-w-2xl mx-auto leading-relaxed">
+                신뢰할 수 있는 판매자와 스토어에 대한 상세한 정보를 확인하세요
               </p>
             </div>
 
             {/* 헤더 카드 - 대폭 개선 */}
-<div className={`group relative overflow-hidden rounded-3xl bg-white/90 backdrop-blur-sm border border-[#2d4739]/20 shadow-xl hover:shadow-2xl hover:border-[#2d4739]/40 transition-all duration-700 mb-8 ${
-  isVisible ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'
-}`} style={{ animationDelay: '200ms' }}>
-  
-  {/* 카드 배경 그라데이션 */}
-  <div className="absolute inset-0 bg-gradient-to-r from-[#2d4739]/5 via-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-  
-  <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:gap-8 sm:p-10">
-    
-    {/* 로고 섹션 */}
-    <div className="relative">
-      <div className="h-24 w-24 sm:h-28 sm:w-28 overflow-hidden rounded-2xl border-2 border-[#2d4739]/30 shadow-xl bg-gradient-to-br from-white to-emerald-50 group-hover:scale-110 group-hover:border-[#2d4739]/50 transition-all duration-500">
-        {loading ? (
-          <div className="h-full w-full bg-gradient-to-br from-emerald-100 via-[#2d4739]/15 to-teal-200/30 animate-pulse" />
-        ) : (
-          <div className="relative h-full w-full">
-            <img
-              src={storeInfo?.logoImg || ''}
-              alt="스토어 로고"
-              className="h-full w-full object-cover transition-all duration-500 group-hover:scale-110"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = 'none';
-              }}
-            />
-            {/* 로고 없을 때 기본 아이콘 */}
-            {!storeInfo?.logoImg && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <StoreIcon className="h-12 w-12 text-gray-400" />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      
-      {/* 로고 장식 */}
-      <div className="absolute -top-2 -right-2 h-6 w-6 bg-gradient-to-br from-[#2d4739] to-emerald-600 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-        <Award className="h-3 w-3 text-white" />
-      </div>
-    </div>
+            <div className={`group relative overflow-hidden rounded-3xl bg-gradient-to-br from-white/95 to-gray-50/95 backdrop-blur-md border border-gray-200/60 shadow-2xl hover:shadow-3xl hover:border-gray-300/60 transition-all duration-700 mb-8 ${
+              isVisible ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'
+            }`} style={{ animationDelay: '200ms' }}>
+              
+              {/* 카드 배경 그라데이션 */}
+              <div className="absolute inset-0 bg-gradient-to-r from-gray-900/5 via-slate-800/5 to-gray-900/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+              
+              <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:gap-8 sm:p-10">
+                
+                {/* 로고 섹션 - 크게 개선 */}
+                <div className="relative group/logo">
+                  {/* 로고 컨테이너 */}
+                  <div className="relative h-32 w-32 sm:h-36 sm:w-36 overflow-hidden rounded-3xl border-4 border-gray-200/80 shadow-2xl bg-gradient-to-br from-white via-gray-50 to-gray-100 group-hover:scale-110 group-hover:border-gray-300/80 transition-all duration-700 group-hover:rotate-3">
+                    
+                    {/* 로딩 상태 */}
+                    {loading ? (
+                      <div className="h-full w-full bg-gradient-to-br from-gray-200/60 to-gray-300/60 animate-pulse relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer"></div>
+                      </div>
+                    ) : (
+                      <div className="relative h-full w-full">
+                        <img
+                          src={storeInfo?.logoImg || ''}
+                          alt="스토어 로고"
+                          className="h-full w-full object-cover transition-all duration-700 group-hover/logo:scale-125"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                        {/* 로고 없을 때 기본 아이콘 */}
+                        {!storeInfo?.logoImg && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                            <StoreIcon className="h-16 w-16 text-gray-400" />
+                          </div>
+                        )}
+                        
+                        {/* 로고 오버레이 */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-white/10 opacity-0 group-hover/logo:opacity-100 transition-opacity duration-500"></div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* 프리미엄 배지 */}
+                  <div className="absolute -top-3 -right-3 flex items-center gap-1">
+                    {/* <div className="h-8 w-8 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform duration-300 rotate-12">
+                      <Award className="h-4 w-4 text-white" />
+                    </div> */}
+                    <div className="h-6 w-6 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 delay-75">
+                      <Shield className="h-3 w-3 text-white" />
+                    </div>
+                  </div>
+                  
+                  {/* 장식적 요소들 */}
+                  <div className="absolute -bottom-2 -left-2 w-6 h-6 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full opacity-60 group-hover:scale-150 group-hover:opacity-80 transition-all duration-500"></div>
+                  <div className="absolute -top-1 left-8 w-4 h-4 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full opacity-40 group-hover:scale-125 group-hover:opacity-60 transition-all duration-700"></div>
+                </div>
 
-    <div className="min-w-0 flex-1">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
-          {loading ? (
-            <div className="space-y-3">
-              <div className="h-8 w-64 animate-pulse rounded-2xl bg-gradient-to-r from-emerald-100 to-[#2d4739]/15" />
-              <div className="h-6 w-32 animate-pulse rounded-xl bg-gradient-to-r from-[#2d4739]/15 to-teal-200/40" />
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 group-hover:text-[#2d4739] transition-colors duration-300">
-                {safe(storeInfo?.storeName, '스토어명 없음')}
-              </h2>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-text-[#2d4739] border border-emerald-500/50">
-                  @{segment}
-                </span>
-                <div className="flex items-center gap-1 text-emerald-600">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs font-medium">활성</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      {loading ? (
+                        <div className="space-y-4">
+                          <div className="h-10 w-72 animate-pulse rounded-2xl bg-gradient-to-r from-gray-200/60 to-gray-300/60 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer"></div>
+                          </div>
+                          <div className="h-6 w-40 animate-pulse rounded-xl bg-gradient-to-r from-gray-100/80 to-gray-200/80" />
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 via-slate-800 to-gray-900 bg-clip-text text-transparent group-hover:from-gray-800 group-hover:to-slate-700 transition-all duration-300">
+                            {safe(storeInfo?.storeName, '스토어명 없음')}
+                          </h2>
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-semibold bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 border border-gray-300/50 shadow-md">
+                              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                              @{segment}
+                            </span>
+                            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/50">
+                              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                              <span className="text-xs font-semibold text-emerald-700">운영중</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 새로고침 버튼 */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={fetchInfo}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-gray-800 to-slate-800 px-6 py-3 text-sm font-semibold text-white shadow-xl hover:shadow-2xl hover:scale-105 hover:from-gray-700 hover:to-slate-700 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group/btn border border-gray-700/20"
+                        disabled={loading}
+                        title="새로고침"
+                      >
+                        <RefreshCw className={`h-4 w-4 transition-transform duration-500 ${loading ? 'animate-spin' : 'group-hover/btn:rotate-180'}`} />
+                        새로고침
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          )}
-        </div>
-
-        {/* 새로고침 버튼 */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={fetchInfo}
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#2d4739] to-emerald-700 px-6 py-3 text-sm font-semibold text-white shadow-lg hover:shadow-xl hover:scale-105 hover:from-[#2d4739]/90 hover:to-emerald-600 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group/btn"
-            disabled={loading}
-            title="새로고침"
-          >
-            <RefreshCw className={`h-4 w-4 transition-transform duration-500 ${loading ? 'animate-spin' : 'group-hover/btn:rotate-180'}`} />
-            새로고침
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
             {/* 에러 알림 - 개선된 스타일 */}
             {err && (

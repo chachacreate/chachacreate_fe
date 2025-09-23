@@ -63,7 +63,7 @@ export default function StoresSubnavbar({
   return (
     <div
       className={[
-        'w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/75',
+        'w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/75 font-jua',
         'py-3 md:py-4 mb-6 md:mb-8',
         sticky ? 'sticky z-30' : '',
         className,

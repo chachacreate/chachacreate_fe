@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Star, ChevronRight } from 'lucide-react';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
-import { get, patch } from '@src/libs/request';
+import { get, patch, legacyGet } from '@src/libs/request';
 import type { ApiResponse } from '@src/libs/apiResponse';
 
 // ==== 타입 (필요시 프로젝트 공용 타입으로 이동 가능) ====
@@ -37,6 +37,60 @@ interface StoreSettings {
   heroBgColor: string; // 저장 시 popularColor로 저장
 }
 
+// ✅ 레거시 스토어 정보(백엔드 응답 스키마가 확정되지 않았을 수 있어 방어적으로 매핑)
+type LegacyStoreApi = {
+  storeName?: string;
+  logoImg?: string;
+  storeUrl?: string;
+  description?: string;
+  notice?: string;
+  popularTop3?: Product[];  // 동일 이름으로 내려오면 바로 매핑
+  featured3?: Product[];    // 동일 이름으로 내려오면 바로 매핑
+};
+
+// ✅ 프리뷰용 스토어 뷰 모델
+type StoreInfoVM = {
+  name: string;
+  logoUrl: string;
+  description?: string;
+  noticeImportant?: string;
+  popularTop3: Product[];
+  featured3: Product[];
+};
+
+// =========================
+// ★ 인기/대표 응답 변환기/엔드포인트
+// =========================
+type PopularItemServer = {
+  id?: string | number;
+  productId?: string | number;
+  title?: string;
+  name?: string;
+  category?: string;
+  categoryName?: string;
+  price?: number | string;
+  imageUrl?: string;
+  thumbnailUrl?: string;
+  image?: string;
+  purchases?: number;
+  salesCount?: number;
+};
+
+function normalizeProduct(p: PopularItemServer): Product {
+  const id = String(p.id ?? p.productId ?? '');
+  const title = p.title ?? p.name ?? '상품';
+  const category = p.category ?? p.categoryName ?? '';
+  const priceNum = typeof p.price === 'string' ? Number(p.price) : (p.price ?? 0);
+  const imageUrl = p.imageUrl ?? p.thumbnailUrl ?? p.image ?? undefined;
+  const purchases = p.purchases ?? p.salesCount;
+  return { id, title, category, price: priceNum || 0, imageUrl, purchases };
+}
+
+const POPULAR_API = (storeUrl: string) =>
+  `/info/store/${storeUrl}/products/popular?limit=3`;   // ← 프로젝트 실제 경로로 교체 가능
+const FEATURED_API = (storeUrl: string) =>
+  `/info/store/${storeUrl}/products/featured?limit=3`;  // ← 프로젝트 실제 경로로 교체 가능
+
 const fontOptions = [
   { value: "'Noto Sans KR', sans-serif", label: 'Noto Sans KR' },
   { value: "'Roboto', sans-serif", label: 'Roboto' },
@@ -49,71 +103,6 @@ const iconOptions = [
   { value: 'heart', label: 'Heart Icon' },
   { value: 'bookmark', label: 'Bookmark Icon' },
 ];
-
-const mockStoreInfo = {
-  name: '라임스튜디오',
-  logoUrl:
-    'https://images.unsplash.com/photo-1522199710521-72d69614c702?q=80&w=800&auto=format&fit=crop',
-  description:
-    '핸드메이드 도자기와 자연 소재 소품을 만드는 라임스튜디오입니다. 따뜻한 일상을 전해드릴게요 🍋',
-  noticeImportant:
-    '추석 연휴(9/12~9/15) 기간 택배가 지연될 수 있습니다. 일정 여유를 두고 주문 부탁드립니다.',
-  popularTop3: [
-    {
-      id: 'p1',
-      title: '핸드메이드 머그 v2',
-      category: '도자기',
-      price: 29000,
-      imageUrl:
-        'https://images.unsplash.com/photo-1526045478516-99145907023c?q=80&w=800&auto=format&fit=crop',
-      purchases: 412,
-    },
-    {
-      id: 'p2',
-      title: '너도밤나무 우드 트레이',
-      category: '우드',
-      price: 38000,
-      imageUrl:
-        'https://images.unsplash.com/photo-1595855759920-23405f1a0b1b?q=80&w=800&auto=format&fit=crop',
-      purchases: 305,
-    },
-    {
-      id: 'p3',
-      title: '리넨 키친 클로스',
-      category: '패브릭',
-      price: 15000,
-      imageUrl:
-        'https://images.unsplash.com/photo-1555685812-4b943f1cb0eb?q=80&w=800&auto=format&fit=crop',
-      purchases: 276,
-    },
-  ],
-  featured3: [
-    {
-      id: 'f1',
-      title: '생크림 화이트 플레이트',
-      category: '도자기',
-      price: 33000,
-      imageUrl:
-        'https://images.unsplash.com/photo-1543286386-2e659306cd6c?q=80&w=800&auto=format&fit=crop',
-    },
-    {
-      id: 'f2',
-      title: '월넛 조각 스푼',
-      category: '우드',
-      price: 12000,
-      imageUrl:
-        'https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?q=80&w=800&auto=format&fit=crop',
-    },
-    {
-      id: 'f3',
-      title: '내추럴 테이블 매트',
-      category: '패브릭',
-      price: 19000,
-      imageUrl:
-        'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?q=80&w=800&auto=format&fit=crop',
-    },
-  ],
-};
 
 const formatPrice = (n: number) => n.toLocaleString('ko-KR') + '원';
 const toHex6 = (v: string) => (v ? v.trim().toUpperCase() : v);
@@ -132,7 +121,17 @@ export default function StoreCustom() {
     heroBgColor: '#FFF7DB', // = popularColor 기본값
   });
 
-  // ===== 초기 로드(GET) =====
+  // ✅ 레거시 스토어 정보 상태 (mock 제거)
+  const [storeInfo, setStoreInfo] = useState<StoreInfoVM>({
+    name: '스토어',
+    logoUrl: '',
+    description: '',
+    noticeImportant: '',
+    popularTop3: [],
+    featured3: [],
+  });
+
+  // ===== 초기 로드(GET) : 커스텀 설정 =====
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -158,6 +157,67 @@ export default function StoreCustom() {
         // 404 등: 최초 생성 전일 수 있음 → 무시
       } finally {
         if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [storeUrl]);
+
+  // ===== 초기 로드(GET) : 레거시 스토어 정보 =====
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await legacyGet<{ data: LegacyStoreApi }>(`/info/store/${storeUrl}`);
+        const data = res.data || {};
+        if (!mounted) return;
+
+        const vm: StoreInfoVM = {
+          name: data.storeName || '스토어',
+          logoUrl: data.logoImg || '',
+          description: data.description || '',
+          noticeImportant: data.notice || '',
+          // 만약 같은 응답에서 같이 내려오면 그대로 사용
+          popularTop3: data.popularTop3 || [],
+          featured3: data.featured3 || [],
+        };
+        setStoreInfo(vm);
+      } catch (err) {
+        // 레거시 스토어 정보 없을 때도 프리뷰는 동작해야 하므로 조용히 통과
+        setStoreInfo((prev) => ({
+          ...prev,
+          name: prev.name || '스토어',
+          logoUrl: prev.logoUrl || '',
+        }));
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [storeUrl]);
+
+  // ===== 초기 로드(GET) : 인기/대표 상품 (별도 엔드포인트) =====
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        // 인기 TOP3
+        const popularRes = await legacyGet<{ data: PopularItemServer[] }>(POPULAR_API(storeUrl));
+        const popular = (popularRes?.data ?? []).map(normalizeProduct);
+
+        // 대표 3
+        const featuredRes = await legacyGet<{ data: PopularItemServer[] }>(FEATURED_API(storeUrl));
+        const featured = (featuredRes?.data ?? []).map(normalizeProduct);
+
+        if (!mounted) return;
+        setStoreInfo((prev) => ({
+          ...prev,
+          popularTop3: popular.length ? popular : prev.popularTop3,
+          featured3: featured.length ? featured : prev.featured3,
+        }));
+      } catch {
+        // 엔드포인트가 아직 없거나 404면 조용히 스킵
       }
     })();
     return () => {
@@ -350,7 +410,12 @@ export default function StoreCustom() {
           </div>
 
           {/* Preview */}
-          <PreviewArea themeVars={themeVars} storeUrl={storeUrl} iconType={previewIconType} />
+          <PreviewArea
+            themeVars={themeVars}
+            storeUrl={storeUrl}
+            iconType={previewIconType}
+            storeInfo={storeInfo}
+          />
         </div>
       </SellerSidenavbar>
     </>
@@ -361,10 +426,12 @@ function PreviewArea({
   themeVars,
   storeUrl,
   iconType,
+  storeInfo,
 }: {
   themeVars: React.CSSProperties;
   storeUrl: string;
   iconType: string;
+  storeInfo: StoreInfoVM;
 }) {
   return (
     <div className="w-full max-w-[1440px] mx-auto px-[240px]" style={themeVars}>
@@ -378,20 +445,21 @@ function PreviewArea({
             <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">
               <div className="flex items-start gap-6">
                 <img
-                  src={mockStoreInfo.logoUrl}
-                  alt={`${mockStoreInfo.name} logo`}
+                  src={storeInfo.logoUrl || ''}
+                  alt={`${storeInfo.name} logo`}
                   className="w-20 h-20 rounded-xl object-cover border border-gray-200"
+                  onError={(e) => ((e.currentTarget.style.opacity = '0'), (e.currentTarget.src = ''))}
                 />
                 <div className="flex-1">
                   <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                    {mockStoreInfo.name}
+                    {storeInfo.name || '스토어'}
                   </h1>
-                  {mockStoreInfo.description && (
+                  {storeInfo.description && (
                     <p
                       className="mt-2 text-sm sm:text-base leading-relaxed"
                       style={{ color: 'var(--store-desc)' }}
                     >
-                      {mockStoreInfo.description}
+                      {storeInfo.description}
                     </p>
                   )}
                   <div className="mt-4 flex flex-wrap gap-3">
@@ -419,13 +487,13 @@ function PreviewArea({
       </section>
 
       {/* Notice */}
-      {mockStoreInfo.noticeImportant && (
+      {storeInfo.noticeImportant && (
         <section className="w-full">
           <div className="rounded-xl border p-5 sm:p-6 bg-white">
             <div className="text-sm font-semibold mb-2" style={{ color: 'var(--store-notice)' }}>
               중요 공지사항
             </div>
-            <p className="text-sm sm:text-base leading-relaxed">{mockStoreInfo.noticeImportant}</p>
+            <p className="text-sm sm:text-base leading-relaxed">{storeInfo.noticeImportant}</p>
           </div>
         </section>
       )}
@@ -437,7 +505,7 @@ function PreviewArea({
         moreLink={`/store/${storeUrl}/products?sort=popular`}
       >
         <ProductGrid3
-          products={mockStoreInfo.popularTop3}
+          products={storeInfo.popularTop3}
           emptyLabel="인기 상품을 준비 중이에요"
           iconType={iconType}
         />
@@ -449,7 +517,7 @@ function PreviewArea({
         moreLink={`/store/${storeUrl}/products?filter=featured`}
       >
         <ProductGrid3
-          products={mockStoreInfo.featured3}
+          products={storeInfo.featured3}
           emptyLabel="대표 상품을 곧 보여드릴게요"
           badge="대표"
           iconType={iconType}
@@ -459,7 +527,7 @@ function PreviewArea({
       {/* Footer */}
       <footer className="mt-12 w-full" style={{ backgroundColor: 'var(--store-header-bg)' }}>
         <div className="w-full py-8 text-sm text-gray-500">
-          © {new Date().getFullYear()} {mockStoreInfo.name}. All rights reserved.
+          © {new Date().getFullYear()} {storeInfo.name || '스토어'}. All rights reserved.
         </div>
       </footer>
     </div>

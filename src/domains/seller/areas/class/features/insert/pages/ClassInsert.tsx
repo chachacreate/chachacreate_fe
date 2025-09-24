@@ -143,6 +143,9 @@ const ClassInsert: FC = () => {
   // 설명 이미지 저장
   const [editorImageUrls, setEditorImageUrls] = useState<string[]>([]);
 
+// AI 설명 생성 로딩 상태 추가
+const [isLoadingAiDesc, setIsLoadingAiDesc] = useState<Record<string, boolean>>({});
+
   // 새 폼 추가
   const addNewForm = () => {
     setClassForms((prev) => {
@@ -160,6 +163,10 @@ const ClassInsert: FC = () => {
 
       // ⬇️ 에디터 ref도 같이 정리 (폼 삭제 시 누수 방지)
       delete editorRefs.current[formId];
+            setIsLoadingAiDesc((prevDesc) => {
+        const { [formId]: _, ...rest } = prevDesc;
+        return rest;
+      });
 
       const filtered = prev.filter((f) => f.id !== formId);
       const renumbered = filtered.map((f, i) => ({ ...f, classNumber: i + 1 }));
@@ -212,10 +219,39 @@ const ClassInsert: FC = () => {
     );
   };
 
-  // AI 설명 생성
-  const genAiDesc = (formId: string) => {
-    const pick = AI_SAMPLES[Math.floor(Math.random() * AI_SAMPLES.length)];
-    updateForm(formId, 'aiDesc', pick);
+  // // AI 설명 생성
+  // const genAiDesc = (formId: string) => {
+  //   const pick = AI_SAMPLES[Math.floor(Math.random() * AI_SAMPLES.length)];
+  //   updateForm(formId, 'aiDesc', pick);
+  // };
+
+    // AI 설명 생성 - 로딩 상태 추가
+  const genAiDesc = async (formId: string) => {
+    const form = classForms.find((f) => f.id === formId);
+    if (!form) return;
+    if (!form.title.trim()) return alert('클래스명을 먼저 입력해 주세요.');
+
+    setIsLoadingAiDesc((prev) => ({ ...prev, [formId]: true }));
+
+    try {
+      const resp = await api.post('/ai/class-description', {
+        title: form.title,
+        prompt: form.aiDesc,
+      });
+      const content = resp.data?.content ?? resp.data?.data ?? '';
+
+      if (!content) throw new Error('AI 응답이 비었습니다.');
+
+      // ✅ 이 폼의 에디터에만 반영
+      editorRefs.current[formId]?.setMarkdown(content);
+
+      // (선택) 상태에도 저장
+      updateForm(formId, 'desc', content);
+    } catch (e: any) {
+      alert(e?.response?.data?.message || e?.message || 'AI 설명 생성 실패');
+    } finally {
+      setIsLoadingAiDesc((prev) => ({ ...prev, [formId]: false }));
+    }
   };
 
   // URL 추출 유틸 추가 (최종 이미지만 저장)
@@ -381,14 +417,14 @@ const ClassInsert: FC = () => {
     }
   };
 
-  return (
+   return (
     <>
       <Header />
 
       <SellerSidenavbar>
         <div className="space-y-6 sm:space-y-8 relative">
-          {/* 상단 추가 버튼 */}
-          <div className="flex justify-between items-center">
+          {/* 헤더 - 모바일에서 세로 배치 */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold">클래스 등록</h1>
               <p className="mt-1 text-sm text-gray-500">총 {classForms.length}개 클래스</p>
@@ -396,7 +432,7 @@ const ClassInsert: FC = () => {
             <button
               type="button"
               onClick={addNewForm}
-              className="px-4 py-2 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90"
+              className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90"
             >
               + 클래스 추가
             </button>
@@ -414,16 +450,17 @@ const ClassInsert: FC = () => {
                 key={form.id}
                 className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 lg:p-8"
               >
-                <div className="flex justify-between items-start mb-6">
+                {/* 클래스 헤더 - 모바일에서 세로 배치 */}
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
                   <div>
                     <h2 className="text-lg font-bold">클래스 {form.classNumber}</h2>
-                    <p className="text-sm text-gray-500">storeUrl: {storeUrl}</p>
+                    <p className="text-sm text-gray-500 break-all">storeUrl: {storeUrl}</p>
                   </div>
                   {classForms.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeForm(form.id)}
-                      className="px-3 py-1.5 rounded-md border border-red-200 text-red-600 text-sm hover:bg-red-50"
+                      className="w-full sm:w-auto px-3 py-1.5 rounded-md border border-red-200 text-red-600 text-sm hover:bg-red-50 shrink-0"
                     >
                       삭제
                     </button>
@@ -431,22 +468,28 @@ const ClassInsert: FC = () => {
                 </div>
 
                 <div className="grid gap-5">
-                  {/* 사진 추가 */}
-                  <div className="flex flex-wrap gap-2">
-                    <label className="px-3 py-2 rounded-md border text-sm cursor-pointer hover:bg-gray-50">
-                      {form.images.length > 0 ? '사진 변경' : '+ 사진 추가'}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => onPickImages(form.id, e)}
-                        className="hidden"
-                      />
-                    </label>
+                  {/* 사진 추가 - 반응형 개선 */}
+                  <div className="grid gap-2">
+                    <span className="text-sm font-medium">클래스 사진</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                      <label className="w-full sm:w-auto px-3 py-2 rounded-md border text-sm cursor-pointer hover:bg-gray-50 text-center">
+                        {form.images.length > 0 ? '사진 변경' : '+ 사진 추가'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => onPickImages(form.id, e)}
+                          className="hidden"
+                        />
+                      </label>
+                      <span className="text-xs text-gray-500 text-center sm:text-left">
+                        현재 {form.images.length}/1
+                      </span>
+                    </div>
                   </div>
 
                   {/* 이미지 미리보기 */}
                   {form.images.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {form.images.map((img) => (
                         <div key={img.id} className="relative rounded-lg overflow-hidden border">
                           <img src={img.url} alt="preview" className="w-full h-40 object-cover" />
@@ -462,222 +505,240 @@ const ClassInsert: FC = () => {
                     </div>
                   )}
 
-                  {/* 클래스명 */}
-                  <label className="grid gap-1">
-                    <span className="text-sm font-medium">클래스명</span>
+                  {/* 클래스명 - 전체 너비 */}
+                  <div className="grid gap-1">
+                    <label className="text-sm font-medium">클래스명</label>
                     <input
-                      className="border rounded-md px-3 py-2"
+                      id="class-name"
+                      className="border rounded-md px-3 py-2 w-full"
                       placeholder="예) 도자기 원데이 클래스"
                       value={form.title}
                       onChange={(e) => updateForm(form.id, 'title', e.target.value)}
                     />
-                  </label>
+                  </div>
 
-                  {/* 장소(우편번호/주소) */}
+                  {/* 장소(우편번호/주소) - 반응형 개선 */}
                   <div className="grid gap-3">
                     <span className="text-sm font-medium">클래스 장소</span>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <input
-                        className="border rounded-md px-3 py-2 sm:w-40"
+                        className="border rounded-md px-3 py-2 flex-1 sm:flex-none sm:w-40"
                         placeholder="우편번호"
                         value={form.postcode}
                         readOnly
                       />
                       <button
                         type="button"
-                        className="px-3 py-2 rounded-md border"
+                        className="w-full sm:w-auto px-3 py-2 rounded-md border hover:bg-gray-50 shrink-0"
                         onClick={() => openPostcode(formIndex)}
                       >
                         우편번호 찾기
                       </button>
                     </div>
                     <input
-                      className="border rounded-md px-3 py-2"
+                      className="border rounded-md px-3 py-2 w-full"
                       placeholder="기본 주소"
                       value={form.address}
                       readOnly
                     />
                     <input
-                      className="border rounded-md px-3 py-2"
+                      className="border rounded-md px-3 py-2 w-full"
                       placeholder="상세 주소"
                       value={form.addressDetail}
                       onChange={(e) => updateForm(form.id, 'addressDetail', e.target.value)}
                     />
                     {addressSummary && (
-                      <p className="text-xs text-gray-500">주소 미리보기: {addressSummary}</p>
+                      <p className="text-xs text-gray-500 break-all">주소 미리보기: {addressSummary}</p>
                     )}
                   </div>
 
-                  {/* 상세설명 */}
-                  <fieldset className="grid gap-1">
+                  {/* 상세설명 - 로딩 오버레이 추가 */}
+                  <fieldset className="grid gap-3 relative">
                     <legend className="text-sm font-medium">클래스 상세설명</legend>
-                    <EditorAPI
-                      ref={(el) => {
-                        editorRefs.current[form.id] = el;
-                      }}
-                      initialValue={form.desc ?? ''}
-                    />
+                    
+                    {/* AI 로딩 오버레이 */}
+                    {isLoadingAiDesc[form.id] && (
+                      <div className="absolute inset-0 bg-white bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-20 rounded-lg">
+                        <div className="flex flex-col items-center gap-3 p-6">
+                          <img 
+                            src="/src/domains/seller/areas/product/features/insert/assets/AI loading.gif" 
+                            alt="AI 생성 중..." 
+                            className="w-32 h-32 object-contain"
+                          />
+                          <div className="text-sm font-medium text-gray-700">AI가 클래스 설명을 생성하고 있습니다...</div>
+                          <div className="text-xs text-gray-500">잠시만 기다려주세요</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 에디터를 반응형 컨테이너로 감싸기 */}
+                    <div className="w-full overflow-hidden">
+                      <EditorAPI
+                        ref={(el) => {
+                          editorRefs.current[form.id] = el;
+                        }}
+                        initialValue={form.desc ?? ''}
+                      />
+                    </div>
                   </fieldset>
 
-                  {/* AI 설명 */}
+                  {/* AI 설명 - 로딩 상태 추가 */}
                   <div className="grid gap-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">AI 클래스 설명 멘트</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <span className="text-sm font-medium">AI 클래스 설명 프롬프트/메모</span>
                       <button
                         type="button"
-                        className="px-3 py-1.5 rounded-md border text-sm"
-                        onClick={async () => {
-                          try {
-                            const resp = await api.post('/ai/class-description', {
-                              title: form.title,
-                              prompt: form.aiDesc,
-                            });
-                            const content = resp.data?.content ?? resp.data?.data ?? '';
-
-                            // ✅ 이 폼의 에디터에만 반영
-                            editorRefs.current[form.id]?.setMarkdown(content);
-
-                            // (선택) 상태에도 저장
-                            updateForm(form.id, 'desc', content);
-                          } catch (e: any) {
-                            alert(e?.response?.data?.message || e?.message || 'AI 설명 생성 실패');
-                          }
-                        }}
+                        className="w-full sm:w-auto px-3 py-1.5 rounded-md border text-sm hover:bg-gray-50 shrink-0 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        onClick={() => genAiDesc(form.id)}
+                        disabled={isLoadingAiDesc[form.id]}
                       >
-                        생성하기
+                        {isLoadingAiDesc[form.id] && (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-500"></div>
+                        )}
+                        {isLoadingAiDesc[form.id] ? 'AI 생성 중...' : 'AI 설명 생성'}
                       </button>
                     </div>
                     <textarea
-                      className="border rounded-md px-3 py-2 min-h-[100px]"
-                      placeholder="'생성하기'를 누르면 임시 멘트가 채워집니다."
+                      className="border rounded-md px-3 py-2 min-h-[100px] w-full resize-y disabled:bg-gray-50 disabled:cursor-not-allowed"
+                      placeholder="핵심 특징, 클래스 분위기, 난이도 등 키워드를 남겨 주세요."
                       value={form.aiDesc}
                       onChange={(e) => updateForm(form.id, 'aiDesc', e.target.value)}
+                      disabled={isLoadingAiDesc[form.id]}
                     />
+                    <p className="text-xs text-gray-500">
+                      * 생성 후 내용은 위 에디터에 자동 반영됩니다.
+                    </p>
                   </div>
 
-                  {/* 최대 인원 / 가격 */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <label className="grid gap-1">
-                      <span className="text-sm font-medium">클래스 최대 참여 인원</span>
+                  {/* 최대 인원 / 가격 - 모바일에서 세로 배치 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid gap-1">
+                      <label className="text-sm font-medium">클래스 최대 참여 인원</label>
                       <input
                         inputMode="numeric"
-                        className="border rounded-md px-3 py-2"
+                        className="border rounded-md px-3 py-2 w-full"
                         placeholder="예) 8"
                         value={form.capacity}
                         onChange={(e) =>
                           updateForm(form.id, 'capacity', guardInt(e.target.value) as number | '')
                         }
                       />
-                    </label>
-                    <label className="grid gap-1">
-                      <span className="text-sm font-medium">클래스 회당 가격(원)</span>
+                    </div>
+                    <div className="grid gap-1">
+                      <label className="text-sm font-medium">클래스 회당 가격(원)</label>
                       <input
                         inputMode="numeric"
-                        className="border rounded-md px-3 py-2"
+                        className="border rounded-md px-3 py-2 w-full"
                         placeholder="예) 55000"
                         value={form.price}
                         onChange={(e) =>
                           updateForm(form.id, 'price', guardInt(e.target.value) as number | '')
                         }
                       />
-                    </label>
+                    </div>
                   </div>
 
-                  {/* 가능 날짜/시간 */}
+                  {/* 가능 날짜/시간 - 모바일 최적화 */}
                   <div className="grid gap-3">
                     <span className="text-sm font-medium">클래스 가능 날짜/시간</span>
                     <div className="space-y-3">
                       {form.schedules.map((s) => (
                         <div
                           key={s.id}
-                          className="rounded-xl border p-3 sm:p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:items-end"
+                          className="rounded-xl border p-3 sm:p-4 space-y-3"
                         >
-                          <label className="grid gap-1 lg:col-span-1">
-                            <span className="text-xs sm:text-sm font-medium">시작 날짜</span>
-                            <input
-                              type="date"
-                              className="border rounded-md px-3 py-2"
-                              value={s.startDate}
-                              onChange={(e) =>
-                                updateSchedule(form.id, s.id, 'startDate', e.target.value)
-                              }
-                            />
-                          </label>
+                          {/* 날짜 설정 - 모바일에서 세로 배치 */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="grid gap-1">
+                              <label className="text-xs sm:text-sm font-medium">시작 날짜</label>
+                              <input
+                                type="date"
+                                className="border rounded-md px-3 py-2 w-full"
+                                value={s.startDate}
+                                onChange={(e) =>
+                                  updateSchedule(form.id, s.id, 'startDate', e.target.value)
+                                }
+                              />
+                            </div>
 
-                          <label className="grid gap-1 lg:col-span-1">
-                            <span className="text-xs sm:text-sm font-medium">종료 날짜</span>
-                            <input
-                              type="date"
-                              className="border rounded-md px-3 py-2"
-                              value={s.endDate}
-                              onChange={(e) =>
-                                updateSchedule(form.id, s.id, 'endDate', e.target.value)
-                              }
-                            />
-                          </label>
+                            <div className="grid gap-1">
+                              <label className="text-xs sm:text-sm font-medium">종료 날짜</label>
+                              <input
+                                type="date"
+                                className="border rounded-md px-3 py-2 w-full"
+                                value={s.endDate}
+                                onChange={(e) =>
+                                  updateSchedule(form.id, s.id, 'endDate', e.target.value)
+                                }
+                              />
+                            </div>
+                          </div>
 
-                          <label className="grid gap-1 lg:col-span-1">
-                            <span className="text-xs sm:text-sm font-medium">시작 시간</span>
-                            <select
-                              className="border rounded-md px-3 py-2"
-                              value={s.startTime}
-                              onChange={(e) =>
-                                updateSchedule(form.id, s.id, 'startTime', e.target.value)
-                              }
-                            >
-                              {timeOptions.map((t) => (
-                                <option key={`st-${s.id}-${t}`} value={t}>
-                                  {t}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
+                          {/* 시간 설정 - 모바일에서 세로 배치 */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="grid gap-1">
+                              <label className="text-xs sm:text-sm font-medium">시작 시간</label>
+                              <select
+                                className="border rounded-md px-3 py-2 w-full"
+                                value={s.startTime}
+                                onChange={(e) =>
+                                  updateSchedule(form.id, s.id, 'startTime', e.target.value)
+                                }
+                              >
+                                {timeOptions.map((t) => (
+                                  <option key={`st-${s.id}-${t}`} value={t}>
+                                    {t}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
 
-                          <label className="grid gap-1 lg:col-span-1">
-                            <span className="text-xs sm:text-sm font-medium">종료 시간</span>
-                            <select
-                              className="border rounded-md px-3 py-2"
-                              value={s.endTime}
-                              onChange={(e) =>
-                                updateSchedule(form.id, s.id, 'endTime', e.target.value)
-                              }
-                            >
-                              {timeOptions.map((t) => (
-                                <option key={`et-${s.id}-${t}`} value={t}>
-                                  {t}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
+                            <div className="grid gap-1">
+                              <label className="text-xs sm:text-sm font-medium">종료 시간</label>
+                              <select
+                                className="border rounded-md px-3 py-2 w-full"
+                                value={s.endTime}
+                                onChange={(e) =>
+                                  updateSchedule(form.id, s.id, 'endTime', e.target.value)
+                                }
+                              >
+                                {timeOptions.map((t) => (
+                                  <option key={`et-${s.id}-${t}`} value={t}>
+                                    {t}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
 
-                          <label className="grid gap-1 lg:col-span-1">
-                            <span className="text-xs sm:text-sm font-medium">시간 간격(분)</span>
-                            <select
-                              className="border rounded-md px-3 py-2"
-                              value={s.intervalMin}
-                              onChange={(e) =>
-                                updateSchedule(form.id, s.id, 'intervalMin', Number(e.target.value))
-                              }
-                            >
-                              {intervalOptions.map((m) => (
-                                <option key={`iv-${s.id}-${m}`} value={m}>
-                                  {m}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
+                            <div className="grid gap-1">
+                              <label className="text-xs sm:text-sm font-medium">시간 간격(분)</label>
+                              <select
+                                className="border rounded-md px-3 py-2 w-full"
+                                value={s.intervalMin}
+                                onChange={(e) =>
+                                  updateSchedule(form.id, s.id, 'intervalMin', Number(e.target.value))
+                                }
+                              >
+                                {intervalOptions.map((m) => (
+                                  <option key={`iv-${s.id}-${m}`} value={m}>
+                                    {m}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* 휴일 설정 */}
+                  {/* 휴일 설정 - 반응형 개선 */}
                   <div className="grid gap-2">
                     <span className="text-sm font-medium">클래스 휴일 설정</span>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="date"
-                        className="border rounded-md px-3 py-2"
+                        className="border rounded-md px-3 py-2 flex-1 sm:flex-none sm:w-auto"
                         value={pendingHolidays[form.id] || ''}
                         onChange={(e) =>
                           setPendingHolidays((prev) => ({ ...prev, [form.id]: e.target.value }))
@@ -685,7 +746,7 @@ const ClassInsert: FC = () => {
                       />
                       <button
                         type="button"
-                        className="px-3 py-2 rounded-md border"
+                        className="w-full sm:w-auto px-3 py-2 rounded-md border hover:bg-gray-50 shrink-0"
                         onClick={() => addHoliday(form.id)}
                       >
                         + 휴일 추가
@@ -713,39 +774,39 @@ const ClassInsert: FC = () => {
                   </div>
 
                   {/* 예약 관련 주의사항 */}
-                  <label className="grid gap-1">
-                    <span className="text-sm font-medium">예약 관련 주의사항</span>
+                  <div className="grid gap-1">
+                    <label className="text-sm font-medium">예약 관련 주의사항</label>
                     <textarea
-                      className="border rounded-md px-3 py-2 min-h-[100px]"
+                      className="border rounded-md px-3 py-2 min-h-[100px] w-full resize-y"
                       placeholder="환불 규정, 지각/결석 안내 등"
                       value={form.reservationNotes}
                       onChange={(e) => updateForm(form.id, 'reservationNotes', e.target.value)}
                     />
-                  </label>
+                  </div>
                 </div>
               </section>
             );
           })}
 
-          {/* 제출 버튼 */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sticky bottom-4 bg-white p-4 rounded-xl border shadow-lg">
+          {/* 하단 버튼 - 모바일에서 더 나은 UX */}
+          <div className="flex flex-col sm:flex-row gap-3 sticky bottom-4 bg-white p-4 rounded-xl border shadow-lg">
             <button
               type="button"
-              className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90"
+              className="w-full sm:flex-1 px-6 py-3 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90 order-1 sm:order-none"
               onClick={onSubmit}
             >
               {classForms.length}개 클래스 모두 등록
             </button>
             <button
               type="button"
-              className="w-full sm:w-auto px-6 py-3 rounded-lg border font-medium hover:bg-gray-50"
+              className="w-full sm:w-auto px-6 py-3 rounded-lg border font-medium hover:bg-gray-50 order-2 sm:order-none shrink-0"
               onClick={() => {
                 setClassForms([createEmptyForm()]);
                 setPendingHolidays({});
                 setClassCounter(1);
               }}
             >
-              취소
+              초기화
             </button>
           </div>
 

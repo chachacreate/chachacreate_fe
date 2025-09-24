@@ -107,6 +107,23 @@ const PriceDetailModal: FC<{
             </button>
           </div>
           
+          {/* AI 가격 추천 완료 메시지 */}
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-green-800 font-semibold">AI 가격 추천이 완료되었습니다!</h4>
+                <p className="text-green-700 text-sm mt-1">
+                  이미지 분석을 통해 최적의 가격을 제안해드렸습니다.
+                </p>
+              </div>
+            </div>
+          </div>
+          
           <div className="space-y-4">
             <div className="p-4 bg-blue-50 rounded-lg">
               <h4 className="font-semibold text-blue-800 mb-2">
@@ -117,6 +134,7 @@ const PriceDetailModal: FC<{
               </p>
             </div>
 
+            {/* 나머지 기존 내용들... */}
             {predictionInfo.predictions.map((pred: any, index: number) => (
               <div key={index} className="border rounded-lg p-4">
                 {pred.price_info ? (
@@ -125,6 +143,7 @@ const PriceDetailModal: FC<{
                       📊 카테고리 '{pred.price_info.db_category}' 가격 통계
                     </h5>
                     
+                    {/* 기존 통계 내용들... */}
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-gray-600">평균:</span>
@@ -299,57 +318,62 @@ const removeForm = (formId: string) => {
   };
 
   // ✅ AI 가격 추천 - 이미지 예측 API 사용
-  const genAiPrice = async (formId: string) => {
-    const form = forms.find((f) => f.id === formId);
-    if (!form) return;
+const genAiPrice = async (formId: string) => {
+  const form = forms.find((f) => f.id === formId);
+  if (!form) return;
 
-    // 첫 번째 이미지가 있는지 확인
-    if (!form.images.length || !form.images[0].file) {
-      alert('AI 가격 추천을 위해 상품 사진을 먼저 업로드해 주세요.');
-      return;
-    }
+  // 첫 번째 이미지가 있는지 확인
+  if (!form.images.length || !form.images[0].file) {
+    alert('AI 가격 추천을 위해 상품 사진을 먼저 업로드해 주세요.');
+    return;
+  }
 
-    setIsLoadingAiPrice((prev) => ({ ...prev, [formId]: true }));
+  setIsLoadingAiPrice((prev) => ({ ...prev, [formId]: true }));
 
-    try {
-      const result = await predictImage(form.images[0].file);
+  try {
+    const result = await predictImage(form.images[0].file);
 
-      if (result.success && result.predictions.length > 0) {
-        const topPrediction = result.predictions[0];
-        setAiPredictionInfo((prev: any) => ({
-          ...prev,
-          [formId]: result,
-        }));
-        if (topPrediction.price_info && topPrediction.price_info.median_price) {
-          const medianPrice = Math.round(topPrediction.price_info.median_price);
-          updateForm(formId, 'aiPrice', medianPrice);
-          // 선택사항: 예측된 카테고리 정보를 사용자에게 알려주기
-          console.log(
-            `AI 예측 카테고리: ${topPrediction.category} (신뢰도: ${(topPrediction.confidence * 100).toFixed(1)}%)`
-          );
-        } else {
-          // 가격 정보가 없는 경우 기본 로직 사용
-          const base = (form?.name.length || 6) * 1200;
-          const randomized = Math.round((base + Math.random() * 8000) / 100) * 100;
-          updateForm(formId, 'aiPrice', randomized as number);
-          alert('해당 카테고리의 가격 정보가 없어 기본 알고리즘으로 가격을 추천했습니다.');
-        }
+    if (result.success && result.predictions.length > 0) {
+      const topPrediction = result.predictions[0];
+      setAiPredictionInfo((prev: any) => ({
+        ...prev,
+        [formId]: result,
+      }));
+      if (topPrediction.price_info && topPrediction.price_info.median_price) {
+        const medianPrice = Math.round(topPrediction.price_info.median_price);
+        updateForm(formId, 'aiPrice', medianPrice);
+        
+        // AI 가격 추천 완료 후 모달 자동 띄우기
+        setTimeout(() => {
+          setPriceDetailModal({ isOpen: true, formId: formId });
+        }, 500);
+        
+        console.log(
+          `AI 예측 카테고리: ${topPrediction.category} (신뢰도: ${(topPrediction.confidence * 100).toFixed(1)}%)`
+        );
       } else {
-        throw new Error('이미지 예측에 실패했습니다.');
+        // 가격 정보가 없는 경우 기본 로직 사용
+        const base = (form?.name.length || 6) * 1200;
+        const randomized = Math.round((base + Math.random() * 8000) / 100) * 100;
+        updateForm(formId, 'aiPrice', randomized as number);
+        alert('해당 카테고리의 가격 정보가 없어 기본 알고리즘으로 가격을 추천했습니다.');
       }
-    } catch (error: any) {
-      console.error('AI 가격 추천 실패:', error);
-
-      // 실패 시 기존 로직으로 폴백
-      const base = (form?.name.length || 6) * 1200;
-      const randomized = Math.round((base + Math.random() * 8000) / 100) * 100;
-      updateForm(formId, 'aiPrice', randomized as number);
-
-      alert('AI 가격 분석에 실패하여 기본 알고리즘으로 가격을 추천합니다.');
-    } finally {
-      setIsLoadingAiPrice((prev) => ({ ...prev, [formId]: false }));
+    } else {
+      throw new Error('이미지 예측에 실패했습니다.');
     }
-  };
+  } catch (error: any) {
+    console.error('AI 가격 추천 실패:', error);
+
+    // 실패 시 기존 로직으로 폴백
+    const base = (form?.name.length || 6) * 1200;
+    const randomized = Math.round((base + Math.random() * 8000) / 100) * 100;
+    updateForm(formId, 'aiPrice', randomized as number);
+
+    alert('AI 가격 분석에 실패하여 기본 알고리즘으로 가격을 추천합니다.');
+  } finally {
+    setIsLoadingAiPrice((prev) => ({ ...prev, [formId]: false }));
+  }
+};
 
   // 툴팁용 간단한 예측 정보 생성
   const generateSimpleTooltip = (formId: string): string => {

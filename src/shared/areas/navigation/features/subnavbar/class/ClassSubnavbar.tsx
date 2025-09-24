@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Search, Calendar, UserRound } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 type ClassSubnavbarProps = {
   fixed?: boolean;
@@ -20,6 +21,20 @@ export default function ClassSubnavbar({
   const navigate = useNavigate();
   const location = useLocation();
 
+  // 현재 화면 크기 감지
+  const [isMobile, setIsMobile] = useState(() => 
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 1023px)');
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    setIsMobile(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
   const isHomeActive = activeSection === 'home';
   const isCalendarActive = activeSection === 'calendar';
   const isSearchActive = activeSection === 'search';
@@ -29,7 +44,7 @@ export default function ClassSubnavbar({
     return location.pathname === path;
   };
 
-  // Navigation handlers with smooth scroll
+  // Navigation handlers with improved mobile support
   const goHome = () => {
     setActiveSection('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -46,7 +61,19 @@ export default function ClassSubnavbar({
 
   const goCalendar = () => {
     setActiveSection('calendar');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    if (isMobile) {
+      // 모바일: 캘린더 섹션으로 스크롤
+      const calendarElem = document.getElementById('calendar');
+      if (calendarElem) {
+        const rect = calendarElem.getBoundingClientRect();
+        const y = window.scrollY + rect.top - 80; // 헤더 높이 고려
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+    } else {
+      // 데스크톱: 기존 방식 (맨 위로 이동)
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // 색상/스타일 토큰
@@ -141,7 +168,7 @@ export default function ClassSubnavbar({
             <button
               onClick={goHome}
               className={[
-                'inline-flex items-center gap-1.5 rounded-2xl px-2.5 py-2.5 text-[13px] font-medium transition-colors whitespace-nowrap',
+                'inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2.5 text-[13px] font-medium transition-colors whitespace-nowrap',
                 isHomeActive
                   ? 'bg-[#2D4739] text-white'
                   : 'bg-white text-[#2D4739] shadow-sm hover:bg-gray-50',
@@ -156,7 +183,7 @@ export default function ClassSubnavbar({
             <button
               onClick={goSearch}
               className={[
-                'inline-flex items-center gap-1.5 rounded-2xl px-2.5 py-2.5 text-[13px] font-medium transition-colors whitespace-nowrap',
+                'inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2.5 text-[13px] font-medium transition-colors whitespace-nowrap',
                 isSearchActive
                   ? 'bg-[#2D4739] text-white'
                   : 'bg-white text-[#2D4739] shadow-sm hover:bg-gray-50',
@@ -172,7 +199,7 @@ export default function ClassSubnavbar({
               type="button"
               onClick={goCalendar}
               className={[
-                'inline-flex items-center gap-1.5 rounded-2xl px-2.5 py-2.5 text-[13px] font-medium transition-colors whitespace-nowrap',
+                'inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2.5 text-[13px] font-medium transition-colors whitespace-nowrap',
                 isCalendarActive
                   ? 'bg-[#2D4739] text-white'
                   : 'bg-white text-[#2D4739] shadow-sm hover:bg-gray-50',
@@ -185,7 +212,7 @@ export default function ClassSubnavbar({
 
           <li>
             <Link
-              to="/main/mypage/classreserve"
+              to="/main/mypage/classes"
               className={[
                 'inline-flex items-center gap-1.5 rounded-2xl px-2.5 py-2.5 text-[13px] font-medium transition-colors whitespace-nowrap',
                 isActivePath('/main/mypage/classreserve')

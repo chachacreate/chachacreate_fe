@@ -343,11 +343,6 @@ const genAiPrice = async (formId: string) => {
         const medianPrice = Math.round(topPrediction.price_info.median_price);
         updateForm(formId, 'aiPrice', medianPrice);
         
-        // AI 가격 추천 완료 후 모달 자동 띄우기
-        setTimeout(() => {
-          setPriceDetailModal({ isOpen: true, formId: formId });
-        }, 500);
-        
         console.log(
           `AI 예측 카테고리: ${topPrediction.category} (신뢰도: ${(topPrediction.confidence * 100).toFixed(1)}%)`
         );
@@ -358,6 +353,12 @@ const genAiPrice = async (formId: string) => {
         updateForm(formId, 'aiPrice', randomized as number);
         alert('해당 카테고리의 가격 정보가 없어 기본 알고리즘으로 가격을 추천했습니다.');
       }
+      
+      // AI 가격 추천 완료 후 모달 자동 띄우기 (성공한 경우 모든 케이스에 적용)
+      setTimeout(() => {
+        setPriceDetailModal({ isOpen: true, formId: formId });
+      }, 500);
+      
     } else {
       throw new Error('이미지 예측에 실패했습니다.');
     }

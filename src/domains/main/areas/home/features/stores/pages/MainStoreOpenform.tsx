@@ -159,7 +159,7 @@ const MainStoreOpenform: React.FC = () => {
       // 만약 { status:200, data:{ accessToken } } 형태면:
       if (response?.status !== 200) {
         navigate('/main/store/description');
-        return alert('스토어 신청에 실패했습니다. 다시 시도해 주세요.');
+        return alert('상품이 2개 이상인 판매자만 스토어 등록이 가능합니다.');
       }
       const accessToken = response?.data;
       if (accessToken) {

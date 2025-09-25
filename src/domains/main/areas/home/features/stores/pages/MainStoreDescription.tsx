@@ -44,12 +44,12 @@ const STEPS: Step[] = [
   },
   {
     title: 'STEP 3 · 상품 등록 및 상세 정보 기입',
-    body: '상품 등록, 옵션 설정 등을 안내에 따라 작성해 주세요. 상품 설명은 AI가 자동으로 작성을 도와줍니다.',
+    body: '상품 사진으로 가격 추천, 간단한 설명글만으로 상세한 설명 작성과 같은 인공지능 서비스를 통해 편리한 상품 등록이 가능합니다',
     img: '/images/store_description/스토어 개설 신청3.png',
     caption: '상품 등록/옵션 안내',
   },
   {
-    title: 'STEP 4 · 정산 간리',
+    title: 'STEP 4 · 정산 관리',
     body: '주문이 들어오면 정산은 자동으로 관리됩니다. 대시보드에서 현황을 확인하세요.',
     img: '/images/store_description/스토어 개설 신청4.png',
     caption: '정산/배송 자동화',

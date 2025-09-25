@@ -283,7 +283,11 @@ const MainProductsDetail = () => {
   };
 
   const handleStoreClick = () => {
-    navigate(`/${product?.storeUrl}/info`);
+    if (product?.storeUrl == null) {
+      navigate('/main');
+    } else {
+      navigate(`/${product?.storeUrl}/info`);
+    }
   };
 
   const handleReport = () => {
@@ -500,10 +504,10 @@ const MainProductsDetail = () => {
       <Header />
       {isMain ? <Mainnavbar /> : <Storenavbar />}
 
-      <div className="max-w-screen-2xl mx-auto px-4">
+      <div className="max-w-screen-2xl mx-auto px-4 ">
         <div className="max-w-[1440px] mx-auto py-0 sm:py-8">
           {/* 상품 정보 섹션 */}
-          <div className="bg-white rounded-lg shadow-sm hover:shadow-[0_6px_10px_rgba(0,0,0,0.15)] transition-shadow p-4 md:p-8 mb-8">
+          <div className="bg-white rounded-lg shadow-sm hover:shadow-[0_6px_10px_rgba(0,0,0,0.15)] transition-shadow p-4 md:p-8 mb-8 max-w-5xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* 이미지 섹션 */}
               <div className="space-y-4">
@@ -648,7 +652,7 @@ const MainProductsDetail = () => {
           </div>
 
           {/* 상품 상세 설명 */}
-          <div className="bg-white rounded-lg shadow-sm p-4 md:p-8 mb-8">
+          <div className="bg-white rounded-lg shadow-sm p-4 md:p-8 mb-8 max-w-4xl mx-auto">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">상품 상세정보</h2>
 
             <div className="text-gray-700">
@@ -755,7 +759,7 @@ const MainProductsDetail = () => {
           />
 
           {/* 리뷰 섹션 */}
-          <div className="bg-white rounded-lg shadow-sm p-4 md:p-8">
+          <div className="bg-white rounded-lg shadow-sm p-4 md:p-8 max-w-4xl mx-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">상품 리뷰 ({reviews.length})</h2>
               <div className="flex items-center gap-2">

@@ -79,12 +79,8 @@ function isReservableSlot(
   date: string,
   time: string
 ): boolean {
-  // 기존 조건 (예약 가능하고 여석이 있는지)
   const basicReservable = slot.reservable && slot.seatsLeft > 0;
-
-  // 시간 조건 (현재 시간 이후인지)
   const timeReservable = !isPastTime(date, time);
-
   return basicReservable && timeReservable;
 }
 
@@ -136,7 +132,6 @@ function buildScheduleMap(rows: SlotDTO[], onlyReservable = false): ScheduleMap 
     const parsed = splitSlot(row.slot);
     if (!parsed) return;
 
-    // onlyReservable이 true일 때 시간 체크도 포함
     if (onlyReservable) {
       const timeReservable = !isPastTime(parsed.date, parsed.time);
       if (!row.reservable || row.seatsLeft <= 0 || !timeReservable) return;
@@ -155,7 +150,6 @@ function buildScheduleMap(rows: SlotDTO[], onlyReservable = false): ScheduleMap 
   return byDate;
 }
 
-// 개선된 FullCalendar 이벤트 생성 함수
 function toFullCalendarEvents(
   scheduleMap: ScheduleMap,
   selectedEventId?: string | null
@@ -174,28 +168,27 @@ function toFullCalendarEvents(
         start: `${date}T${s.time}:00`,
         allDay: false,
         display: 'block',
-        // 선택 상태와 시간 조건에 따른 동적 색상 설정
         backgroundColor: isSelected
-          ? '#3B82F6' // blue-500
+          ? '#3B82F6'
           : isReservable
-            ? '#F9FAFB' // gray-50
+            ? '#F9FAFB'
             : !isTimeReservable
-              ? '#FEF2F2' // red-50
-              : '#E5E7EB', // gray-200
+              ? '#FEF2F2'
+              : '#E5E7EB',
         borderColor: isSelected
-          ? '#2563EB' // blue-600
+          ? '#2563EB'
           : isReservable
-            ? '#2D4739' // 기존 브랜드 컬러
+            ? '#2D4739'
             : !isTimeReservable
-              ? '#EF4444' // red-500
-              : '#D1D5DB', // gray-300
+              ? '#EF4444'
+              : '#D1D5DB',
         textColor: isSelected
-          ? '#FFFFFF' // white
+          ? '#FFFFFF'
           : isReservable
-            ? '#111827' // gray-900
+            ? '#111827'
             : !isTimeReservable
-              ? '#DC2626' // red-600
-              : '#6B7280', // gray-500
+              ? '#DC2626'
+              : '#6B7280',
         extendedProps: {
           date,
           time: s.time,
@@ -233,8 +226,64 @@ export default function ClassesDetailPage() {
   const [showFixedButton, setShowFixedButton] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
-  /** 탭 상태 */
   const [activeTab, setActiveTab] = useState<'detail' | 'store'>('detail');
+
+  // 클래스 설명을 위한 CSS 스타일 적용
+  useEffect(() => {
+    const addClassDescriptionStyles = () => {
+      const existingStyle = document.getElementById('class-description-styles');
+      if (!existingStyle) {
+        const style = document.createElement('style');
+        style.id = 'class-description-styles';
+        style.textContent = `
+          .class-description h1, .class-description h2, .class-description h3,
+          .class-description h4, .class-description h5, .class-description h6 {
+            font-weight: 600 !important;
+            margin-top: 24px !important;
+            margin-bottom: 16px !important;
+            color: #1f2937 !important;
+          }
+          .class-description h1 { font-size: 32px !important; }
+          .class-description h2 { font-size: 24px !important; }
+          .class-description h3 { font-size: 20px !important; }
+          .class-description h4 { font-size: 18px !important; }
+          .class-description h5 { font-size: 16px !important; }
+          .class-description h6 { font-size: 14px !important; }
+          .class-description p {
+            margin-bottom: 16px !important;
+            line-height: 1.7 !important;
+            color: #374151 !important;
+          }
+          .class-description ul, .class-description ol {
+            margin-bottom: 16px !important;
+            padding-left: 24px !important;
+            color: #374151 !important;
+          }
+          .class-description li {
+            margin-bottom: 8px !important;
+            line-height: 1.6 !important;
+          }
+          .class-description strong {
+            font-weight: 600 !important;
+            color: #1f2937 !important;
+          }
+          .class-description em {
+            font-style: italic !important;
+            color: #1f2937 !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    };
+
+    addClassDescriptionStyles();
+    return () => {
+      const style = document.getElementById('class-description-styles');
+      if (style) {
+        style.remove();
+      }
+    };
+  }, []);
 
   /** 데이터 패치 */
   useEffect(() => {
@@ -272,7 +321,6 @@ export default function ClassesDetailPage() {
         setImageList(imgs);
         setScheduleMap(schedMap);
 
-        // 현재 시간 기준으로 예약 가능한 첫 번째 슬롯 찾기
         const dates = Array.from(schedMap.keys()).sort();
         let firstDate = '';
         let firstReservable = '';
@@ -297,7 +345,6 @@ export default function ClassesDetailPage() {
       } catch (err: any) {
         console.error('데이터 로딩 실패:', err);
 
-        // HTTP 상태 코드에 따른 에러 처리
         const statusCode = err.response?.status;
 
         switch (statusCode) {
@@ -313,7 +360,6 @@ export default function ClassesDetailPage() {
             nav('/error/500', { replace: true });
             break;
           default:
-            // 네트워크 에러나 기타 에러
             setLoadError(err instanceof Error ? err.message : '데이터를 불러오지 못했어요.');
             setTimeout(() => nav('/error/404', { replace: true }), 2000);
         }
@@ -361,19 +407,9 @@ export default function ClassesDetailPage() {
     [selectedDate, scheduleMap]
   );
 
-  /** 개선된 FullCalendar 이벤트 소스 */
   const calendarEvents = useMemo<EventSourceInput>(() => {
     return toFullCalendarEvents(scheduleMap, selectedEventId);
   }, [scheduleMap, selectedEventId]);
-
-  /** 콘텐츠 처리 */
-  const { sanitizedDescription, contentType } = useMemo(() => {
-    return processContent(summary?.description);
-  }, [summary?.description]);
-
-  const contentCssClasses = useMemo(() => {
-    return getContentCssClasses(contentType);
-  }, [contentType]);
 
   /** 액션 */
   const handleApply = () => {
@@ -382,7 +418,6 @@ export default function ClassesDetailPage() {
       return;
     }
 
-    // 선택된 시간이 현재 시간 이후인지 다시 한번 확인
     if (isPastTime(selectedDate, selectedTime)) {
       alert('이미 지난 시간입니다. 다른 시간을 선택해주세요.');
       return;
@@ -420,7 +455,6 @@ export default function ClassesDetailPage() {
     }, 700);
   };
 
-  /** 개선된 FullCalendar 핸들러 */
   const onDateClick = (arg: DateClickArg) => {
     const date = arg.dateStr;
     if (!scheduleMap.has(date)) return;
@@ -450,20 +484,23 @@ export default function ClassesDetailPage() {
     };
 
     if (!p?.date || !p?.time) return;
-    if (!p.isReservable || !p.isTimeReservable) return; // 예약 불가능하거나 시간이 지난 이벤트 클릭 방지
+    if (!p.isReservable || !p.isTimeReservable) return;
 
     setSelectedDate(p.date);
     setSelectedTime(p.time);
     setSelectedEventId(arg.event.id);
   };
 
-  /** 렌더 */
+  // 콘텐츠 처리를 렌더링 시점에서 직접 수행
+  const processedContent = summary?.description ? processContent(summary.description) : null;
+  const sanitizedDescription = processedContent?.sanitizedDescription || '';
+  const contentType = processedContent?.contentType || 'plain';
+
   return (
     <>
       <Header />
       <Mainnavbar />
 
-      {/* 1920px 기준 양옆 240px 패딩, 내부 콘텐츠 1440px */}
       <main className="max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-16 xl:px-[240px]">
         <div className="max-w-[1440px] mx-auto">
           {isLoading ? (
@@ -505,7 +542,6 @@ export default function ClassesDetailPage() {
               {/* 상단: 이미지 + 기본 정보 */}
               <section className="mb-10">
                 <div className="flex flex-col xl:flex-row items-start gap-8 xl:gap-[120px]">
-                  {/* 왼쪽: 이미지 */}
                   <div className="w-full xl:w-[670px]">
                     <div className="rounded-2xl overflow-hidden border border-gray-200">
                       <div className="relative w-full aspect-[2/1]">
@@ -532,7 +568,6 @@ export default function ClassesDetailPage() {
                     </div>
                   </div>
 
-                  {/* 오른쪽: 텍스트/가격 */}
                   <div className="flex-1 xl:max-w-[503px] xl:h-[335px] flex flex-col justify-between">
                     <div className="flex flex-col gap-2.5">
                       <h1 className="text-[16px] sm:text-[24px] xl:text-[28px] leading-[1.5] font-bold">
@@ -557,7 +592,6 @@ export default function ClassesDetailPage() {
                 ref={calendarSectionRef}
                 className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10"
               >
-                {/* 왼쪽: 개선된 FullCalendar */}
                 <div className="bg-white border border-gray-200 rounded-2xl p-4">
                   <h3 className="text-lg font-semibold mb-3">날짜/타임 일정</h3>
                   <FullCalendar
@@ -577,7 +611,6 @@ export default function ClassesDetailPage() {
                       minute: '2-digit',
                       hour12: false,
                     }}
-                    // Tailwind 클래스를 적용하는 eventClassNames
                     eventClassNames={(arg) => {
                       const isSelected = arg.event.extendedProps.isSelected;
                       const isReservable = arg.event.extendedProps.isReservable;
@@ -590,8 +623,6 @@ export default function ClassesDetailPage() {
                         'rounded-lg',
                         'shadow-sm',
                         'border-l-4',
-
-                        // 상태에 따른 스타일
                         ...(isSelected
                           ? [
                               'fc-event-selected',
@@ -610,18 +641,15 @@ export default function ClassesDetailPage() {
                               : ['fc-event-disabled', 'opacity-60', 'cursor-not-allowed']),
                       ];
                     }}
-                    // 추가적인 DOM 조작
                     eventDidMount={(info) => {
                       const isSelected = info.event.extendedProps.isSelected;
                       const isReservable = info.event.extendedProps.isReservable;
                       const isTimeReservable = info.event.extendedProps.isTimeReservable;
 
-                      // 예약 불가능하거나 시간이 지난 이벤트는 클릭 방지
                       if (!isReservable || !isTimeReservable) {
                         info.el.style.pointerEvents = 'none';
                       }
 
-                      // 선택된 이벤트는 z-index 조정
                       if (isSelected) {
                         info.el.style.zIndex = '20';
                       }
@@ -629,7 +657,6 @@ export default function ClassesDetailPage() {
                   />
                 </div>
 
-                {/* 오른쪽: 시간표 */}
                 <div className="bg-white border border-gray-200 rounded-2xl p-6">
                   <h3 className="text-lg font-semibold mb-2">시간 선택</h3>
                   {!selectedDate ? (
@@ -660,8 +687,8 @@ export default function ClassesDetailPage() {
                                 'py-3 px-4 rounded-lg text-sm font-medium transition-all text-left',
                                 disabled
                                   ? !isTimeReservable
-                                    ? 'bg-red-100 text-red-400 cursor-not-allowed' // 시간 경과
-                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed' // 기타 불가
+                                    ? 'bg-red-100 text-red-400 cursor-not-allowed'
+                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                   : isSelected
                                     ? 'bg-[#2D4739] text-white shadow-lg scale-105'
                                     : 'bg-gray-50 hover:bg-gray-100 text-gray-700 hover:shadow-md',
@@ -728,9 +755,9 @@ export default function ClassesDetailPage() {
                       <h3 className="text-xl font-semibold mb-4">클래스 상세 정보</h3>
 
                       <div className="space-y-4 text-gray-700">
-                        {sanitizedDescription ? (
+                        {summary.description ? (
                           <div
-                            className={`content-wrapper ${contentCssClasses}`}
+                            className="class-description"
                             dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
                           />
                         ) : (
@@ -748,7 +775,7 @@ export default function ClassesDetailPage() {
                         )}
                       </div>
 
-                      {/* 상세 이미지 갤러리 (대표 제외) */}
+                      {/* 상세 이미지 갤러리 */}
                       {detailImages.length > 0 && (
                         <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                           {detailImages.map((src, idx) => (
@@ -796,7 +823,7 @@ export default function ClassesDetailPage() {
             </div>
           )}
 
-          {/* 플로팅 CTA - 조건부 표시 */}
+          {/* 플로팅 CTA */}
           {showFixedButton &&
             !isLoading &&
             !loadError &&
@@ -812,6 +839,90 @@ export default function ClassesDetailPage() {
             )}
         </div>
       </main>
+
+      {/* 인라인 CSS 스타일 */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+          .class-description h1, .class-description h2, .class-description h3,
+          .class-description h4, .class-description h5, .class-description h6 {
+            font-weight: 600 !important;
+            margin-top: 24px !important;
+            margin-bottom: 16px !important;
+            color: #1f2937 !important;
+          }
+          .class-description h1 { font-size: 32px !important; }
+          .class-description h2 { font-size: 24px !important; }
+          .class-description h3 { font-size: 20px !important; }
+          .class-description h4 { font-size: 18px !important; }
+          .class-description h5 { font-size: 16px !important; }
+          .class-description h6 { font-size: 14px !important; }
+          .class-description p {
+            margin-bottom: 16px !important;
+            line-height: 1.7 !important;
+            color: #374151 !important;
+          }
+          .class-description ul, .class-description ol {
+            margin-bottom: 16px !important;
+            padding-left: 24px !important;
+            color: #374151 !important;
+          }
+          .class-description li {
+            margin-bottom: 8px !important;
+            line-height: 1.6 !important;
+          }
+          .class-description strong {
+            font-weight: 600 !important;
+            color: #1f2937 !important;
+          }
+          .class-description em {
+            font-style: italic !important;
+            color: #1f2937 !important;
+          }
+          .class-description code {
+            background-color: #f3f4f6 !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
+            font-size: 14px !important;
+            color: #1f2937 !important;
+          }
+          .class-description pre {
+            background-color: #f3f4f6 !important;
+            padding: 16px !important;
+            border-radius: 8px !important;
+            overflow-x: auto !important;
+            margin-bottom: 16px !important;
+          }
+          .class-description blockquote {
+            border-left: 4px solid #d1d5db !important;
+            padding-left: 16px !important;
+            margin: 16px 0 !important;
+            font-style: italic !important;
+            color: #6b7280 !important;
+          }
+          .class-description a {
+            color: #2563eb !important;
+            text-decoration: none !important;
+          }
+          .class-description a:hover {
+            color: #1d4ed8 !important;
+            text-decoration: underline !important;
+          }
+          .class-description hr {
+            border: none !important;
+            border-top: 1px solid #e5e7eb !important;
+            margin: 24px 0 !important;
+          }
+          .class-description img {
+            max-width: 100% !important;
+            height: auto !important;
+            border-radius: 8px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+            margin: 16px 0 !important;
+          }
+        `,
+        }}
+      />
     </>
   );
 }

@@ -38,11 +38,63 @@ export function detectContentType(text?: string): ContentType {
  */
 export function sanitizeHtml(htmlString?: string): string {
   if (!htmlString) return '';
-  return DOMPurify.sanitize(htmlString);
+
+  // DOMPurify 설정을 더 관대하게 변경
+  return DOMPurify.sanitize(htmlString, {
+    ALLOWED_TAGS: [
+      'p',
+      'br',
+      'strong',
+      'em',
+      'u',
+      's',
+      'sup',
+      'sub',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'ul',
+      'ol',
+      'li',
+      'a',
+      'img',
+      'blockquote',
+      'pre',
+      'code',
+      'table',
+      'thead',
+      'tbody',
+      'tr',
+      'td',
+      'th',
+      'div',
+      'span',
+      'hr',
+    ],
+    ALLOWED_ATTR: [
+      'href',
+      'target',
+      'rel',
+      'title',
+      'src',
+      'alt',
+      'width',
+      'height',
+      'loading',
+      'class',
+      'id',
+    ],
+    ALLOW_DATA_ATTR: false,
+    ADD_ATTR: ['target', 'loading'],
+    FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed'],
+  });
 }
 
 /**
- * 마크다운을 HTML로 변환합니다
+ * 마크다운을 HTML로 변환합니다 (개선된 버전)
  */
 export function convertMarkdownToHtml(markdown?: string): string {
   if (!markdown) return '';

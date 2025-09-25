@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type JSX } from 'react';
+import { useState, useEffect, type JSX } from 'react';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import { Star, ShoppingCart, CreditCard, Flag, Edit, Minus, Plus, ThumbsUp, X } from 'lucide-react';
@@ -71,12 +71,12 @@ const mapProduct = (api: any): Product => {
 const mapReview = (r: any): Review => ({
   id: r.id.toString(),
   userName: r.memberName,
-  createdAt: r.reviewDate, // API에 없으면 현재 시간 사용
+  createdAt: r.reviewDate,
   updatedAt: r.updatedAt,
   rating: r.rating,
   content: r.content,
-  likes: 0, // 초기값
-  isOwner: false, // 실제 로그인 사용자 확인 후 변경 가능
+  likes: 0,
+  isOwner: false,
   isLiked: false,
   isEdited: !!r.updatedAt,
 });
@@ -100,15 +100,6 @@ const MainProductsDetail = () => {
   const [loadingReviews, setLoadingReviews] = useState(true);
 
   const navigate = useNavigate();
-
-  // 콘텐츠 처리 (유틸리티 사용)
-  const { sanitizedDescription, contentType } = useMemo(() => {
-    return processContent(product?.description);
-  }, [product?.description]);
-
-  const contentCssClasses = useMemo(() => {
-    return getContentCssClasses(contentType);
-  }, [contentType]);
 
   // 상품 상세 불러오기
   useEffect(() => {
@@ -139,7 +130,7 @@ const MainProductsDetail = () => {
   const calculateAverageRating = (reviews: Review[]): number => {
     if (reviews.length === 0) return 0;
     const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
-    return parseFloat((sum / reviews.length).toFixed(1)); // 소수점 1자리
+    return parseFloat((sum / reviews.length).toFixed(1));
   };
 
   // 리뷰 불러오기
@@ -149,14 +140,11 @@ const MainProductsDetail = () => {
     const fetchReviews = async () => {
       try {
         const response = await get<any[]>(`/products/${productId}/reviews`);
-        // console.log('리뷰 API 응답 전체:', response);
 
         if (response.status === 200) {
-          // console.log('배열:', Array.isArray(response.data));
           const mapped = response.data.map(mapReview);
           setReviews(mapped);
 
-          // product.rating, product.reviewCount 업데이트
           setProduct((prev) =>
             prev
               ? {
@@ -166,7 +154,6 @@ const MainProductsDetail = () => {
                 }
               : prev
           );
-          // console.log(response);
         } else {
           console.error('리뷰 조회 실패:', response.message);
           setReviews([]);
@@ -182,7 +169,64 @@ const MainProductsDetail = () => {
     fetchReviews();
   }, [productId]);
 
-  // product.images 변경 시 selected index 리셋 (안전)
+  // 상품 상세 설명을 위한 CSS 스타일 적용
+  useEffect(() => {
+    const addProductDescriptionStyles = () => {
+      const existingStyle = document.getElementById('product-description-styles');
+      if (!existingStyle) {
+        const style = document.createElement('style');
+        style.id = 'product-description-styles';
+        style.textContent = `
+          .product-description h1, .product-description h2, .product-description h3,
+          .product-description h4, .product-description h5, .product-description h6 {
+            font-weight: 600 !important;
+            margin-top: 24px !important;
+            margin-bottom: 16px !important;
+            color: #1f2937 !important;
+          }
+          .product-description h1 { font-size: 32px !important; }
+          .product-description h2 { font-size: 24px !important; }
+          .product-description h3 { font-size: 20px !important; }
+          .product-description h4 { font-size: 18px !important; }
+          .product-description h5 { font-size: 16px !important; }
+          .product-description h6 { font-size: 14px !important; }
+          .product-description p {
+            margin-bottom: 16px !important;
+            line-height: 1.7 !important;
+            color: #374151 !important;
+          }
+          .product-description ul, .product-description ol {
+            margin-bottom: 16px !important;
+            padding-left: 24px !important;
+            color: #374151 !important;
+          }
+          .product-description li {
+            margin-bottom: 8px !important;
+            line-height: 1.6 !important;
+          }
+          .product-description strong {
+            font-weight: 600 !important;
+            color: #1f2937 !important;
+          }
+          .product-description em {
+            font-style: italic !important;
+            color: #1f2937 !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    };
+
+    addProductDescriptionStyles();
+    return () => {
+      const style = document.getElementById('product-description-styles');
+      if (style) {
+        style.remove();
+      }
+    };
+  }, []);
+
+  // product.images 변경 시 selected index 리셋
   useEffect(() => {
     setSelectedImageIndex(0);
   }, [product?.images.length]);
@@ -191,7 +235,6 @@ const MainProductsDetail = () => {
     return new Intl.NumberFormat('ko-KR').format(price);
   };
 
-  // 안전한 날짜 포맷터: 빈값/invalid 처리
   const formatDate = (dateInput?: string | number) => {
     if (!dateInput) return '';
     const d = typeof dateInput === 'number' ? new Date(dateInput) : new Date(String(dateInput));
@@ -239,7 +282,6 @@ const MainProductsDetail = () => {
     }
   };
 
-  // 스토어 이름 클릭 시 스토어 정보 페이지로 이동
   const handleStoreClick = () => {
     navigate(`/${product?.storeUrl}/info`);
   };
@@ -263,7 +305,6 @@ const MainProductsDetail = () => {
 
       if (response.status === 200) {
         setShowModal(true);
-        // alert(`장바구니에 ${quantity}개 추가되었습니다.`);
       } else {
         console.error('장바구니 추가 실패:', response.message);
         alert('장바구니 추가에 실패했습니다. 다시 시도해주세요.');
@@ -280,7 +321,6 @@ const MainProductsDetail = () => {
     }
   };
 
-  // 장바구니 추가할 때 나타나는 모달
   const Modal = () =>
     showModal ? (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -314,13 +354,13 @@ const MainProductsDetail = () => {
     const item = {
       productId: Number(product.id) || product.id,
       productName: product.name,
-      productDetail: '', // 옵션/선택사항이 있다면 채워주세요
+      productDetail: '',
       productCnt: quantity,
       price: product.price,
       pimgUrl: product.thumbnailUrl || product.images?.[0] || '',
       storeName: product.storeName,
       storeUrl: product.storeUrl ?? 'main',
-      cartId: null, // 바로결제라 장바구니 아님
+      cartId: null,
     };
 
     sessionStorage.setItem('orderItems', JSON.stringify([item]));
@@ -393,7 +433,6 @@ const MainProductsDetail = () => {
     );
   };
 
-  // ⭐ 0.5 단위 별점 입력 컴포넌트
   const StarRatingInput = ({
     value,
     onChange,
@@ -409,23 +448,17 @@ const MainProductsDetail = () => {
       <div className="flex gap-1 select-none">
         {Array.from({ length: 5 }).map((_, idx) => {
           const i = idx + 1;
-          // 현재 별(i)에 채워질 비율(0~1)
           const fillPct = Math.max(0, Math.min(1, value - (i - 1)));
 
           return (
             <span key={i} className={`relative inline-block ${sizeClass}`}>
-              {/* 회색 바탕 별 */}
               <Star className={`${sizeClass} text-gray-300`} />
-
-              {/* 채워진 부분(오버레이) */}
               <span
                 className="absolute top-0 left-0 overflow-hidden pointer-events-none"
                 style={{ width: `${fillPct * 100}%` }}
               >
                 <Star className={`${sizeClass} text-yellow-400 fill-yellow-400`} />
               </span>
-
-              {/* 클릭 영역: 왼쪽(0.5), 오른쪽(1.0) */}
               <button
                 type="button"
                 aria-label={`${i - 0.5}점`}
@@ -445,7 +478,6 @@ const MainProductsDetail = () => {
     );
   };
 
-  // 렌더 가드: 상품 정보가 준비될 때까지 로딩 스피너
   if (loadingProduct || !product) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -454,29 +486,27 @@ const MainProductsDetail = () => {
     );
   }
 
-  // 이미지 안전 접근: images가 비어있으면 thumbnailUrl 사용
-  const mainImage = product.images?.[selectedImageIndex] ?? product.thumbnailUrl ?? '';
-
-  // 메인인지 경로인지 여부 체크
   const { pathname } = useLocation();
   const isMain = pathname.startsWith('/main');
+
+  // 콘텐츠 처리를 렌더링 시점에서 직접 수행
+  const processedContent = product.description ? processContent(product.description) : null;
+  const sanitizedDescription = processedContent?.sanitizedDescription || '';
+  const contentType = processedContent?.contentType || 'plain';
+  const contentCssClasses = getContentCssClasses(contentType);
 
   return (
     <div className="min-h-screen bg-white">
       <Header />
       {isMain ? <Mainnavbar /> : <Storenavbar />}
-      {/* 컨테이너 */}
-      <div className="max-w-screen-2xl mx-auto px-4 ">
+
+      <div className="max-w-screen-2xl mx-auto px-4">
         <div className="max-w-[1440px] mx-auto py-0 sm:py-8">
           {/* 상품 정보 섹션 */}
-          <div
-            className="bg-white rounded-lg shadow-sm hover:shadow-[0_6px_10px_rgba(0,0,0,0.15)]
-                transition-shadow p-4 md:p-8 mb-8 "
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 ">
+          <div className="bg-white rounded-lg shadow-sm hover:shadow-[0_6px_10px_rgba(0,0,0,0.15)] transition-shadow p-4 md:p-8 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* 이미지 섹션 */}
               <div className="space-y-4">
-                {/* 메인 이미지 - 크기 줄임 */}
                 <div className="w-full max-w-[400px] mx-auto aspect-square overflow-hidden rounded-lg bg-gray-100">
                   <img
                     src={product.images[selectedImageIndex]}
@@ -485,7 +515,6 @@ const MainProductsDetail = () => {
                   />
                 </div>
 
-                {/* 썸네일 이미지들 */}
                 {product.images.length > 1 && (
                   <div className="flex gap-2 justify-center">
                     {product.images.map((image, index) => (
@@ -509,7 +538,6 @@ const MainProductsDetail = () => {
 
               {/* 상품 정보 */}
               <div className="space-y-6">
-                {/* 스토어 정보 */}
                 <div>
                   <button
                     onClick={handleStoreClick}
@@ -519,7 +547,6 @@ const MainProductsDetail = () => {
                   </button>
                 </div>
 
-                {/* 상품명 & 신고/수정 버튼 */}
                 <div className="flex items-start justify-between">
                   <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex-1">
                     {product.name}
@@ -542,7 +569,6 @@ const MainProductsDetail = () => {
                   </div>
                 </div>
 
-                {/* 카테고리 */}
                 <div className="flex flex-wrap gap-2">
                   {product.categories.map((category, index) => (
                     <span
@@ -554,7 +580,6 @@ const MainProductsDetail = () => {
                   ))}
                 </div>
 
-                {/* 평점 */}
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1">
                     {renderStars(product.rating, 'large')}
@@ -563,14 +588,12 @@ const MainProductsDetail = () => {
                   <span className="text-gray-600">({product.reviewCount}개 리뷰)</span>
                 </div>
 
-                {/* 가격 */}
                 <div className="py-4 border-t border-b border-gray-200">
                   <p className="text-3xl font-bold text-[#2d4739]">
                     {formatPrice(product.price)}원
                   </p>
                 </div>
 
-                {/* 수량 선택 */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
                     <span className="font-medium text-gray-900">수량:</span>
@@ -595,7 +618,6 @@ const MainProductsDetail = () => {
                     </div>
                   </div>
 
-                  {/* 총 가격 */}
                   <div className="text-lg font-semibold text-gray-900">
                     총 가격:{' '}
                     <span className="text-[#2d4739]">
@@ -604,7 +626,6 @@ const MainProductsDetail = () => {
                   </div>
                 </div>
 
-                {/* 버튼들 */}
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={handleAddToCart}
@@ -629,12 +650,17 @@ const MainProductsDetail = () => {
           {/* 상품 상세 설명 */}
           <div className="bg-white rounded-lg shadow-sm p-4 md:p-8 mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">상품 상세정보</h2>
-            {/* contentUtils를 사용한 콘텐츠 렌더링 */}
-            <div className="space-y-4 text-gray-700">
-              {sanitizedDescription ? (
+
+            <div className="text-gray-700">
+              {product.description ? (
                 <div
-                  className={`content-wrapper ${contentCssClasses}`}
+                  className="product-description"
                   dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
+                  style={{
+                    lineHeight: '1.6',
+                    fontSize: '16px',
+                    color: '#374151',
+                  }}
                 />
               ) : (
                 <div>
@@ -643,6 +669,90 @@ const MainProductsDetail = () => {
               )}
             </div>
           </div>
+
+          {/* 인라인 CSS 스타일 */}
+          <style
+            dangerouslySetInnerHTML={{
+              __html: `
+              .product-description h1, .product-description h2, .product-description h3,
+              .product-description h4, .product-description h5, .product-description h6 {
+                font-weight: 600 !important;
+                margin-top: 24px !important;
+                margin-bottom: 16px !important;
+                color: #1f2937 !important;
+              }
+              .product-description h1 { font-size: 32px !important; }
+              .product-description h2 { font-size: 24px !important; }
+              .product-description h3 { font-size: 20px !important; }
+              .product-description h4 { font-size: 18px !important; }
+              .product-description h5 { font-size: 16px !important; }
+              .product-description h6 { font-size: 14px !important; }
+              .product-description p {
+                margin-bottom: 16px !important;
+                line-height: 1.7 !important;
+                color: #374151 !important;
+              }
+              .product-description ul, .product-description ol {
+                margin-bottom: 16px !important;
+                padding-left: 24px !important;
+                color: #374151 !important;
+              }
+              .product-description li {
+                margin-bottom: 8px !important;
+                line-height: 1.6 !important;
+              }
+              .product-description strong {
+                font-weight: 600 !important;
+                color: #1f2937 !important;
+              }
+              .product-description em {
+                font-style: italic !important;
+                color: #1f2937 !important;
+              }
+              .product-description code {
+                background-color: #f3f4f6 !important;
+                padding: 2px 6px !important;
+                border-radius: 4px !important;
+                font-size: 14px !important;
+                color: #1f2937 !important;
+              }
+              .product-description pre {
+                background-color: #f3f4f6 !important;
+                padding: 16px !important;
+                border-radius: 8px !important;
+                overflow-x: auto !important;
+                margin-bottom: 16px !important;
+              }
+              .product-description blockquote {
+                border-left: 4px solid #d1d5db !important;
+                padding-left: 16px !important;
+                margin: 16px 0 !important;
+                font-style: italic !important;
+                color: #6b7280 !important;
+              }
+              .product-description a {
+                color: #2563eb !important;
+                text-decoration: none !important;
+              }
+              .product-description a:hover {
+                color: #1d4ed8 !important;
+                text-decoration: underline !important;
+              }
+              .product-description hr {
+                border: none !important;
+                border-top: 1px solid #e5e7eb !important;
+                margin: 24px 0 !important;
+              }
+              .product-description img {
+                max-width: 100% !important;
+                height: auto !important;
+                border-radius: 8px !important;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+                margin: 16px 0 !important;
+              }
+            `,
+            }}
+          />
 
           {/* 리뷰 섹션 */}
           <div className="bg-white rounded-lg shadow-sm p-4 md:p-8">
@@ -654,12 +764,10 @@ const MainProductsDetail = () => {
               </div>
             </div>
 
-            {/* 리뷰 작성 폼 */}
             {canWriteReview && (
               <div className="border border-gray-200 rounded-lg p-4 mb-6">
                 <h3 className="font-semibold text-gray-900 mb-4">리뷰 작성</h3>
                 <div className="space-y-4">
-                  {/* 별점 선택 - 0.5 단위 */}
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-gray-700">평점:</span>
                     <StarRatingInput
@@ -672,7 +780,6 @@ const MainProductsDetail = () => {
                     </span>
                   </div>
 
-                  {/* 리뷰 내용 */}
                   <textarea
                     value={newReview.content}
                     onChange={(e) => setNewReview((prev) => ({ ...prev, content: e.target.value }))}
@@ -681,7 +788,6 @@ const MainProductsDetail = () => {
                     rows={4}
                   />
 
-                  {/* 작성 버튼 */}
                   <div className="flex justify-end">
                     <button
                       onClick={handleSubmitReview}
@@ -695,12 +801,10 @@ const MainProductsDetail = () => {
               </div>
             )}
 
-            {/* 리뷰 목록 */}
             <div className="space-y-6">
               {reviews.map((review) => (
                 <div key={review.id} className="border-b border-gray-200 pb-6 last:border-b-0">
                   {editingReview === review.id ? (
-                    /* 리뷰 수정 폼 */
                     <div className="space-y-4">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-700">평점:</span>
@@ -713,16 +817,13 @@ const MainProductsDetail = () => {
                             );
                             return (
                               <span key={i} className="relative inline-block w-5 h-5">
-                                {/* 회색 바탕 별 */}
                                 <Star className="w-5 h-5 text-gray-300" />
-                                {/* 채워진 오버레이 (0~100%) */}
                                 <span
                                   className="absolute top-0 left-0 overflow-hidden pointer-events-none"
                                   style={{ width: `${fillPct * 100}%` }}
                                 >
                                   <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                                 </span>
-                                {/* 클릭 영역: 왼쪽(0.5), 오른쪽(1.0) */}
                                 <button
                                   type="button"
                                   aria-label={`${i - 0.5}점`}
@@ -747,7 +848,7 @@ const MainProductsDetail = () => {
                           {editReviewData.rating.toFixed(1)}점
                         </span>
                       </div>
-                      {/* 기존 내용이 그대로 보이는 입력창 */}
+
                       <textarea
                         value={editReviewData.content}
                         onChange={(e) =>
@@ -774,7 +875,6 @@ const MainProductsDetail = () => {
                       </div>
                     </div>
                   ) : (
-                    /* 일반 리뷰 표시 */
                     <div>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
@@ -788,7 +888,6 @@ const MainProductsDetail = () => {
                           </span>
                         </div>
 
-                        {/* 리뷰 액션 버튼들 */}
                         <div className="flex items-center gap-2">
                           {review.isOwner && (
                             <>

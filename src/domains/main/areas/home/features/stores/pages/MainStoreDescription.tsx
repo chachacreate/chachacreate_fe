@@ -31,34 +31,34 @@ type Step = {
 
 const STEPS: Step[] = [
   {
-    title: 'STEP 1 · 개인 판매 메뉴에서 개설 시작',
-    body: "회원가입 및 로그인 후, 개인 판매 메뉴에서 '스토어 개설'을 클릭하세요.",
-    img: 'https://picsum.photos/seed/step1/1200/700',
-    caption: '대시보드 > 개인 판매 > 스토어 개설',
+    title: 'STEP 1 · 스토어 메뉴에서 개설 시작',
+    body: "회원가입 및 로그인 후, 스토어 메뉴에서 스토어 개설 설명 버튼을 누른 뒤 '스토어 개설 신청'을 클릭하세요.",
+    img: '/images/store_description/스토어 개설 신청1.png',
+    caption: '스토어 매뉴 > 스토어 개설 설명 > 스토어 개설 신청',
   },
   {
-    title: 'STEP 2 · 스토어 이름과 소개 등록',
-    body: '브랜드 스토리/운영 철학을 간단히 적고, 소개 이미지를 준비해 두면 좋아요.',
-    img: 'https://picsum.photos/seed/step2/1200/700',
+    title: 'STEP 2 · 스토어 기본 정보 등록',
+    body: '스토어 기본 정보를 안내에 따라 설정하세요. 스토어 로고 이미지를 준비해 두면 좋아요.',
+    img: '/images/store_description/스토어 개설 신청2.png',
     caption: '스토어 기본 정보 입력',
   },
   {
     title: 'STEP 3 · 상품 등록 및 상세 정보 기입',
-    body: '가격·옵션·배송 안내를 빠짐없이 작성해 주세요. 한 번 등록하면 1일 이내 노출 가능(검수 없음).',
-    img: 'https://picsum.photos/seed/step3/1200/700',
-    caption: '상품 등록/옵션/배송 안내',
+    body: '상품 등록, 옵션 설정 등을 안내에 따라 작성해 주세요. 상품 설명은 AI가 자동으로 작성을 도와줍니다.',
+    img: '/images/store_description/스토어 개설 신청3.png',
+    caption: '상품 등록/옵션 안내',
   },
   {
-    title: 'STEP 4 · 결제/정산 세팅',
-    body: '결제 수단 연결과 정산 계정을 설정하세요. 완료 즉시 판매 시작!',
-    img: 'https://picsum.photos/seed/step4/1200/700',
-    caption: '결제/정산 연동',
-  },
-  {
-    title: 'STEP 5 · 자동 정산 및 배송 관리',
-    body: '주문이 들어오면 정산/배송 처리는 자동으로 관리됩니다. 대시보드에서 현황을 확인하세요.',
-    img: 'https://picsum.photos/seed/step5/1200/700',
+    title: 'STEP 4 · 정산 간리',
+    body: '주문이 들어오면 정산은 자동으로 관리됩니다. 대시보드에서 현황을 확인하세요.',
+    img: '/images/store_description/스토어 개설 신청4.png',
     caption: '정산/배송 자동화',
+  },
+  {
+    title: 'STEP 5 · 클래스 등록',
+    body: '스토어 관리 메뉴에서 클래스 등록을 할 수 있어요. 클래스 기본 정보를 안내에 따라 작성해 주세요.',
+    img: '/images/store_description/스토어 개설 신청5.png',
+    caption: '클래스 기본 정보 입력',
   },
 ];
 
@@ -327,12 +327,14 @@ const MainStoreDescription: React.FC = () => {
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </button>
                   ) : (
-                    <div 
+                    <div
                       className="w-full md:w-auto inline-flex items-center justify-center md:justify-start gap-2 rounded-lg bg-gray-100/80 backdrop-blur-sm px-3 py-2.5 text-xs sm:text-sm text-gray-700 opacity-0 animate-fade-in-slide text-center md:text-left"
                       style={{ animationDelay: '0.3s' }}
                     >
                       <Info className="w-4 h-4 text-gray-500 animate-pulse flex-shrink-0" />
-                      <span className="break-keep">개인판매자 로그인 시 신청 버튼이 표시됩니다</span>
+                      <span className="break-keep">
+                        개인판매자 로그인 시 신청 버튼이 표시됩니다
+                      </span>
                     </div>
                   )}
                 </div>
@@ -418,10 +420,10 @@ const MainStoreDescription: React.FC = () => {
                           </h3>
                           <p className="mt-2 text-gray-700">{step.body}</p>
 
-                          {i === 2 && (
+                          {i === 0 && (
                             <p className="mt-3 text-sm text-emerald-700 inline-flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4" />한 번 등록하면 1일 이내 노출
-                              가능(검수 없음)
+                              <CheckCircle2 className="w-4 h-4" />
+                              개인판매 상품 등록을 2개 하셔야 스토어 개설 가능합니다.
                             </p>
                           )}
 
@@ -461,25 +463,25 @@ const MainStoreDescription: React.FC = () => {
 
             {/* --- 하단 CTA (개인판매자만) --- */}
             {isPersonal && (
-            <div
-              className="mt-10 md:mt-14 text-center opacity-0 animate-fade-in-slide"
-              style={{ animationDelay: '0.6s' }}
-            >
-              <button
-                onClick={goToOpenForm}
-                className="group relative inline-flex items-center gap-2 rounded-xl 
+              <div
+                className="mt-10 md:mt-14 text-center opacity-0 animate-fade-in-slide"
+                style={{ animationDelay: '0.6s' }}
+              >
+                <button
+                  onClick={goToOpenForm}
+                  className="group relative inline-flex items-center gap-2 rounded-xl 
 bg-[#6B8F7D] text-white px-6 py-3 font-semibold 
 hover:bg-green-600 transform hover:scale-105 
 transition-all duration-300 shadow-md hover:shadow-lg"
-              >
-                <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <Sparkles className="w-5 h-5 group-hover:animate-spin" />
-                지금 바로 개설하기
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
-              </button>
-              <p className="text-sm text-gray-600 mt-3 animate-pulse">⚡ 단 2분이면 완료됩니다</p>
-            </div>
-             )} 
+                >
+                  <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <Sparkles className="w-5 h-5 group-hover:animate-spin" />
+                  지금 바로 개설하기
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
+                </button>
+                <p className="text-sm text-gray-600 mt-3 animate-pulse">⚡ 단 2분이면 완료됩니다</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

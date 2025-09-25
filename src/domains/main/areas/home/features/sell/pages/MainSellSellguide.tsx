@@ -28,32 +28,32 @@ type Step = {
 const STEPS: Step[] = [
   {
     title: 'STEP 1 · 개인 판매 메뉴에서 개설 시작',
-    body: "회원가입 및 로그인 후, 개인 판매 메뉴에서 '스토어 개설'을 클릭하세요.",
-    img: 'https://picsum.photos/seed/step1/1200/700',
-    caption: '대시보드 > 개인 판매 > 스토어 개설',
+    body: '회원가입·로그인 후 [개인 판매] > [개인판매자 등록하기]에서 개설할 수 있습니다.',
+    img: '/images/personal_description/개인판매자 개설 신청1.png',
+    caption: '개인 판매 > 개인판매자 등록하기',
   },
   {
-    title: 'STEP 2 · 스토어 이름과 소개 등록',
-    body: '브랜드 스토리/운영 철학을 간단히 적고, 소개 이미지를 준비해 두면 좋아요.',
-    img: 'https://picsum.photos/seed/step2/1200/700',
-    caption: '스토어 기본 정보 입력',
+    title: 'STEP 2 · 판매자 정보 입력',
+    body: '정산 계좌 등 필수 정보를 정확히 입력해주세요. 정산 계좌는 판매자 본인 명의만 등록할 수 있습니다.',
+    img: '/images/personal_description/개인판매자 개설 신청2.png',
+    caption: '판매자 추가 정보 입력',
   },
   {
-    title: 'STEP 3 · 상품 등록 및 상세 정보 기입',
-    body: '가격·옵션·배송 안내를 빠짐없이 작성해 주세요. 한 번 등록하면 1일 이내 노출 가능(검수 없음).',
-    img: 'https://picsum.photos/seed/step3/1200/700',
-    caption: '상품 등록/옵션/배송 안내',
+    title: 'STEP 3 · 개인 판매 상품 등록&관리',
+    body: '상품 정보와 옵션·재고 등을 안내에 따라 입력해 주세요.',
+    img: '/images/personal_description/개인판매자 개설 신청3.png',
+    caption: '상품 등록/옵션 안내',
   },
   {
-    title: 'STEP 4 · 결제/정산 세팅',
-    body: '결제 수단 연결과 정산 계정을 설정하세요. 완료 즉시 판매 시작!',
-    img: 'https://picsum.photos/seed/step4/1200/700',
+    title: 'STEP 4 · 주문 관리',
+    body: '주문 발생 시 대시보드에 실시간 반영되며, 주문 처리 상태를 한 화면에서 관리합니다.',
+    img: '/images/personal_description/개인판매자 개설 신청5.png',
     caption: '결제/정산 연동',
   },
   {
-    title: 'STEP 5 · 자동 정산 및 배송 관리',
-    body: '주문이 들어오면 정산/배송 처리는 자동으로 관리됩니다. 대시보드에서 현황을 확인하세요.',
-    img: 'https://picsum.photos/seed/step5/1200/700',
+    title: 'STEP 5 · 정산 관리',
+    body: '확정된 거래는 정책에 따라 자동 정산되며, 정산 예정·지급 내역을 대시보드에서 조회 할 수 있습니다.',
+    img: '/images/personal_description/개인판매자 개설 신청4.png',
     caption: '정산/배송 자동화',
   },
 ];
@@ -460,13 +460,6 @@ transition-all duration-300 shadow-md hover:shadow-lg"
                             {step.title}
                           </h3>
                           <p className="mt-2 text-gray-700">{step.body}</p>
-
-                          {i === 2 && (
-                            <p className="mt-3 text-sm text-emerald-700 inline-flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4" />한 번 등록하면 1일 이내 노출
-                              가능(검수 없음)
-                            </p>
-                          )}
 
                           {/* 하단 컨트롤 */}
                           <div className="mt-auto pt-6 flex items-center justify-between">

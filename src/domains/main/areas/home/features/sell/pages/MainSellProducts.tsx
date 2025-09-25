@@ -241,11 +241,11 @@ const MainSellProducts: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const r1 = await legacyGet<any>('/legacy/main/sell/order/management');
+        const r1 = await legacyGet<any>('/main/sell/order/management');
         let list = extractList(r1);
 
         if (!list.length) {
-          const r2 = await fetch('/legacy/main/sell/order/management', {
+          const r2 = await fetch('/main/sell/order/management', {
             credentials: 'include',
             headers: { Accept: 'application/json' },
           });

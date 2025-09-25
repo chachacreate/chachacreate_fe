@@ -200,14 +200,8 @@ export default function SellerSettlementProduct() {
         type BootEnriched = BootMonthlyMetaItem & { yymm: string | null; sortKey: string | null };
         const bootEnriched: BootEnriched[] = bootList.map((m) => {
           const ts = (m.updatedAtKey ?? m.updateAt) || null; // "YYYY-MM-DD HH:mm:ss" 또는 ISO
-          const sortKey =
-            ts && ts.length >= 19
-              ? ts.slice(0, 19).replace('T', ' ')
-              : ts; // 비교용
-          const yymm =
-            ts && ts.length >= 7
-              ? ts.slice(0, 7)
-              : null;
+          const sortKey = ts && ts.length >= 19 ? ts.slice(0, 19).replace('T', ' ') : ts; // 비교용
+          const yymm = ts && ts.length >= 7 ? ts.slice(0, 7) : null;
           return { ...m, yymm, sortKey };
         });
 
@@ -418,7 +412,11 @@ export default function SellerSettlementProduct() {
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="label" fontSize={12} />
-                        <YAxis tickFormatter={(v) => KRW.format(v)} fontSize={12} />
+                        <YAxis
+                          tickFormatter={(v) => KRW.format(v)}
+                          fontSize={12}
+                          domain={[0, (dataMax: number) => dataMax * 1.2]}
+                        />
                         <Tooltip
                           formatter={(v: number) => `₩ ${KRW.format(v)}`}
                           labelFormatter={(_, p: any) => `날짜: ${p?.payload?.date ?? ''}`}
@@ -482,8 +480,8 @@ export default function SellerSettlementProduct() {
                                 row.settlementStatus === 1
                                   ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20'
                                   : row.settlementStatus === 0
-                                  ? 'bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-600/20'
-                                  : 'bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-500/20',
+                                    ? 'bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-600/20'
+                                    : 'bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-500/20',
                               ].join(' ')}
                             >
                               {statusLabel(row.settlementStatus)}

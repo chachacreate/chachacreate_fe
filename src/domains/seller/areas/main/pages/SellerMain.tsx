@@ -279,50 +279,66 @@ export default function SellerMain() {
   }, [salesMode, dailyData, weeklyData, monthlyData]);
 
   /** ================= API: 클래스 통계 카드 ================= */
+  const fetchClassStats = async (mode: 'hour' | 'weekday') => {
+    const monthNum = Number(selectedMonth.split('-')[1]);
+    const params = new URLSearchParams({
+      scope: 'store',
+      groupBy: mode === 'hour' ? 'time' : 'weekday',
+      month: String(monthNum),
+    });
+
+    const [yearStr, monthStr] = selectedMonth.split('-');
+    const year = Number(yearStr);
+    const month = Number(monthStr) - 1;
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0);
+    params.append('rangeStart', start.toISOString());
+    params.append('rangeEnd', end.toISOString());
+
+    interface ClassStatsItem {
+      bucket: number;
+      label: string;
+      count: number;
+      price: number;
+    }
+    interface ClassStatsResponse {
+      items: ClassStatsItem[];
+    }
+    try {
+      const response = await get(`/seller/${storeUrl}/classes/reservation/stats?${params}`);
+      if (response.status === 200) {
+        const data = response.data as ClassStatsResponse;
+
+        if (mode === 'hour') {
+          return Array.from({ length: 24 }).map((_, h) => {
+            const item = data.items.find((it) => it.bucket === h);
+            const count = item?.count ?? 0;
+            const price = item?.price ?? 0;
+            return { key: `${String(h).padStart(2, '0')}:00`, count, revenue: count * price };
+          });
+        } else {
+          const dayLabels = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+          return dayLabels.map((label, idx) => {
+            const item = data.items.find((it) => it.bucket === idx + 1);
+            const count = item?.count ?? 0;
+            const price = item?.price ?? 0;
+            return { key: label, count, revenue: count * price };
+          });
+        }
+      } else {
+        console.error('클래스 예약 통계 조회 실패:', response.message);
+      }
+    } catch (error) {
+      console.error('API 호출 실패', error);
+    }
+  };
+
   useEffect(() => {
     if (!storeUrl) return;
-    (async () => {
-      try {
-        const groupBy = classMode === 'hour' ? 'time' : 'weekday';
-        const monthNum = Number(selectedMonth.split('-')[1]);
 
-        const params = new URLSearchParams({ scope: 'store', groupBy, month: String(monthNum) });
-
-        if (classMode !== 'hour') {
-          const [yearStr, monthStr] = selectedMonth.split('-');
-          const year = Number(yearStr);
-          const month = Number(monthStr) - 1;
-          const start = new Date(year, month, 1);
-          const end = new Date(year, month + 1, 0);
-          params.append('rangeStart', start.toISOString());
-          params.append('rangeEnd', end.toISOString());
-        }
-
-        interface ClassStatsItem {
-          bucket: number;
-          label: string;
-          count: number;
-        }
-        interface ClassStatsResponse {
-          items: ClassStatsItem[];
-        }
-
-        const response = await get(`/seller/${storeUrl}/classes/reservation/stats?${params}`);
-        if (response.status === 200) {
-          const r = response.data as ClassStatsResponse;
-          const transformed: ClassStatsDatum[] = r.items.map((it) => ({
-            key: it.label,
-            count: it.count,
-            revenue: it.count * 50000,
-          }));
-          setClassStatsData(transformed);
-        } else {
-          console.error('전체 클래스 예약 통계 조회 실패:', response.message);
-        }
-      } catch (error) {
-        console.error('API 요청 실패(클래스 통계):', error);
-      }
-    })();
+    fetchClassStats(classMode)
+      .then((data) => setClassStatsData(data ?? []))
+      .catch((err) => console.error('클래스 통계 조회 실패:', err));
   }, [storeUrl, classMode, selectedMonth]);
 
   const classStats: ClassStatsDatum[] = useMemo(() => {
@@ -643,8 +659,14 @@ export default function SellerMain() {
                       yAxisId="amount"
                       orientation="right"
                       tickFormatter={(v) => KRW.format(v)}
+                      domain={[0, (dataMax: number) => dataMax * 1.2]}
                     />
-                    <YAxis yAxisId="orders" orientation="left" width={48} />
+                    <YAxis
+                      yAxisId="orders"
+                      orientation="left"
+                      width={48}
+                      domain={[0, (dataMax: number) => dataMax * 1.2]}
+                    />
                     <Tooltip
                       formatter={(v: number, name) =>
                         name === '매출액' ? [fmtKRW(v), name] : [`${v} 건`, name]

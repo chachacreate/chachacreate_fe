@@ -10,13 +10,13 @@ import { get, legacyGet } from '@src/libs/request';
 
 // ------------------ Types ------------------
 type SettlementRow = {
-  settlementDate: string; 
+  settlementDate: string;
   amount: number;
   account: string;
   bank: string;
-  name?: string; 
+  name?: string;
   status: number; // 0=정산 예정, 1=정산 완료
-  updateAt: string; 
+  updateAt: string;
 };
 
 // 일별 매출 응답 타입
@@ -204,7 +204,11 @@ export default function SellerSettlementMain() {
                   <BarChart data={weeklyData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="label" fontSize={12} />
-                    <YAxis tickFormatter={(v) => KRW.format(v)} fontSize={12} />
+                    <YAxis
+                      tickFormatter={(v) => KRW.format(v)}
+                      fontSize={12}
+                      domain={[0, (dataMax: number) => dataMax * 1.2]}
+                    />
                     <Tooltip
                       formatter={(v: number) => `₩ ${KRW.format(v)}`}
                       labelFormatter={(_, payload) => `날짜: ${payload?.[0]?.payload?.date ?? ''}`}

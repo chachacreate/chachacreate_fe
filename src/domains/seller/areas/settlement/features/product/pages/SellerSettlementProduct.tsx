@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { CalendarDays, Image as ImageIcon } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { get, legacyGet } from '@src/libs/request';
+import { legacyGet } from '@src/libs/request';
 import type { ApiResponse } from '@src/libs/apiResponse';
+import { getCurrentUser } from '@src/shared/util/jwtUtils';
 
 // ---------- Types ----------
 type Params = { storeUrl: string };
@@ -28,20 +29,6 @@ type LegacyMonthlySettlementItem = {
   accountBank: string;
   updateAt: string; // "YYYY-MM-DD HH:mm:ss" (조인 키)
 };
-
-type BootMonthlyMetaItem = {
-  updatedAtKey: string | null; // "YYYY-MM-DD HH:mm:ss" | null
-  name: string | null; // 예금주
-  settlementStatus: number | null;
-  updateAt: string | null; // (부트 updated_at, 화면에서는 사용 안 함)
-};
-
-type MergedMonthlySettlementItem = LegacyMonthlySettlementItem & {
-  name: string | null; // 부트 예금주 (없으면 fallbackName)
-  settlementStatus: number | null; // 부트 정산상태
-  legacyUpdatedDate: string; // 레거시 updateAt의 "YYYY-MM-DD"만
-};
-
 // ---------- Utils ----------
 const BRAND = '#2d4739';
 const KRW = new Intl.NumberFormat('ko-KR');
@@ -67,7 +54,6 @@ const statusLabel = (n: number | null | undefined) =>
 // ---------- Component ----------
 export default function SellerSettlementProduct() {
   const { storeUrl } = useParams<Params>();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // 드롭다운(레거시)
@@ -85,9 +71,6 @@ export default function SellerSettlementProduct() {
 
   // 월별 정산(레거시 + 부트 메타)
   const [legacyMonthly, setLegacyMonthly] = useState<LegacyMonthlySettlementItem[]>([]);
-  const [bootMonthly, setBootMonthly] = useState<BootMonthlyMetaItem[]>([]);
-  const [mergedMonthly, setMergedMonthly] = useState<MergedMonthlySettlementItem[]>([]);
-  const [monthlyLoading, setMonthlyLoading] = useState(false);
   const [monthlyError, setMonthlyError] = useState<string | null>(null);
 
   // 상품 리스트 불러오기
@@ -172,91 +155,22 @@ export default function SellerSettlementProduct() {
   // 월별 정산(레거시 + 부트 메타) 조회/머지  ———— ★ YYYY-MM 키로 안전 조인
   useEffect(() => {
     if (!storeUrl) return;
-    let alive = true;
     (async () => {
-      setMonthlyLoading(true);
       setMonthlyError(null);
       try {
-        const [legacyRes, bootRes] = await Promise.all([
-          legacyGet<ApiResponse<LegacyMonthlySettlementItem[]>>(
-            `/seller/settlements/products/${encodeURIComponent(storeUrl)}/all`
-          ),
-          get<ApiResponse<BootMonthlyMetaItem[]>>(
-            `/api/seller/settlements/products/${encodeURIComponent(storeUrl)}/all`
-          ),
-        ]);
-        if (!alive) return;
+        const legacyRes = await legacyGet<ApiResponse<LegacyMonthlySettlementItem[]>>(
+          `/seller/settlements/products/${encodeURIComponent(storeUrl)}/all`
+        );
 
         const legacyList = legacyRes.status === 200 ? (legacyRes.data ?? []) : [];
-        const bootList = bootRes.status === 200 ? (bootRes.data ?? []) : [];
-
         setLegacyMonthly(legacyList);
-        setBootMonthly(bootList);
-
-        // 부트 메타에서 예금주 기본값(fallback)
-        const fallbackName = bootList.find((m) => m?.name)?.name ?? null;
-
-        // 부트 메타를 YYYY-MM 키로 집계(동월 중복 시 updateAt/updatedAtKey 최신값 우선)
-        type BootEnriched = BootMonthlyMetaItem & { yymm: string | null; sortKey: string | null };
-        const bootEnriched: BootEnriched[] = bootList.map((m) => {
-          const ts = (m.updatedAtKey ?? m.updateAt) || null; // "YYYY-MM-DD HH:mm:ss" 또는 ISO
-          const sortKey = ts && ts.length >= 19 ? ts.slice(0, 19).replace('T', ' ') : ts; // 비교용
-          const yymm = ts && ts.length >= 7 ? ts.slice(0, 7) : null;
-          return { ...m, yymm, sortKey };
-        });
-
-        // 같은 YYYY-MM 내 최신 sortKey를 가진 행만 유지
-        const bootByYm = new Map<string, BootEnriched>();
-        for (const m of bootEnriched) {
-          if (!m.yymm) continue;
-          const prev = bootByYm.get(m.yymm);
-          if (!prev) {
-            bootByYm.set(m.yymm, m);
-          } else {
-            // 문자열 비교(yyyy-MM-dd HH:mm:ss 형태라 사전식 비교 가능)
-            if ((m.sortKey ?? '') > (prev.sortKey ?? '')) {
-              bootByYm.set(m.yymm, m);
-            }
-          }
-        }
-
-        // 레거시 YYYY-MM 키 생성은 settlementDate에서
-        const mergedAll = legacyList.map<MergedMonthlySettlementItem>((l) => {
-          const ym = l.settlementDate.slice(0, 7); // "YYYY-MM"
-          const meta = bootByYm.get(ym);
-          return {
-            ...l,
-            name: meta?.name ?? fallbackName,
-            settlementStatus: meta?.settlementStatus ?? null,
-            legacyUpdatedDate: takeDatePart(l.updateAt),
-          };
-        });
-
-        // 화면에는 정산상태 0/1만 노출
-        const mergedVisible = mergedAll.filter(
-          (row) => row.settlementStatus === 0 || row.settlementStatus === 1
-        );
-
-        setMergedMonthly(
-          [...mergedVisible].sort(
-            (a, b) => new Date(b.settlementDate).getTime() - new Date(a.settlementDate).getTime()
-          )
-        );
       } catch {
-        if (alive) {
-          setMonthlyError('월별 정산 데이터를 합치는 데 실패했습니다.');
-          setLegacyMonthly([]);
-          setBootMonthly([]);
-          setMergedMonthly([]);
-        }
+        setMonthlyError('월별 정산 데이터를 불러오는 데 실패했습니다.');
+        setLegacyMonthly([]);
       } finally {
-        if (alive) setMonthlyLoading(false);
       }
     })();
-    return () => {
-      alive = false;
-    };
-  }, [storeUrl]);
+  }, [storeUrl, selectedId]);
 
   // 주간 차트 데이터
   const [weekAnchor, setWeekAnchor] = useState<Date>(() => startOfWeekMon(new Date()));
@@ -412,11 +326,7 @@ export default function SellerSettlementProduct() {
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="label" fontSize={12} />
-                        <YAxis
-                          tickFormatter={(v) => KRW.format(v)}
-                          fontSize={12}
-                          domain={[0, (dataMax: number) => dataMax * 1.2]}
-                        />
+                        <YAxis tickFormatter={(v) => KRW.format(v)} fontSize={12} />
                         <Tooltip
                           formatter={(v: number) => `₩ ${KRW.format(v)}`}
                           labelFormatter={(_, p: any) => `날짜: ${p?.payload?.date ?? ''}`}
@@ -434,17 +344,17 @@ export default function SellerSettlementProduct() {
           <div className="mt-8">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-lg font-semibold">월별 상품 정산</h3>
-              {!monthlyLoading && (
-                <div className="text-sm text-gray-500">{mergedMonthly.length}건</div>
+              {dailyLoading && (
+                <div className="text-sm text-gray-500">{legacyMonthly.length}건</div>
               )}
             </div>
 
             <div className="rounded-2xl border border-gray-200 overflow-hidden">
-              {monthlyLoading ? (
+              {dailyLoading ? (
                 <div className="p-6 text-center text-gray-500">월별 정산 데이터를 불러오는 중…</div>
               ) : monthlyError ? (
                 <div className="p-6 text-center text-rose-700 bg-rose-50">{monthlyError}</div>
-              ) : mergedMonthly.length === 0 ? (
+              ) : legacyMonthly.length === 0 ? (
                 <div className="p-6 text-center text-gray-500">
                   표시할 월별 정산 데이터가 없습니다.
                 </div>
@@ -463,31 +373,28 @@ export default function SellerSettlementProduct() {
                       </tr>
                     </thead>
                     <tbody>
-                      {mergedMonthly.map((row, idx) => (
-                        <tr
-                          key={`${row.settlementDate}-${row.updateAt}-${idx}`}
-                          className="border-t"
-                        >
-                          <td className="px-4 py-3">{row.settlementDate}</td>
+                      {daily?.daily.map((row, idx) => (
+                        <tr key={`${idx}`} className="border-t">
+                          <td className="px-4 py-3">{legacyMonthly[0].settlementDate}</td>
                           <td className="px-4 py-3 font-medium">₩ {KRW.format(row.amount)}</td>
-                          <td className="px-4 py-3">{row.account}</td>
-                          <td className="px-4 py-3">{row.accountBank}</td>
-                          <td className="px-4 py-3">{row.name ?? '—'}</td>
+                          <td className="px-4 py-3">{legacyMonthly[0].account}</td>
+                          <td className="px-4 py-3">{legacyMonthly[0].accountBank}</td>
+                          <td className="px-4 py-3">{getCurrentUser()?.name ?? '—'}</td>
                           <td className="px-4 py-3">
                             <span
                               className={[
                                 'inline-flex items-center rounded-md px-2 py-1 text-xs font-medium',
-                                row.settlementStatus === 1
+                                legacyMonthly[0].settlementDate > row.date
                                   ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20'
-                                  : row.settlementStatus === 0
+                                  : legacyMonthly[0].settlementDate < row.date
                                     ? 'bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-600/20'
                                     : 'bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-500/20',
                               ].join(' ')}
                             >
-                              {statusLabel(row.settlementStatus)}
+                              {statusLabel(legacyMonthly[0].settlementDate > row.date ? 0 : 1)}
                             </span>
                           </td>
-                          <td className="px-4 py-3">{takeDatePart(row.updateAt)}</td>
+                          <td className="px-4 py-3">{takeDatePart(legacyMonthly[0].updateAt)}</td>
                         </tr>
                       ))}
                     </tbody>

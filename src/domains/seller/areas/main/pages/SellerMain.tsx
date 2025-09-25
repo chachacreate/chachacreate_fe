@@ -20,7 +20,7 @@ import ClassStatsCard, {
   type ClassStatsMode,
   type ClassStatsDatum,
 } from '@src/shared/components/analytics/ClassStatsCard';
-import { get } from '@src/libs/request';
+import { get, legacyGet } from '@src/libs/request';
 
 /** ===== 타입 ===== */
 type Params = { storeUrl: string };
@@ -198,12 +198,11 @@ export default function SellerMain() {
     if (!storeUrl) return;
     (async () => {
       try {
-        const [classRes, productRes] = await Promise.all([
+        const [classRes, productResRaw] = await Promise.all([
           get(`/seller/sales/${storeUrl}/classes`),
-          get(`/seller/settlements/products/${storeUrl}/sales`),
+          legacyGet(`/seller/settlements/products/${storeUrl}/sales`),
         ]);
-        // if (classRes.status === 200) setClassSales(classRes.data ?? []);
-        // if (productRes.status === 200) setProductSales(productRes.data ?? []);
+        const productRes = productResRaw as { status: number; data?: unknown };
         if (classRes.status === 200)
           setClassSales(Array.isArray(classRes.data) ? classRes.data : []);
         if (productRes.status === 200)

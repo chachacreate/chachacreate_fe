@@ -434,7 +434,11 @@ export default function SellerSettlementClass() {
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="label" fontSize={12} />
-                        <YAxis tickFormatter={(v) => KRW.format(v)} fontSize={12} />
+                        <YAxis
+                          tickFormatter={(v) => KRW.format(v)}
+                          fontSize={12}
+                          domain={[0, (dataMax: number) => dataMax * 1.2]}
+                        />
                         <Tooltip
                           formatter={(v: number) => `₩ ${KRW.format(v)}`}
                           labelFormatter={(_, p: any) => `날짜: ${p?.payload?.date ?? ''}`}

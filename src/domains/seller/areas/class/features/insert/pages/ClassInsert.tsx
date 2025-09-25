@@ -143,8 +143,8 @@ const ClassInsert: FC = () => {
   // 설명 이미지 저장
   const [editorImageUrls, setEditorImageUrls] = useState<string[]>([]);
 
-// AI 설명 생성 로딩 상태 추가
-const [isLoadingAiDesc, setIsLoadingAiDesc] = useState<Record<string, boolean>>({});
+  // AI 설명 생성 로딩 상태 추가
+  const [isLoadingAiDesc, setIsLoadingAiDesc] = useState<Record<string, boolean>>({});
 
   // 새 폼 추가
   const addNewForm = () => {
@@ -163,7 +163,7 @@ const [isLoadingAiDesc, setIsLoadingAiDesc] = useState<Record<string, boolean>>(
 
       // ⬇️ 에디터 ref도 같이 정리 (폼 삭제 시 누수 방지)
       delete editorRefs.current[formId];
-            setIsLoadingAiDesc((prevDesc) => {
+      setIsLoadingAiDesc((prevDesc) => {
         const { [formId]: _, ...rest } = prevDesc;
         return rest;
       });
@@ -225,7 +225,7 @@ const [isLoadingAiDesc, setIsLoadingAiDesc] = useState<Record<string, boolean>>(
   //   updateForm(formId, 'aiDesc', pick);
   // };
 
-    // AI 설명 생성 - 로딩 상태 추가
+  // AI 설명 생성 - 로딩 상태 추가
   const genAiDesc = async (formId: string) => {
     const form = classForms.find((f) => f.id === formId);
     if (!form) return;
@@ -417,7 +417,7 @@ const [isLoadingAiDesc, setIsLoadingAiDesc] = useState<Record<string, boolean>>(
     }
   };
 
-   return (
+  return (
     <>
       <Header />
 
@@ -548,24 +548,28 @@ const [isLoadingAiDesc, setIsLoadingAiDesc] = useState<Record<string, boolean>>(
                       onChange={(e) => updateForm(form.id, 'addressDetail', e.target.value)}
                     />
                     {addressSummary && (
-                      <p className="text-xs text-gray-500 break-all">주소 미리보기: {addressSummary}</p>
+                      <p className="text-xs text-gray-500 break-all">
+                        주소 미리보기: {addressSummary}
+                      </p>
                     )}
                   </div>
 
                   {/* 상세설명 - 로딩 오버레이 추가 */}
                   <fieldset className="grid gap-3 relative">
                     <legend className="text-sm font-medium">클래스 상세설명</legend>
-                    
+
                     {/* AI 로딩 오버레이 */}
                     {isLoadingAiDesc[form.id] && (
                       <div className="absolute inset-0 bg-white bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-20 rounded-lg">
                         <div className="flex flex-col items-center gap-3 p-6">
-                          <img 
-                            src="/src/domains/seller/areas/product/features/insert/assets/AI loading.gif" 
-                            alt="AI 생성 중..." 
+                          <img
+                            src="/images/product_insert/AI_loading.gif"
+                            alt="AI 생성 중..."
                             className="w-32 h-32 object-contain"
                           />
-                          <div className="text-sm font-medium text-gray-700">AI가 클래스 설명을 생성하고 있습니다...</div>
+                          <div className="text-sm font-medium text-gray-700">
+                            AI가 클래스 설명을 생성하고 있습니다...
+                          </div>
                           <div className="text-xs text-gray-500">잠시만 기다려주세요</div>
                         </div>
                       </div>
@@ -643,10 +647,7 @@ const [isLoadingAiDesc, setIsLoadingAiDesc] = useState<Record<string, boolean>>(
                     <span className="text-sm font-medium">클래스 가능 날짜/시간</span>
                     <div className="space-y-3">
                       {form.schedules.map((s) => (
-                        <div
-                          key={s.id}
-                          className="rounded-xl border p-3 sm:p-4 space-y-3"
-                        >
+                        <div key={s.id} className="rounded-xl border p-3 sm:p-4 space-y-3">
                           {/* 날짜 설정 - 모바일에서 세로 배치 */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="grid gap-1">
@@ -711,12 +712,19 @@ const [isLoadingAiDesc, setIsLoadingAiDesc] = useState<Record<string, boolean>>(
                             </div>
 
                             <div className="grid gap-1">
-                              <label className="text-xs sm:text-sm font-medium">시간 간격(분)</label>
+                              <label className="text-xs sm:text-sm font-medium">
+                                시간 간격(분)
+                              </label>
                               <select
                                 className="border rounded-md px-3 py-2 w-full"
                                 value={s.intervalMin}
                                 onChange={(e) =>
-                                  updateSchedule(form.id, s.id, 'intervalMin', Number(e.target.value))
+                                  updateSchedule(
+                                    form.id,
+                                    s.id,
+                                    'intervalMin',
+                                    Number(e.target.value)
+                                  )
                                 }
                               >
                                 {intervalOptions.map((m) => (

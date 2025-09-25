@@ -5,6 +5,7 @@ import type { ApiResponse } from '@src/libs/apiResponse';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 import Footer from '@src/shared/areas/layout/features/footer/Footer';
+import { truncateText } from '@src/shared/util/truncateUtil';
 
 // 타입 정의
 interface StoreInfo {
@@ -120,7 +121,9 @@ const StoreMain: React.FC = () => {
 
   const loadCustomSettings = async () => {
     try {
-      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(`/api/seller/${storeUrl}/store/custom`);
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
       setCustomSettings(result.data);
     } catch (error) {
       console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
@@ -129,10 +132,6 @@ const StoreMain: React.FC = () => {
 
   const handleProductClick = (productId: number) => {
     window.location.href = `/${storeUrl}/products/${productId}`;
-  };
-
-  const truncateText = (text: string, length: number) => {
-    return text.length > length ? text.slice(0, length) + '...' : text;
   };
 
   const formatPrice = (price?: number) => {
@@ -178,8 +177,8 @@ const StoreMain: React.FC = () => {
       <div className="bg-white font-jua text-gray-900">
         {/* 히어로 섹션 */}
         <section className="w-full">
-          <div 
-            className="w-full" 
+          <div
+            className="w-full"
             style={{ backgroundColor: customSettings?.popularColor || '#F3F0E8' }}
           >
             <div className="h-[200px] sm:h-[240px] lg:h-[280px]"></div>
@@ -215,13 +214,13 @@ const StoreMain: React.FC = () => {
 
                     {/* 스토어 정보 */}
                     <div className="flex-1 min-w-0">
-                      <h1 
+                      <h1
                         className="text-xl sm:text-2xl lg:text-3xl font-normal tracking-wide"
                         style={{ color: customSettings?.fontColor || '#000000' }}
                       >
                         {storeInfo?.storeName || '스토어명'}
                       </h1>
-                      <p 
+                      <p
                         className="mt-2 text-sm sm:text-base leading-relaxed"
                         style={{ color: customSettings?.descriptionColor || '#4B5563' }}
                       >
@@ -254,7 +253,7 @@ const StoreMain: React.FC = () => {
         {/* 공지사항 */}
         <section className="w-full px-4 sm:px-8 xl:px-60">
           <div className="rounded-xl border border-gray-200 p-4 sm:p-5 lg:p-6 bg-white">
-            <div 
+            <div
               className="text-sm font-normal mb-2 tracking-wider"
               style={{ color: customSettings?.noticeColor || '#7A241F' }}
             >
@@ -278,7 +277,7 @@ const StoreMain: React.FC = () => {
         {/* 인기 상품 */}
         {bestProducts.length > 0 && (
           <section className="w-full px-4 sm:px-8 xl:px-60 mt-8 sm:mt-10">
-            <h2 
+            <h2
               className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide mb-4"
               style={{ color: customSettings?.fontColor || '#2D4739' }}
             >
@@ -305,7 +304,7 @@ const StoreMain: React.FC = () => {
                     <h3 className="text-sm sm:text-base mb-2 line-clamp-2">
                       {product.productName}
                     </h3>
-                    <p 
+                    <p
                       className="font-normal"
                       style={{ color: customSettings?.fontColor || '#2D4739' }}
                     >
@@ -321,7 +320,7 @@ const StoreMain: React.FC = () => {
         {/* 대표 상품 */}
         {mainProducts.length > 0 && (
           <section className="w-full px-4 sm:px-8 xl:px-60 mt-8 sm:mt-10">
-            <h2 
+            <h2
               className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide mb-4"
               style={{ color: customSettings?.fontColor || '#2D4739' }}
             >

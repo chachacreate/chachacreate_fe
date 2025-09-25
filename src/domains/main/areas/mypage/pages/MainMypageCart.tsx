@@ -8,6 +8,7 @@ import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainna
 import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar';
 import { legacyDel, legacyGet, legacyPut } from '@src/libs/request';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
+import { truncateText } from '@src/shared/util/truncateUtil';
 
 /** 브랜드 컬러 */
 const BRAND = '#2d4739';
@@ -404,7 +405,9 @@ export default function MainMypageCart() {
           {item.productName}
         </a>
         {item.productDetail && (
-          <p className="text-sm text-gray-500 line-clamp-1 mt-0.5">{item.productDetail}</p>
+          <p className="text-sm text-gray-500 line-clamp-1 mt-0.5">
+            {truncateText(item.productDetail, 100)}
+          </p>
         )}
       </td>
       <td className="py-3 px-3 align-middle text-gray-900 font-semibold whitespace-nowrap">
@@ -550,7 +553,9 @@ export default function MainMypageCart() {
             {item.productName}
           </a>
           {item.productDetail && (
-            <p className="text-sm text-gray-500 line-clamp-2 mt-0.5">{item.productDetail}</p>
+            <p className="text-sm text-gray-500 line-clamp-2 mt-0.5">
+              {truncateText(item.productDetail, 100)}
+            </p>
           )}
 
           <div className="mt-2 flex items-center justify-between">

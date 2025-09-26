@@ -107,6 +107,7 @@ const ProductEdit: FC = () => {
 
   // AI
   const [isLoadingAiPrice, setIsLoadingAiPrice] = useState(false);
+  const [isLoadingAiDesc, setIsLoadingAiDesc] = useState(false); // ✅ AI 설명 로딩 상태 추가
   const [aiPredictionInfo, setAiPredictionInfo] = useState<Record<string, any>>({});
 
   // 수정: 단일 상품만 수정 → 에디터도 1개만 필요
@@ -340,6 +341,8 @@ const ProductEdit: FC = () => {
       return;
     }
 
+    setIsLoadingAiDesc(true); // ✅ 로딩 상태 시작
+
     try {
       const payload = {
         name: form.name,
@@ -371,6 +374,8 @@ const ProductEdit: FC = () => {
       }));
     } catch (e: any) {
       alert(e?.response?.data?.error || e?.message || 'AI 설명 생성 실패');
+    } finally {
+      setIsLoadingAiDesc(false); // ✅ 로딩 상태 종료
     }
   };
 
@@ -598,8 +603,8 @@ const ProductEdit: FC = () => {
                 </p>
               </div>
 
-              {/* 상세설명 (Editor) + AI 프롬프트/버튼 */}
-              <fieldset className="grid gap-2">
+              {/* ✅ 상세설명 (Editor) + AI 프롬프트/버튼 + 로딩 오버레이 */}
+              <fieldset className="grid gap-2 relative">
                 <legend className="text-sm font-medium">상품 상세설명</legend>
                 <EditorAPI
                   ref={(el) => {
@@ -614,10 +619,11 @@ const ProductEdit: FC = () => {
                     <span className="text-sm font-medium">AI 상품 설명 프롬프트/메모</span>
                     <button
                       type="button"
-                      className="px-3 py-1.5 rounded-md border text-sm hover:bg-gray-50"
+                      className="px-3 py-1.5 rounded-md border text-sm hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
                       onClick={() => genAiDescForEdit()}
+                      disabled={isLoadingAiDesc}
                     >
-                      AI 설명 생성
+                      {isLoadingAiDesc ? 'AI 생성 중...' : 'AI 설명 생성'}
                     </button>
                   </div>
                   <textarea
@@ -625,11 +631,29 @@ const ProductEdit: FC = () => {
                     placeholder="핵심 특징, 소재/사이즈, 사용 상황 등 키워드를 남겨 주세요."
                     value={form.aiDesc}
                     onChange={(e) => updateForm('aiDesc', e.target.value)}
+                    disabled={isLoadingAiDesc}
                   />
                   <p className="text-xs text-gray-500">
                     * 생성 후 내용은 위 에디터에 자동 반영됩니다.
                   </p>
                 </div>
+
+                {/* ✅ AI 로딩 오버레이 */}
+                {isLoadingAiDesc && (
+                  <div className="absolute inset-0 bg-white bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-20 rounded-lg">
+                    <div className="flex flex-col items-center gap-3 p-6">
+                      <img
+                        src="/images/product_insert/AI_loading.gif"
+                        alt="AI 생성 중..."
+                        className="w-32 h-32 object-contain"
+                      />
+                      <div className="text-sm font-medium text-gray-700">
+                        AI가 상품 설명을 생성하고 있습니다...
+                      </div>
+                      <div className="text-xs text-gray-500">잠시만 기다려주세요</div>
+                    </div>
+                  </div>
+                )}
               </fieldset>
 
               {/* 카테고리 */}

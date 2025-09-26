@@ -5,6 +5,7 @@ import type { ApiResponse } from '@src/libs/apiResponse';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 import Footer from '@src/shared/areas/layout/features/footer/Footer';
+import { processContent } from '@src/shared/util/contentUtil'; // ✅ 올바른 경로로 수정
 
 // 타입 정의
 interface StoreInfo {
@@ -133,6 +134,22 @@ const StoreMain: React.FC = () => {
 
   const truncateText = (text: string, length: number) => {
     return text.length > length ? text.slice(0, length) + '...' : text;
+  };
+
+  // ✅ HTML 태그를 제거하고 일반 텍스트로 변환하는 함수 추가
+  const extractPlainText = (htmlContent: string, maxLength: number = 50): string => {
+    if (!htmlContent) return '';
+    
+    // processContent로 HTML을 처리하고 태그를 제거
+    const { sanitizedDescription } = processContent(htmlContent);
+    
+    // HTML 태그를 완전히 제거하여 순수 텍스트만 추출
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = sanitizedDescription;
+    const plainText = tempDiv.textContent || tempDiv.innerText || '';
+    
+    // 길이 제한 적용
+    return truncateText(plainText, maxLength);
   };
 
   const formatPrice = (price?: number) => {
@@ -349,7 +366,8 @@ const StoreMain: React.FC = () => {
                       {product.productName}
                     </h3>
                     <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
-                      {truncateText(product.productDetail, 50)}
+                      {/* ✅ HTML 태그가 제거된 일반 텍스트로 표시 */}
+                      {extractPlainText(product.productDetail, 50)}
                     </p>
                   </div>
                 </div>
@@ -360,55 +378,61 @@ const StoreMain: React.FC = () => {
 
         <div className="h-8 sm:h-12"></div>
         <style>{`
-  .marquee {
-  position: relative;
-  overflow: hidden;
-  width: 100%;
-}
-.marquee__track {
-  display: inline-block;
-  white-space: nowrap;
-  will-change: transform;
-  min-width: 100%; /* 비어있을 때 깜빡임/점프 방지 */
-  animation: marquee-mobile 18s linear infinite; /* 모바일 기본: 느리게 & 즉시 보이게 */
-}
-.marquee__item {
-  display: inline-block;
-  padding-right: 2rem;
-  font-size: 0.95rem;   /* 모바일 글자 조금 키움 */
-  line-height: 1.5rem;
-  color: #374151;
-}
-/* 호버 시 일시정지 (모바일엔 영향 거의 없음) */
-.marquee:hover .marquee__track { animation-play-state: paused; }
+          .marquee {
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+          }
+          .marquee__track {
+            display: inline-block;
+            white-space: nowrap;
+            will-change: transform;
+            min-width: 100%;
+            animation: marquee-mobile 18s linear infinite;
+          }
+          .marquee__item {
+            display: inline-block;
+            padding-right: 2rem;
+            font-size: 0.95rem;
+            line-height: 1.5rem;
+            color: #374151;
+          }
+          .marquee:hover .marquee__track {
+            animation-play-state: paused;
+          }
 
-/* 접근성: 모션 감소 */
-@media (prefers-reduced-motion: reduce) {
-  .marquee__track { animation: none; transform: translateX(0); }
-}
+          @media (prefers-reduced-motion: reduce) {
+            .marquee__track {
+              animation: none;
+              transform: translateX(0);
+            }
+          }
 
-/* 🔹 모바일: 화면 안(오른쪽 가장자리)에서 바로 시작 → 왼쪽으로 사라짐 */
-@keyframes marquee-mobile {
-  0%   { transform: translateX(0); }        /* 바로 보이게 */
-  100% { transform: translateX(-100%); }    /* 왼쪽 바깥으로 */
-}
+          @keyframes marquee-mobile {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+          }
 
-/* 🔹 태블릿 이상: 오른쪽 바깥에서 들어오며 흐르도록(원래 의도 유지), 속도 살짝 느리게 */
-@media (min-width: 640px) {
-  .marquee__track { animation: marquee-desktop 22s linear infinite; }
-  .marquee__item { font-size: 1rem; }
-}
-@media (min-width: 1024px) {
-  .marquee__track { animation-duration: 26s; }
-}
+          @media (min-width: 640px) {
+            .marquee__track {
+              animation: marquee-desktop 22s linear infinite;
+            }
+            .marquee__item {
+              font-size: 1rem;
+            }
+          }
 
-/* 데스크톱용 키프레임: 오른쪽 바깥 → 왼쪽 바깥 */
-@keyframes marquee-desktop {
-  0%   { transform: translateX(100%); }   /* 오른쪽 밖에서 시작 */
-  100% { transform: translateX(-100%); }  /* 왼쪽 밖으로 */
-}
+          @media (min-width: 1024px) {
+            .marquee__track {
+              animation-duration: 26s;
+            }
+          }
 
-`}</style>
+          @keyframes marquee-desktop {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+          }
+        `}</style>
       </div>
       <Footer />
     </>

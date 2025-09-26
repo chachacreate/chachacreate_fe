@@ -275,7 +275,7 @@ const ClassReservation: FC = () => {
       <Header />
 
       <SellerSidenavbar>
-        <div className="space-y-8">
+        <div className="space-y-8 pb-12">
           {/* 로딩/에러 */}
           {isLoading && (
             <div className="rounded-2xl border bg-white p-6 text-sm text-gray-700">
@@ -343,7 +343,10 @@ const ClassReservation: FC = () => {
                         tick={{ fontSize: 12 }}
                         interval={globalMode === 'hour' ? 1 : 0}
                       />
-                      <YAxis tick={{ fontSize: 12 }} />
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        domain={[0, (dataMax: number) => dataMax * 1.2]}
+                      />
                       <Tooltip formatter={(v: number) => [`${v} 건`, '예약 건수']} />
                       <Legend />
                       <Bar dataKey="count" name="예약 건수" fill={BRAND} radius={[6, 6, 0, 0]} />
@@ -358,7 +361,6 @@ const ClassReservation: FC = () => {
                   <div className="flex items-center gap-4">
                     <h2 className="text-base sm:text-lg font-semibold">클래스별 예약 통계</h2>
                     <div className="flex items-center gap-2">
-                      <label className="text-xs sm:text-sm text-gray-600">클래스 선택</label>
                       <select
                         value={selectedClass}
                         onChange={(e) => setSelectedClass(e.target.value)}
@@ -383,7 +385,9 @@ const ClassReservation: FC = () => {
                           classMode === 'hour' ? 'bg-white shadow' : 'text-gray-600',
                         ].join(' ')}
                       >
-                        시간별 (24시간)
+                        시간별
+                        <br />
+                        (24시간)
                       </button>
                       <button
                         type="button"
@@ -393,7 +397,9 @@ const ClassReservation: FC = () => {
                           classMode === 'weekday' ? 'bg-white shadow' : 'text-gray-600',
                         ].join(' ')}
                       >
-                        요일별 (월 단위)
+                        요일별
+                        <br />
+                        (월 단위)
                       </button>
                     </div>
                   </div>
@@ -408,7 +414,10 @@ const ClassReservation: FC = () => {
                         tick={{ fontSize: 12 }}
                         interval={classMode === 'hour' ? 1 : 0}
                       />
-                      <YAxis tick={{ fontSize: 12 }} />
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        domain={[0, (dataMax: number) => dataMax * 1.2]}
+                      />
                       <Tooltip formatter={(v: number) => [`${v} 건`, '예약 건수']} />
                       <Legend />
                       <Bar dataKey="count" name="예약 건수" fill="#82ca9d" radius={[6, 6, 0, 0]} />
@@ -441,18 +450,17 @@ const ClassReservation: FC = () => {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w=[960px] text-xs sm:text-sm">
-                    <thead className="bg-gray-50 text-gray-600">
+                  <table className="w-full min-w=[960px] text-xs sm:text-xs">
+                    <thead className="bg-gray-50 text-gray-600 text-xs">
                       <tr>
-                        <th className="px-3 py-3 text-left">예약 일자</th>
-                        <th className="px-3 py-3 text-left">클래스명</th>
-                        <th className="px-3 py-3 text-left">예약 시간</th>
-                        <th className="px-3 py-3 text-left">예약자명</th>
-                        <th className="px-3 py-3 text-left">연락처</th>
-                        <th className="px-3 py-3 text-left">결제 방법</th>
-                        <th className="px-3 py-3 text-right">결제 금액</th>
-                        <th className="px-3 py-3 text-left">예약 상태</th>
-                        <th className="px-3 py-3 text-left">최근 수정일</th>
+                        <th className="px-3 py-3 text-center w-1/12">예약 일자</th>
+                        <th className="px-3 py-3 text-center w-2/12">클래스명</th>
+                        <th className="px-3 py-3 text-center w-1/12">예약 시간</th>
+                        <th className="px-3 py-3 text-center w-1/12">예약자명</th>
+                        <th className="px-3 py-3 text-center w-2/12">연락처</th>
+                        <th className="px-3 py-3 text-center w-1/12">결제 금액</th>
+                        <th className="px-3 py-3 text-center w-1/12">예약 상태</th>
+                        <th className="px-3 py-3 text-center w-1/12 word-break">상태 수정일</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -476,14 +484,13 @@ const ClassReservation: FC = () => {
                               ].join(' ')}
                               title={isCancelReq ? '클릭하여 취소 처리' : undefined}
                             >
-                              <td className="px-3 py-3">{r.date}</td>
-                              <td className="px-3 py-3">{r.className}</td>
-                              <td className="px-3 py-3">{r.time}</td>
-                              <td className="px-3 py-3">{r.customerName}</td>
-                              <td className="px-3 py-3">{r.customerPhone}</td>
-                              <td className="px-3 py-3">{r.paymentMethod}</td>
+                              <td className="px-3 py-3 text-center">{r.date}</td>
+                              <td className="px-3 py-3 text-center">{r.className}</td>
+                              <td className="px-3 py-3 text-center">{r.time}</td>
+                              <td className="px-3 py-3 text-center">{r.customerName}</td>
+                              <td className="px-3 py-3 text-center">{r.customerPhone}</td>
                               <td className="px-3 py-3 text-right">₩ {KRW.format(r.amount)}</td>
-                              <td className="px-3 py-3">
+                              <td className="px-3 py-3 text-center">
                                 {r.status === '예약완료' && (
                                   <span className="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700">
                                     예약완료
@@ -500,7 +507,7 @@ const ClassReservation: FC = () => {
                                   </span>
                                 )}
                               </td>
-                              <td className="px-3 py-3">{r.updatedAt}</td>
+                              <td className="px-3 py-3 text-center">{r.updatedAt}</td>
                             </tr>
                           );
                         })

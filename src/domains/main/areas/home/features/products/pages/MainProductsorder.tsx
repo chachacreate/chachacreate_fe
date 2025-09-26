@@ -9,6 +9,7 @@ import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/m
 
 import { get, legacyPost } from '@src/libs/request';
 import { getCurrentUser, type UserInfo } from '@src/shared/util/jwtUtils';
+import { truncateText } from '@src/shared/util/truncateUtil';
 
 /* ============ 타입 ============ */
 type StoredOrderItem = {
@@ -21,13 +22,6 @@ type StoredOrderItem = {
   storeName?: string;
   storeUrl?: string;
   cartId?: number | null;
-};
-
-type BootAddress = {
-  postNum: string;
-  addressRoad: string;
-  addressDetail: string;
-  addressExtra?: string;
 };
 
 /* ============ 유틸 ============ */
@@ -538,7 +532,7 @@ const MainProductsorder: React.FC = () => {
                           </div>
                           {it.productDetail && (
                             <div className="text-sm text-gray-600 line-clamp-2">
-                              {it.productDetail}
+                              {truncateText(it.productDetail, 100)}
                             </div>
                           )}
                           <div className="text-sm text-gray-700 mt-1">수량: {it.productCnt}개</div>
@@ -697,7 +691,7 @@ const MainProductsorder: React.FC = () => {
                         </div>
                         {it.productDetail && (
                           <div className="text-sm text-gray-600 line-clamp-2">
-                            {it.productDetail}
+                            {truncateText(it.productDetail, 100)}
                           </div>
                         )}
                         <div className="text-sm text-gray-700 mt-1">수량: {it.productCnt}개</div>

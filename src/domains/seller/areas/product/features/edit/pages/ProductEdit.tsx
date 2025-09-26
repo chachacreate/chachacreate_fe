@@ -110,6 +110,9 @@ const ProductEdit: FC = () => {
   const [isLoadingAiDesc, setIsLoadingAiDesc] = useState(false); // ✅ AI 설명 로딩 상태 추가
   const [aiPredictionInfo, setAiPredictionInfo] = useState<Record<string, any>>({});
 
+  // AI 설명 생성 로딩 상태 추가
+  const [isLoadingAiDesc, setIsLoadingAiDesc] = useState<boolean>();
+
   // 수정: 단일 상품만 수정 → 에디터도 1개만 필요
   const editorRef = useRef<EditorHandle | null>(null);
 
@@ -343,6 +346,7 @@ const ProductEdit: FC = () => {
 
     setIsLoadingAiDesc(true); // ✅ 로딩 상태 시작
 
+
     try {
       const payload = {
         name: form.name,
@@ -359,15 +363,19 @@ const ProductEdit: FC = () => {
       };
 
       const resp = await api.post('/ai/product-description', payload);
-      const content: string = resp?.data?.content ?? resp?.data?.data ?? resp?.data?.markdown ?? '';
-      if (!content) throw new Error('AI 응답이 비었습니다.');
 
-      // [수정용 변경] formId 제거, 단일 에디터만 다룸
+      const content: string = resp?.data?.content ?? resp?.data?.data ?? resp?.data?.markdown ?? '';
+
+      if (!content) {
+        throw new Error('AI 응답이 비었습니다.');
+      }
+
+      // 단일 에디터 전용
       editorRef.current?.setMarkdown(content);
 
       const html = editorRef.current?.getHTML() || '';
 
-      // [수정용 변경] updateForm 대신 setForm 사용
+      // 단일 form 상태 업데이트
       setForm((prev) => ({
         ...prev,
         desc: html,
@@ -375,7 +383,9 @@ const ProductEdit: FC = () => {
     } catch (e: any) {
       alert(e?.response?.data?.error || e?.message || 'AI 설명 생성 실패');
     } finally {
+
       setIsLoadingAiDesc(false); // ✅ 로딩 상태 종료
+
     }
   };
 
@@ -491,22 +501,22 @@ const ProductEdit: FC = () => {
       <Header />
 
       <SellerSidenavbar>
-        <div className="space-y-6 sm:space-y-8 pb-10">
-          {/* 상단 타이틀 (추가 페이지와 동일 스타일 유지, 단 버튼 삭제) */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold">판매 상품 수정</h1>
-              <p className="mt-1 text-sm text-gray-500">상품 ID: {productId}</p>
-            </div>
-            {/* ⛔️ 수정 페이지이므로 "상품 추가" 버튼 제거 */}
+        {/* 상단 타이틀 (추가 페이지와 동일 스타일 유지, 단 버튼 삭제) */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-lg sm:text-2xl font-bold">판매 상품 수정</h1>
+            <p className="mt-1 text-sm text-gray-500">상품 ID: {productId}</p>
           </div>
+          {/* ⛔️ 수정 페이지이므로 "상품 추가" 버튼 제거 */}
+        </div>
 
-          {/* 폼 섹션 (단일) */}
+        {/* 폼 섹션 (단일) */}
+        <div className="space-y-6 sm:space-y-8">
           <section className="rounded-2xl border bg-white p-4 sm:p-6 lg:p-8">
-            <div className="flex items-start justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6 gap-2">
               <div>
-                <h2 className="text-lg font-bold">상품 1</h2>
-                <p className="text-sm text-gray-500">storeUrl: {storeUrl}</p>
+                <h2 className="text-base sm:text-lg font-bold">상품 1</h2>
+                <p className="text-xs sm:text-sm text-gray-500">storeUrl: {storeUrl}</p>
               </div>
               {/* ⛔️ 수정 페이지: 섹션 삭제 버튼 없음 */}
             </div>
@@ -533,9 +543,13 @@ const ProductEdit: FC = () => {
                 </div>
                 {form.images.length > 0 && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {activeImages.map((img, index) => (
+                    {activeImages.map((img) => (
                       <div key={img.id} className="relative rounded-lg overflow-hidden border">
-                        <img src={img.url} alt="preview" className="w-full h-40 object-cover" />
+                        <img
+                          src={img.url}
+                          alt="preview"
+                          className="w-full h-32 sm:h-40 object-cover"
+                        />
                         <button
                           type="button"
                           onClick={() => removeImage(img.id)}
@@ -553,7 +567,7 @@ const ProductEdit: FC = () => {
               <label className="grid gap-1">
                 <span className="text-sm font-medium">상품 이름</span>
                 <input
-                  className="border rounded-md px-3 py-2"
+                  className="border rounded-md px-3 py-2 w-full"
                   placeholder="예) 핸드메이드 머그컵"
                   value={form.name}
                   onChange={(e) => updateForm('name', e.target.value)}
@@ -563,15 +577,15 @@ const ProductEdit: FC = () => {
               {/* 가격 + AI */}
               <div className="grid gap-2">
                 <span className="text-sm font-medium">가격</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                   <input
                     inputMode="numeric"
-                    className="border rounded-md px-3 py-2"
+                    className="border rounded-md px-3 py-2 w-full"
                     placeholder="직접 입력 (원)"
                     value={form.price}
                     onChange={(e) => updateForm('price', guardInt(e.target.value) as number | '')}
                   />
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <button
                       type="button"
                       className="px-3 py-2 rounded-md border hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 flex items-center gap-1"
@@ -603,34 +617,62 @@ const ProductEdit: FC = () => {
                 </p>
               </div>
 
+
               {/* ✅ 상세설명 (Editor) + AI 프롬프트/버튼 + 로딩 오버레이 */}
+
               <fieldset className="grid gap-2 relative">
                 <legend className="text-sm font-medium">상품 상세설명</legend>
-                <EditorAPI
-                  ref={(el) => {
-                    editorRef.current = el ?? null;
-                  }}
-                  initialValue={form.desc}
-                  onLocalImageAdded={(url, file) => onLocalImageAdded(url, file)}
-                />
+
+                {/* ✅ AI 로딩 오버레이 (단일폼 전용) */}
+                {isLoadingAiDesc && (
+                  <div className="absolute inset-0 bg-white bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-50 rounded-lg">
+                    <div className="flex flex-col items-center gap-3 p-6">
+                      <img
+                        src="/images/product_insert/AI_loading.gif"
+                        alt="AI 생성 중..."
+                        className="w-32 h-32 object-contain"
+                      />
+                      <div className="text-sm font-medium text-gray-700">
+                        AI가 상품 설명을 생성하고 있습니다...
+                      </div>
+                      <div className="text-xs text-gray-500">잠시만 기다려주세요</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 에디터 */}
+                <div className="w-full overflow-hidden">
+                  <EditorAPI
+                    ref={(el) => {
+                      editorRef.current = el ?? null;
+                    }}
+                    initialValue={form.desc}
+                    onLocalImageAdded={(url, file) => onLocalImageAdded(url, file)}
+                  />
+                </div>
 
                 <div className="grid gap-2 mt-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <span className="text-sm font-medium">AI 상품 설명 프롬프트/메모</span>
                     <button
                       type="button"
+
                       className="px-3 py-1.5 rounded-md border text-sm hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
                       onClick={() => genAiDescForEdit()}
                       disabled={isLoadingAiDesc}
                     >
+
                       {isLoadingAiDesc ? 'AI 생성 중...' : 'AI 설명 생성'}
                     </button>
                   </div>
+
                   <textarea
-                    className="border rounded-md px-3 py-2 min-h-[100px]"
+                    className="border rounded-md px-3 py-2 min-h-[100px] disabled:bg-gray-50 disabled:cursor-not-allowed"
                     placeholder="핵심 특징, 소재/사이즈, 사용 상황 등 키워드를 남겨 주세요."
                     value={form.aiDesc}
+
                     onChange={(e) => updateForm('aiDesc', e.target.value)}
+
                     disabled={isLoadingAiDesc}
                   />
                   <p className="text-xs text-gray-500">
@@ -723,24 +765,24 @@ const ProductEdit: FC = () => {
               </label>
             </div>
           </section>
+        </div>
 
-          {/* ✅ 하단 버튼: 페이지 맨 아래에 위치(둥둥 떠다니지 않음) */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <button
-              type="button"
-              className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90"
-              onClick={onSubmit}
-            >
-              상품 수정 저장
-            </button>
-            <button
-              type="button"
-              className="w-full sm:w-auto px-6 py-3 rounded-lg border font-medium hover:bg-gray-50"
-              onClick={onReset}
-            >
-              초기화
-            </button>
-          </div>
+        {/* ✅ 하단 버튼: 페이지 맨 아래에 위치(둥둥 떠다니지 않음) */}
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <button
+            type="button"
+            className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90"
+            onClick={onSubmit}
+          >
+            상품 수정 저장
+          </button>
+          <button
+            type="button"
+            className="w-full sm:w-auto px-6 py-3 rounded-lg border font-medium hover:bg-gray-50"
+            onClick={onReset}
+          >
+            초기화
+          </button>
         </div>
       </SellerSidenavbar>
     </>

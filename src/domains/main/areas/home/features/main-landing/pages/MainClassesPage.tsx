@@ -65,6 +65,14 @@ const PLACEHOLDER =
     </svg>`
   );
 
+const todayKST = () =>
+  new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date()); // 예: 2025-09-26
+
 function unwrapData<T>(response: any): T {
   const body = response?.data ?? response;
   if (body && typeof body === 'object' && 'data' in body) return body.data as T;
@@ -109,10 +117,10 @@ export default function MainClassesPage() {
   const [activeSection, setActiveSection] = useState<'home' | 'calendar' | 'search'>('home');
 
   // refs
-  const heroSectionRef = useRef<HTMLDivElement | null>(null);      // 전체 히어로+캘린더 래퍼
-  const homePanelRef = useRef<HTMLDivElement | null>(null);        // 히어로 패널(모바일 관찰용)
-  const calendarSectionRef = useRef<HTMLDivElement | null>(null);  // 캘린더 패널
-  const searchSectionRef = useRef<HTMLDivElement | null>(null);    // 검색 섹션
+  const heroSectionRef = useRef<HTMLDivElement | null>(null); // 전체 히어로+캘린더 래퍼
+  const homePanelRef = useRef<HTMLDivElement | null>(null); // 히어로 패널(모바일 관찰용)
+  const calendarSectionRef = useRef<HTMLDivElement | null>(null); // 캘린더 패널
+  const searchSectionRef = useRef<HTMLDivElement | null>(null); // 검색 섹션
 
   // Searchbar 제어용
   const searchbarWrapRef = useRef<HTMLDivElement | null>(null);
@@ -152,10 +160,14 @@ export default function MainClassesPage() {
         remainSeat: cls.remainSeat,
         startDate: (cls.startDate ?? '').slice(0, 10),
         endDate: (cls.endDate ?? '').slice(0, 10),
-      })) as ClassItem[];
+      }));
 
-      setItems(mapped);
-      setTotalPages(Math.max(1, data?.totalPages ?? 1));
+      const today = todayKST();
+      const visible = mapped.filter((c) => !c.endDate || c.endDate >= today);
+      // 🔼🔼 추가 끝
+
+      setItems(visible);
+      setTotalPages(Math.max(1, data?.totalPages ?? 1)); // 서버 페이지 수는 그대로 유지
     } catch (e) {
       console.error('❌ 클래스 목록 조회 실패:', e);
       setItems([]);
@@ -288,7 +300,9 @@ export default function MainClassesPage() {
     ev.stopPropagation();
     lastActionRef.current = 'search';
     fromSortRef.current = false;
-    const input = searchbarWrapRef.current?.querySelector('input[type="search"]') as HTMLInputElement | null;
+    const input = searchbarWrapRef.current?.querySelector(
+      'input[type="search"]'
+    ) as HTMLInputElement | null;
     const kw = (input?.value ?? '').trim();
     setKeyword(kw);
     setPage(1);
@@ -335,36 +349,36 @@ export default function MainClassesPage() {
           style={{ transform: isDesktop && isCalendar ? 'translateX(-50%)' : 'translateX(0)' }}
         >
           {/* Panel 1: 히어로 */}
-<div id="home" ref={homePanelRef} className="w-full lg:w-1/2 min-h-screen lg:min-h-auto">
-  <div className="h-full w-full max-w-[1920px] mx-auto bg-cover bg-center bg-no-repeat relative">
-    {/* 배경 비디오 */}
-    <video
-      src={classVideo}
-      autoPlay
-      muted
-      loop
-      playsInline
-      className="absolute inset-0 w-full h-full object-cover"
-    />
+          <div id="home" ref={homePanelRef} className="w-full lg:w-1/2 min-h-screen lg:min-h-auto">
+            <div className="h-full w-full max-w-[1920px] mx-auto bg-cover bg-center bg-no-repeat relative">
+              {/* 배경 비디오 */}
+              <video
+                src={classVideo}
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover"
+              />
 
-    {/* 은은한 대비 오버레이 (가독성) */}
-    <div className="absolute inset-0 bg-black/10"></div>
-    <div className="absolute inset-0 bg-white/40"></div>
+              {/* 은은한 대비 오버레이 (가독성) */}
+              <div className="absolute inset-0 bg-black/10"></div>
+              <div className="absolute inset-0 bg-white/40"></div>
 
-    <div className="h-full w-full flex items-start sm:items-center justify-center relative z-10">
-      <div className="relative w-full flex items-start sm:items-center min-h-screen lg:min-h-[calc(100vh-98px)]">
-        <div className="w-full max-w-6xl mx-auto text-center px-4 sm:px-6 lg:px-8 pt-20 sm:pt-0">
-          {/* 메인 타이틀 */}
-          <div className="relative mb-8 sm:mb-10 lg:mb-12">
-            <div className="relative">
-              {/* 글로우 효과 배경 */}
-              <div className="absolute -inset-1 sm:-inset-2 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 blur-xl sm:blur-3xl rounded-2xl sm:rounded-3xl animate-pulse"></div>
+              <div className="h-full w-full flex items-start sm:items-center justify-center relative z-10">
+                <div className="relative w-full flex items-start sm:items-center min-h-screen lg:min-h-[calc(100vh-98px)]">
+                  <div className="w-full max-w-6xl mx-auto text-center px-4 sm:px-6 lg:px-8 pt-20 sm:pt-0">
+                    {/* 메인 타이틀 */}
+                    <div className="relative mb-8 sm:mb-10 lg:mb-12">
+                      <div className="relative">
+                        {/* 글로우 효과 배경 */}
+                        <div className="absolute -inset-1 sm:-inset-2 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 blur-xl sm:blur-3xl rounded-2xl sm:rounded-3xl animate-pulse"></div>
 
-              <h1 className="relative text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-black leading-tight tracking-tight">
-                {/* 첫 줄 */}
-                <div className="mb-2 sm:mb-4 transition-transform duration-700">
-                  <span
-                    className="
+                        <h1 className="relative text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-black leading-tight tracking-tight">
+                          {/* 첫 줄 */}
+                          <div className="mb-2 sm:mb-4 transition-transform duration-700">
+                            <span
+                              className="
                       inline-block bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300
                       bg-clip-text text-transparent
                       drop-shadow-[0_6px_8px_rgba(0,0,0,0.4)] sm:drop-shadow-[0_10px_2px_rgba(0,0,0,0.55)]
@@ -372,19 +386,19 @@ export default function MainClassesPage() {
                       [animation-delay:800ms] [animation-duration:8s]
                       [animation-iteration-count:1]
                     "
-                  >
-                    Create
-                  </span>
-                  <span
-                    className="
+                            >
+                              Create
+                            </span>
+                            <span
+                              className="
                       mx-2 sm:mx-4 text-white/95 font-light
                       drop-shadow-[0_6px_8px_rgba(0,0,0,0.7)] sm:drop-shadow-[0_10px_10px_rgba(0,0,0,0.85)]
                     "
-                  >
-                    your
-                  </span>
-                  <span
-                    className="
+                            >
+                              your
+                            </span>
+                            <span
+                              className="
                       inline-block bg-gradient-to-r from-pink-300 via-rose-300 to-orange-300
                       bg-clip-text text-transparent
                       drop-shadow-[0_6px_8px_rgba(0,0,0,0.4)] sm:drop-shadow-[0_10px_2px_rgba(0,0,0,0.55)]
@@ -392,51 +406,54 @@ export default function MainClassesPage() {
                       [animation-delay:800ms] [animation-duration:8s]
                       [animation-iteration-count:1]
                     "
-                  >
-                    Story
-                  </span>
-                </div>
+                            >
+                              Story
+                            </span>
+                          </div>
 
-                {/* 둘째 줄 */}
-                <div className="transition-transform duration-700">
-                  <span
-                    className="
+                          {/* 둘째 줄 */}
+                          <div className="transition-transform duration-700">
+                            <span
+                              className="
                       text-white/90 font-light text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl
                       drop-shadow-[0_6px_8px_rgba(0,0,0,0.7)] sm:drop-shadow-[0_10px_20px_rgba(0,0,0,0.85)]
                     "
-                  >
-                    with
-                  </span>
-                  <span
-                    className="
+                            >
+                              with
+                            </span>
+                            <span
+                              className="
                       ml-2 sm:ml-4 md:ml-6 inline-block
                       bg-gradient-to-r from-emerald-300 via-teal-300 to-blue-300
                       bg-clip-text text-transparent
                       drop-shadow-[0_6px_8px_rgba(0,0,0,0.4)] sm:drop-shadow-[0_10px_2px_rgba(0,0,0,0.55)]
                     "
-                  >
-                    Professionals
-                  </span>
-                </div>
-              </h1>
-            </div>
-          </div>
+                            >
+                              Professionals
+                            </span>
+                          </div>
+                        </h1>
+                      </div>
+                    </div>
 
-          {/* 서브 타이틀 */}
-          <div className="relative mb-6 sm:mb-10 lg:mb-12 max-w-xs sm:max-w-md lg:max-w-3xl mx-auto px-2 sm:px-4">
-            <div className="bg-white/70 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-3 sm:py-5 shadow-xl">
-              <p className="text-xs sm:text-sm md:text-base lg:text-lg text-[#2D4739] font-jua leading-relaxed text-center">
-                오늘 하루, <span className="font-semibold">원데이 클래스</span>로 새로운 경험을 시작해보세요.
-                <br className="hidden sm:block" />
-                재료와 공간이 모두 준비되어 있어 <span className="font-semibold">가볍게 배우고 즐길 수 있는 클래스</span>입니다.
-              </p>
+                    {/* 서브 타이틀 */}
+                    <div className="relative mb-6 sm:mb-10 lg:mb-12 max-w-xs sm:max-w-md lg:max-w-3xl mx-auto px-2 sm:px-4">
+                      <div className="bg-white/70 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-3 sm:py-5 shadow-xl">
+                        <p className="text-xs sm:text-sm md:text-base lg:text-lg text-[#2D4739] font-jua leading-relaxed text-center">
+                          오늘 하루, <span className="font-semibold">원데이 클래스</span>로 새로운
+                          경험을 시작해보세요.
+                          <br className="hidden sm:block" />
+                          재료와 공간이 모두 준비되어 있어{' '}
+                          <span className="font-semibold">가볍게 배우고 즐길 수 있는 클래스</span>
+                          입니다.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
           {/* Panel 2: 캘린더 */}
           <div
@@ -447,12 +464,18 @@ export default function MainClassesPage() {
             <div className="w-full h-full flex items-center justify-center mx-auto px-4 py-8 md:px-6 lg:px-8">
               <div className="w-full max-w-5xl animate-fade-in">
                 <div className="text-center mb-5 sm:mb-6">
-                  <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1.5">이번 달 일정</h2>
-                  <p className="text-sm sm:text-base text-gray-600">다가오는 클래스들을 확인해보세요</p>
+                  <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1.5">
+                    이번 달 일정
+                  </h2>
+                  <p className="text-sm sm:text-base text-gray-600">
+                    다가오는 클래스들을 확인해보세요
+                  </p>
                 </div>
                 <CalendarPreview items={items.slice(0, 12)} />
                 <p className="mt-4 text-xs sm:text-sm text-gray-500 text-center bg-white/50 backdrop-blur-sm rounded-lg p-2">
-                  {isDesktop ? '아래로 스크롤하면 클래스 목록도 계속 볼 수 있어요' : '아래로 스크롤하면 클래스 목록을 볼 수 있어요'}
+                  {isDesktop
+                    ? '아래로 스크롤하면 클래스 목록도 계속 볼 수 있어요'
+                    : '아래로 스크롤하면 클래스 목록을 볼 수 있어요'}
                 </p>
               </div>
             </div>
@@ -469,10 +492,17 @@ export default function MainClassesPage() {
             <div id="search-section" className="" ref={searchSectionRef} />
 
             {/* 검색바 + 초기화 */}
-            <section className="mb-4 sm:mb-6 lg:mb-8 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+            <section
+              className="mb-4 sm:mb-6 lg:mb-8 animate-fade-in-up"
+              style={{ animationDelay: '0.1s' }}
+            >
               <div className="mb-3 sm:mb-4 text-center">
-                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1.5">클래스 찾기</h2>
-                <p className="text-sm sm:text-base text-gray-600">원하는 클래스를 검색하고 정렬해보세요</p>
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1.5">
+                  클래스 찾기
+                </h2>
+                <p className="text-sm sm:text-base text-gray-600">
+                  원하는 클래스를 검색하고 정렬해보세요
+                </p>
               </div>
 
               <div
@@ -499,7 +529,10 @@ export default function MainClassesPage() {
             </section>
 
             {/* 정렬바 */}
-            <section className="mb-5 sm:mb-7 lg:mb-9 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <section
+              className="mb-5 sm:mb-7 lg:mb-9 animate-fade-in-up"
+              style={{ animationDelay: '0.2s' }}
+            >
               <div id="sort-section" className="w-full">
                 <SortBar sortKey={sortKey} onChange={handleSortChange} />
               </div>
@@ -540,13 +573,7 @@ export default function MainClassesPage() {
 
 /** ====== 하위 컴포넌트 ====== */
 
-function SortBar({
-  sortKey,
-  onChange,
-}: {
-  sortKey: SortKey;
-  onChange: (key: SortKey) => void;
-}) {
+function SortBar({ sortKey, onChange }: { sortKey: SortKey; onChange: (key: SortKey) => void }) {
   const items: { key: SortKey; label: string }[] = [
     { key: 'latest', label: '최신순' },
     { key: 'closing', label: '마감임박순' },
@@ -588,8 +615,18 @@ function CalendarPreview({ items }: { items: ClassItem[] }) {
         {items.length === 0 ? (
           <div className="text-center py-12 sm:py-16">
             <div className="w-16 sm:w-20 h-16 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 sm:w-10 h-8 sm:h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <svg
+                className="w-8 sm:w-10 h-8 sm:h-10 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
               </svg>
             </div>
             <p className="text-gray-500 text-base sm:text-lg mb-2">예정된 클래스가 없습니다</p>
@@ -607,12 +644,24 @@ function CalendarPreview({ items }: { items: ClassItem[] }) {
                   {/* 날짜 */}
                   <div className="flex items-center gap-2 sm:gap-3">
                     <div className="w-10 sm:w-12 h-10 sm:h-12 bg-[#2d4730]/10 rounded-lg sm:rounded-xl flex items-center justify-center">
-                      <svg className="w-5 sm:w-6 h-5 sm:h-6 text-[#2d4730]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      <svg
+                        className="w-5 sm:w-6 h-5 sm:h-6 text-[#2d4730]"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
                       </svg>
                     </div>
                     <div className="text-left">
-                      <div className="text-xs sm:text-sm font-semibold text-[#2d4730]">{cls.startDate}</div>
+                      <div className="text-xs sm:text-sm font-semibold text-[#2d4730]">
+                        {cls.startDate}
+                      </div>
                       <div className="text-[10px] sm:text-xs text-gray-500">~ {cls.endDate}</div>
                     </div>
                   </div>
@@ -624,14 +673,34 @@ function CalendarPreview({ items }: { items: ClassItem[] }) {
                     </h3>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
                       <span className="flex items-center gap-1">
-                        <svg className="w-3 sm:w-4 h-3 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <svg
+                          className="w-3 sm:w-4 h-3 sm:h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                          />
                         </svg>
                         {cls.storeName}
                       </span>
                       <span className="flex items-center gap-1">
-                        <svg className="w-3 sm:w-4 h-3 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                        <svg
+                          className="w-3 sm:w-4 h-3 sm:h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                          />
                         </svg>
                         {cls.price.toLocaleString()}원
                       </span>
@@ -650,8 +719,18 @@ function CalendarPreview({ items }: { items: ClassItem[] }) {
                     className="inline-flex items-center justify-center h-9 sm:h-11 px-4 sm:px-6 rounded-lg sm:rounded-xl border-2 border-[#2d4730]/20 bg-white hover:border-[#2d4730] hover:bg-[#2d4730] hover:text-white transition-all duration-300 text-xs sm:text-sm font-semibold active:scale-95 group-hover:shadow-lg mt-2 sm:mt-0"
                   >
                     예약하기
-                    <svg className="w-3 sm:w-4 h-3 sm:h-4 ml-1 sm:ml-2 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <svg
+                      className="w-3 sm:w-4 h-3 sm:h-4 ml-1 sm:ml-2 transform group-hover:translate-x-1 transition-transform duration-300"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
                     </svg>
                   </Link>
                 </div>
@@ -689,8 +768,18 @@ function ListView({ items, isLoading }: { items: ClassItem[]; isLoading: boolean
     return (
       <div className="py-16 sm:py-20 text-center">
         <div className="mx-auto w-20 sm:w-24 h-20 sm:h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-          <svg className="w-10 sm:w-12 h-10 sm:h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          <svg
+            className="w-10 sm:w-12 h-10 sm:h-12 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+            />
           </svg>
         </div>
         <p className="text-base sm:text-lg text-gray-500 mb-2">등록된 클래스가 없습니다</p>
@@ -735,9 +824,24 @@ function ListView({ items, isLoading }: { items: ClassItem[]; isLoading: boolean
 
               <div className="space-y-1 sm:space-y-1.5 mb-3 sm:mb-4">
                 <p className="text-xs sm:text-sm text-gray-600 flex items-center">
-                  <svg className="w-3 sm:w-4 h-3 sm:h-4 mr-1 sm:mr-1.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <svg
+                    className="w-3 sm:w-4 h-3 sm:h-4 mr-1 sm:mr-1.5 text-gray-400 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
                   </svg>
                   <span className="truncate">
                     {cls.storeName} · {cls.addressRoad}
@@ -745,8 +849,18 @@ function ListView({ items, isLoading }: { items: ClassItem[]; isLoading: boolean
                 </p>
 
                 <p className="text-xs sm:text-sm text-gray-600 flex items-center">
-                  <svg className="w-3 sm:w-4 h-3 sm:h-4 mr-1 sm:mr-1.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <svg
+                    className="w-3 sm:w-4 h-3 sm:h-4 mr-1 sm:mr-1.5 text-gray-400 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
                   </svg>
                   <span className="truncate">
                     {cls.startDate} ~ {cls.endDate}
@@ -768,8 +882,18 @@ function ListView({ items, isLoading }: { items: ClassItem[]; isLoading: boolean
               <div className="mt-3 sm:mt-4">
                 <span className="inline-flex w-full h-9 sm:h-11 items-center justify-center rounded-lg sm:rounded-xl border border-gray-300 bg-white group-hover:bg-[#2d4730] group-hover:text-white group-hover:border-[#2d4730] transition-all duration-300 text-xs sm:text-sm font-semibold active:scale-95">
                   자세히 보기
-                  <svg className="w-3 sm:w-4 h-3 sm:h-4 ml-1 sm:ml-2 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <svg
+                    className="w-3 sm:w-4 h-3 sm:h-4 ml-1 sm:ml-2 transform group-hover:translate-x-1 transition-transform duration-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </span>
               </div>
@@ -800,7 +924,8 @@ function Pagination({
 
   // 페이지 번호 표시 로직
   const getVisiblePages = () => {
-    const isMobile = typeof window !== 'undefined' ? window.matchMedia('(max-width: 640px)').matches : false;
+    const isMobile =
+      typeof window !== 'undefined' ? window.matchMedia('(max-width: 640px)').matches : false;
     const delta = isMobile ? 1 : 2;
     const range: number[] = [];
     const rangeWithDots: (number | '...')[] = [];
@@ -829,7 +954,10 @@ function Pagination({
   const visiblePages = totalPages > 1 ? getVisiblePages() : [1];
 
   return (
-    <nav className="mt-8 sm:mt-12 mb-12 sm:mb-16 flex items-center justify-center" aria-label="클래스 페이지네이션">
+    <nav
+      className="mt-8 sm:mt-12 mb-12 sm:mb-16 flex items-center justify-center"
+      aria-label="클래스 페이지네이션"
+    >
       <div className="flex items-center gap-1 sm:gap-2 bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-1 sm:p-2 shadow-lg hover:shadow-xl transition-shadow duration-300">
         {/* 이전 버튼 */}
         <button
@@ -837,12 +965,24 @@ function Pagination({
           disabled={!canPrev}
           className={[
             'h-9 sm:h-10 px-2 sm:px-4 rounded-lg sm:rounded-xl border transition-all duration-200 font-medium text-xs sm:text-sm',
-            canPrev ? 'border-gray-300 hover:bg-gray-50 hover:shadow-md active:scale-95 text-gray-700' : 'border-gray-200 text-gray-400 cursor-not-allowed',
+            canPrev
+              ? 'border-gray-300 hover:bg-gray-50 hover:shadow-md active:scale-95 text-gray-700'
+              : 'border-gray-200 text-gray-400 cursor-not-allowed',
           ].join(' ')}
           aria-label="이전 페이지"
         >
-          <svg className="w-3 sm:w-4 h-3 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          <svg
+            className="w-3 sm:w-4 h-3 sm:h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </button>
 
@@ -851,7 +991,10 @@ function Pagination({
           {visiblePages.map((p, index) => {
             if (p === '...') {
               return (
-                <span key={`dots-${index}`} className="px-1 sm:px-2 text-gray-400 text-xs sm:text-sm">
+                <span
+                  key={`dots-${index}`}
+                  className="px-1 sm:px-2 text-gray-400 text-xs sm:text-sm"
+                >
                   ...
                 </span>
               );
@@ -866,7 +1009,9 @@ function Pagination({
                 onClick={() => go(pageNum)}
                 className={[
                   'h-9 sm:h-10 w-9 sm:w-10 rounded-lg sm:rounded-xl border text-xs sm:text-sm font-semibold transition-all duration-200',
-                  active ? 'border-[#2d4730] bg-[#2d4730] text-white shadow-lg transform scale-105' : 'border-gray-300 hover:bg-gray-50 hover:shadow-md active:scale-95 text-gray-700',
+                  active
+                    ? 'border-[#2d4730] bg-[#2d4730] text-white shadow-lg transform scale-105'
+                    : 'border-gray-300 hover:bg-gray-50 hover:shadow-md active:scale-95 text-gray-700',
                 ].join(' ')}
                 aria-current={active ? 'page' : undefined}
                 aria-label={`페이지 ${pageNum}`}
@@ -883,11 +1028,18 @@ function Pagination({
           disabled={!canNext}
           className={[
             'h-9 sm:h-10 px-2 sm:px-4 rounded-lg sm:rounded-xl border transition-all duration-200 font-medium text-xs sm:text-sm',
-            canNext ? 'border-gray-300 hover:bg-gray-50 hover:shadow-md active:scale-95 text-gray-700' : 'border-gray-200 text-gray-400 cursor-not-allowed',
+            canNext
+              ? 'border-gray-300 hover:bg-gray-50 hover:shadow-md active:scale-95 text-gray-700'
+              : 'border-gray-200 text-gray-400 cursor-not-allowed',
           ].join(' ')}
           aria-label="다음 페이지"
         >
-          <svg className="w-3 sm:w-4 h-3 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="w-3 sm:w-4 h-3 sm:h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>

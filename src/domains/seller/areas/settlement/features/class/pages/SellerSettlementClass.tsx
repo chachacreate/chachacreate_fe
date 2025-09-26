@@ -434,7 +434,11 @@ export default function SellerSettlementClass() {
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="label" fontSize={12} />
-                        <YAxis tickFormatter={(v) => KRW.format(v)} fontSize={12} />
+                        <YAxis
+                          tickFormatter={(v) => KRW.format(v)}
+                          fontSize={12}
+                          domain={[0, (dataMax: number) => dataMax * 1.2]}
+                        />
                         <Tooltip
                           formatter={(v: number) => `₩ ${KRW.format(v)}`}
                           labelFormatter={(_, p: any) => `날짜: ${p?.payload?.date ?? ''}`}
@@ -447,14 +451,14 @@ export default function SellerSettlementClass() {
               </div>
             </div>
           )}
-          /* 요약 카드: 정산 주기(한 달) 총 매출 / 이번주 매출 */
+          {/* 요약 카드: 정산 주기(한 달) 총 매출 / 이번주 매출 */}
           {!!selectedId && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-6">
               <SummaryCard title="총 매출(정산 주기 한 달)" value={fmtKRW(cycleTotal)} />
               <SummaryCard title="이번주 매출" value={fmtKRW(weeklyTotal)} />
             </div>
           )}
-          /* 월별 정산 테이블(스토어 전체) */
+          {/* 월별 정산 테이블(스토어 전체) */}
           <div className="mt-6 rounded-2xl border border-gray-200 bg-white overflow-x-auto">
             <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between">

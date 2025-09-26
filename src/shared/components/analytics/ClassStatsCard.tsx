@@ -117,8 +117,17 @@ const ClassStatsCard: FC<Props> = ({
             <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="key" tick={{ fontSize: 12 }} interval={mode === 'hour' ? 1 : 0} />
-              <YAxis yAxisId="count" tick={{ fontSize: 12 }} />
-              <YAxis yAxisId="revenue" orientation="right" tickFormatter={(v) => KRW.format(v)} />
+              <YAxis
+                yAxisId="count"
+                tick={{ fontSize: 12 }}
+                domain={[0, (dataMax: number) => dataMax * 1.2]}
+              />
+              <YAxis
+                yAxisId="revenue"
+                orientation="right"
+                tickFormatter={(v) => KRW.format(v)}
+                domain={[0, (dataMax: number) => dataMax * 1.2]}
+              />
               <Tooltip
                 formatter={(v: number, name) =>
                   name === '예약 건수' ? [`${v} 건`, name] : [fmtKRW(v), name]

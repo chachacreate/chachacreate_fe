@@ -107,6 +107,9 @@ const ClassEdit: FC = () => {
   // 기존 서버 썸네일 삭제 여부
   const [deleteServerImage, setDeleteServerImage] = useState(false);
 
+  // AI 설명 생성 로딩 상태 추가
+  const [isLoadingAiDesc, setIsLoadingAiDesc] = useState<boolean>();
+
   // 엔드포인트 (필요시 상단만 바꿔서 매핑)
   const ENDPOINT_DETAIL = `/seller/${storeUrl}/classes/${classId}`;
   const ENDPOINT_UPDATE = `/seller/${storeUrl}/classes/${classId}`;
@@ -223,18 +226,32 @@ const ClassEdit: FC = () => {
     updateForm('image', null);
   };
 
-  // AI 클래스 설명 (Insert와 동일 UX 유지)
+  // AI 클래스 설명 (Insert와 동일 UX + 로딩 상태 추가)
   const genAiDesc = async () => {
+    if (!form.title.trim()) {
+      return alert('클래스명을 먼저 입력해 주세요.');
+    }
+
+    setIsLoadingAiDesc(true);
+
     try {
       const resp = await api.post('/ai/class-description', {
         title: form.title,
         prompt: form.aiDesc,
       });
+
       const content = resp.data?.content ?? resp.data?.data ?? '';
+      if (!content) throw new Error('AI 응답이 비었습니다.');
+
+      // 에디터에 반영
       editorRef.current?.setMarkdown(content);
+
+      // 상태에도 반영
       updateForm('desc', content);
     } catch (e: any) {
       alert(e?.response?.data?.message || e?.message || 'AI 설명 생성 실패');
+    } finally {
+      setIsLoadingAiDesc(false);
     }
   };
 
@@ -396,35 +413,59 @@ const ClassEdit: FC = () => {
                 />
               </div>
 
-              {/* 상세설명 */}
-              <fieldset className="grid gap-1">
+              {/* 상세설명 - 로딩 오버레이 추가 */}
+              <fieldset className="grid gap-3 relative">
                 <legend className="text-sm font-medium">클래스 상세설명</legend>
-                <EditorAPI
-                  ref={(el) => {
-                    editorRef.current = el;
-                  }}
-                  initialValue={form.desc ?? ''}
-                />
+
+                {/* AI 로딩 오버레이 */}
+                {isLoadingAiDesc && (
+                  <div className="absolute inset-0 bg-white bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-50 rounded-lg">
+                    <div className="flex flex-col items-center gap-3 p-6">
+                      <img
+                        src="/images/product_insert/AI_loading.gif"
+                        alt="AI 생성 중..."
+                        className="w-32 h-32 object-contain"
+                      />
+                      <div className="text-sm font-medium text-gray-700">
+                        AI가 클래스 설명을 생성하고 있습니다...
+                      </div>
+                      <div className="text-xs text-gray-500">잠시만 기다려주세요</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 에디터 */}
+                <div className="w-full overflow-hidden">
+                  <EditorAPI ref={editorRef} initialValue={form.desc ?? ''} />
+                </div>
               </fieldset>
 
               {/* AI 설명 */}
               <div className="grid gap-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <span className="text-sm font-medium">AI 클래스 설명 멘트</span>
                   <button
                     type="button"
-                    className="px-3 py-1.5 rounded-md border text-sm"
+                    className="w-full sm:w-auto px-3 py-1.5 rounded-md border text-sm hover:bg-gray-50 shrink-0 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     onClick={genAiDesc}
+                    disabled={isLoadingAiDesc}
                   >
-                    생성하기
+                    {isLoadingAiDesc && (
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-500"></div>
+                    )}
+                    {isLoadingAiDesc ? 'AI 생성 중...' : '생성하기'}
                   </button>
                 </div>
                 <textarea
-                  className="border rounded-md px-3 py-2 min-h-[100px]"
-                  placeholder="'생성하기'를 누르면 임시 멘트가 채워집니다."
+                  className="border rounded-md px-3 py-2 min-h-[100px] w-full resize-y disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  placeholder="'생성하기'를 누르면 자동으로 설명이 채워집니다."
                   value={form.aiDesc}
                   onChange={(e) => updateForm('aiDesc', e.target.value)}
+                  disabled={isLoadingAiDesc}
                 />
+                <p className="text-xs text-gray-500">
+                  * 생성 후 내용은 위 에디터에 자동 반영됩니다.
+                </p>
               </div>
 
               {/* 최대 인원 / 가격 */}

@@ -114,6 +114,7 @@ type Product = {
   typeCategory: keyof typeof TYPE_LABEL_BY_KEY | '';
   stock: number | '';
   lastModified?: string; // ISO
+  deleteFlags?: boolean[];
 };
 
 const MAX_PRODUCTS = 2;
@@ -133,6 +134,7 @@ const emptyProduct = (id: string): Product => ({
   typeCategory: '',
   stock: '',
   lastModified: undefined,
+  deleteFlags: [false, false, false], // 초기값
 });
 const formatDate = (iso?: string) => (iso ? new Date(iso).toLocaleString() : '-');
 
@@ -252,6 +254,7 @@ const MainSellSellregister: React.FC = () => {
         // 새로 선택한 이미지가 있을 때만 첨부
         (data.files ?? []).forEach((f, i) => {
           if (f) fd.append(`image${i + 1}`, f);
+          fd.append(`deleteImage${i + 1}`, data.deleteFlags?.[i] ? 'true' : 'false');
         });
 
         const res = await legacyPost<ApiResponse<number>>('/main/sell/sellregister/update', fd);
@@ -261,7 +264,12 @@ const MainSellSellregister: React.FC = () => {
           setItems((prev) =>
             prev.map((x) =>
               x.id === data.id
-                ? { ...x, lastModified: new Date().toISOString(), files: [null, null, null] }
+                ? {
+                    ...x,
+                    images: data.images,
+                    files: data.files,
+                    lastModified: new Date().toISOString(),
+                  }
                 : x
             )
           );
@@ -357,60 +365,54 @@ function ProductCard({
   const [form, setForm] = useState<Product>(data);
   const [editing, setEditing] = useState<boolean>(!data.name);
   const fileInputRefs = useRef<Array<HTMLInputElement | null>>([null, null, null]);
+  const originalRef = useRef<Product>(data); // 원본 보관
 
   useEffect(() => {
-    setForm(data);
-    setEditing(!data.name);
-  }, [data]);
+    if (data.productId) {
+      setForm(data);
+      originalRef.current = data; // 원본 갱신
+      setEditing(false);
+    }
+  }, [data.productId]);
+
+  // 수정 취소 버튼 클릭 시
+  const onCancelEdit = () => {
+    setForm(originalRef.current);
+    setEditing(false);
+  };
 
   const setField = <K extends keyof Product>(k: K, v: Product[K]) =>
     setForm((prev) => ({ ...prev, [k]: v }));
 
-  const addImages = async (files: FileList | null) => {
+  const addImages = (files: FileList | null, slotIndex: number) => {
     if (!files || !files.length) return;
-    const current = form.images ?? [];
-    const currentFiles = form.files ?? [null, null, null];
 
-    // 남은 슬롯
-    const remain = Math.max(0, MAX_IMAGES - current.length);
-    if (remain <= 0) return;
+    const currentFiles = [...(form.files ?? [])];
+    const currentImages = [...form.images];
 
-    const picks = Array.from(files).slice(0, remain);
-    const readers = await Promise.all(
-      picks.map(
-        (f) =>
-          new Promise<string>((res, rej) => {
-            const r = new FileReader();
-            r.onload = () => res(String(r.result));
-            r.onerror = rej;
-            r.readAsDataURL(f);
-          })
-      )
-    );
-
-    // 이미지를 항상 최대 3칸 유지
-    const nextImages = [...current, ...readers].slice(0, MAX_IMAGES);
-    const nextFiles = [...currentFiles];
-    picks.forEach((f, i) => {
-      // 빈 칸(첫 null) 위치에 파일을 꽂는다
-      const idx = nextFiles.findIndex((x) => x === null);
-      if (idx >= 0) nextFiles[idx] = f;
-    });
-
-    setField('images', nextImages);
-    setField('files', nextFiles.slice(0, MAX_IMAGES));
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      currentFiles[slotIndex] = file;
+      currentImages[slotIndex] = String(reader.result);
+      setField('files', currentFiles);
+      setField('images', currentImages);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const removeImage = (i: number) => {
-    const imgs = [...(form.images ?? [])];
-    const fls = [...(form.files ?? [])];
-    imgs.splice(i, 1);
-    fls.splice(i, 1);
-    // 길이를 다시 3칸으로 유지
-    while (imgs.length < 3) imgs.push('');
-    while (fls.length < 3) fls.push(null);
-    setField('images', imgs.filter(Boolean));
-    setField('files', fls);
+  const removeImage = (slotIndex: number) => {
+    const currentFiles = [...(form.files ?? [])];
+    const currentImages = [...(form.images ?? [])];
+    const deleteFlags = [...(form.deleteFlags ?? [false, false, false])];
+
+    currentFiles[slotIndex] = null;
+    currentImages[slotIndex] = '';
+    deleteFlags[slotIndex] = true; // 삭제 표시
+
+    setField('files', currentFiles);
+    setField('images', currentImages);
+    setField('deleteFlags', deleteFlags);
   };
 
   // 항상 3칸 보여주기 위한 슬롯
@@ -438,7 +440,7 @@ function ProductCard({
             </span>
           )}
           <button
-            onClick={() => setEditing((v) => !v)}
+            onClick={() => (editing ? onCancelEdit() : setEditing(true))}
             className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
           >
             <Pencil className="w-4 h-4" />
@@ -496,7 +498,7 @@ function ProductCard({
                   multiple
                   hidden
                   disabled={!editing}
-                  onChange={(e) => addImages(e.currentTarget.files)}
+                  onChange={(e) => addImages(e.currentTarget.files, i)}
                 />
                 <div className="text-center text-gray-400">
                   <ImageIcon className="w-6 h-6 mx-auto mb-1" />

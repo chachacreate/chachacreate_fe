@@ -110,9 +110,6 @@ const ProductEdit: FC = () => {
   const [isLoadingAiDesc, setIsLoadingAiDesc] = useState(false); // ✅ AI 설명 로딩 상태 추가
   const [aiPredictionInfo, setAiPredictionInfo] = useState<Record<string, any>>({});
 
-  // AI 설명 생성 로딩 상태 추가
-  const [isLoadingAiDesc, setIsLoadingAiDesc] = useState<boolean>();
-
   // 수정: 단일 상품만 수정 → 에디터도 1개만 필요
   const editorRef = useRef<EditorHandle | null>(null);
 

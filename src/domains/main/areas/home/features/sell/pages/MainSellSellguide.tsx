@@ -392,15 +392,15 @@ transition-all duration-300 shadow-md hover:shadow-lg"
                 isVisible={isVisible}
               />
               <Benefit
-                title="간편한 배송 연동"
-                desc="송장/배송 추적까지 시스템에서 자동으로 연동합니다."
+                title="간편한 주문 관리"
+                desc="주문 발생 시 시스템에서 자동으로 연동합니다."
                 icon={<Truck className="w-4 h-4 sm:w-5 sm:h-5 text-[#2d4739]" />}
                 delay={200}
                 isVisible={isVisible}
               />
               <Benefit
                 title="다양한 결제 수단"
-                desc="카드/계좌이체/간편결제 등 여러 수단을 지원합니다."
+                desc="카드/간편결제 등 여러 수단을 지원합니다."
                 icon={<CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-[#2d4739]" />}
                 delay={300}
                 isVisible={isVisible}

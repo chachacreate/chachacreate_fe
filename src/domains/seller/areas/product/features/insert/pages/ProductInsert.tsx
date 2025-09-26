@@ -743,7 +743,7 @@ const ProductInsert: FC = () => {
 
                     {/* AI 로딩 오버레이 */}
                     {isLoadingAiDesc[form.id] && (
-                      <div className="absolute inset-0 bg-white bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-20 rounded-lg">
+                      <div className="absolute inset-0 bg-white bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-50 rounded-lg">
                         <div className="flex flex-col items-center gap-3 p-6">
                           <img
                             src="/images/product_insert/AI_loading.gif"

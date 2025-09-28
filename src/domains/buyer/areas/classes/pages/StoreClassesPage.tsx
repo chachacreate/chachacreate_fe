@@ -6,6 +6,7 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 import Searchbar from '@src/shared/areas/navigation/features/searchbar/Searchbar';
 import { get, legacyGet } from '@src/libs/request'; 
+import type { ApiResponse } from '@src/libs/apiResponse';
 
 // 서버에서 응답하는 클래스 정보 타입
 type ClassItem = {
@@ -54,6 +55,19 @@ const PLACEHOLDER =
     </svg>`
   );
 
+// 커스텀 설정 타입
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string; // 이 값을 배너 배경으로 사용
+  createdAt: string;
+  updatedAt: string;
+}
 
 // 페이지 컴포넌트
 export default function StoreClassesPage() {
@@ -61,45 +75,83 @@ export default function StoreClassesPage() {
   const storeUrl = store ?? '';   
 
   const [storeName, setStoreName] = useState<string>("");
+  const [customSettings, setCustomSettings] = useState<StoreCustomDTO | null>(null);
 
-  // ✅ 추가: storeName 불러오기
-  useEffect(() => {
-  const fetchStoreInfo = async () => {
+  // RGB 색상을 CSS 형식으로 변환하는 함수
+  const convertColorToCss = (color: string): string => {
+    if (!color) return '#5B7A67'; // 기본값
+    
+    // 이미 hex 형식이면 그대로 반환
+    if (color.startsWith('#')) {
+      return color;
+    }
+    
+    // RGB 형식 (예: "252,92,92")을 css rgb() 형식으로 변환
+    if (color.includes(',')) {
+      const rgbValues = color.split(',').map(v => v.trim());
+      if (rgbValues.length === 3) {
+        return `rgb(${rgbValues.join(', ')})`;
+      }
+    }
+    
+    // 기타 형식이면 기본값 반환
+    return '#5B7A67';
+  };
+
+  // 커스텀 설정 로드 함수
+  const loadCustomSettings = async () => {
     try {
-      const res = await legacyGet<any>(`/${storeUrl}/info`);
-      const name = res?.data?.storeInfoList?.[0]?.storeName ?? '';
-      setStoreName(name);
-    } catch (err) {
-      console.error('스토어 정보 요청 실패', err);
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      setCustomSettings(result.data);
+      console.log('클래스 페이지 커스텀 설정 로드:', result.data);
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
     }
   };
 
-  if (storeUrl) fetchStoreInfo();
-}, [storeUrl]);
+  // 배너 배경색 결정
+  const bannerBgColor = customSettings?.popularColor 
+    ? convertColorToCss(customSettings.popularColor) 
+    : '#5B7A67';
 
+  // storeName과 커스텀 설정 불러오기
+  useEffect(() => {
+    const fetchStoreInfo = async () => {
+      try {
+        const res = await legacyGet<any>(`/${storeUrl}/info`);
+        const name = res?.data?.storeInfoList?.[0]?.storeName ?? '';
+        setStoreName(name);
+      } catch (err) {
+        console.error('스토어 정보 요청 실패', err);
+      }
+    };
 
+    if (storeUrl) {
+      fetchStoreInfo();
+      loadCustomSettings();
+    }
+  }, [storeUrl]);
 
   //배너 애니메이션
   const bannerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.12, when: 'beforeChildren' },
-  },
-};
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.12, when: 'beforeChildren' },
+    },
+  };
 
-const slideLeft = {
-  hidden: { opacity: 0, x: -24 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: 'easeOut' } },
-};
+  const slideLeft = {
+    hidden: { opacity: 0, x: -24 },
+    visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+  };
 
-const slideRight = {
-  hidden: { opacity: 0, x: 24 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: 'easeOut' } },
-};
-
-
-
+  const slideRight = {
+    hidden: { opacity: 0, x: 24 },
+    visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+  };
 
   // 데이터 & 상태
   const [items, setItems] = useState<ClassItem[]>([]);
@@ -119,7 +171,6 @@ const slideRight = {
 
   // 마지막 사용자 액션 추적: 'pagination' | 'sort' | 'search' | null
   const lastActionRef = useRef<'pagination' | 'sort' | 'search' | null>(null);
-  
 
   // 이번 page 변경이 "정렬로 인한 리셋"인지 표시
   const fromSortRef = useRef<boolean>(false);
@@ -178,7 +229,6 @@ const handleSortChange = (key: SortKey) => {
   // 정렬 전환 시 무조건 sort-section으로 스크롤 이동
   scrollToAnchor('sort-section', 80);
 };
-
 
   // 최초 1회 로딩
   useEffect(() => {
@@ -284,56 +334,60 @@ const handleSortChange = (key: SortKey) => {
       <Header />
       <Storenavbar />
 
-     {/* 1920 x 400 배너 - 반응형 개선 */}
-<section className="w-full bg-[#5B7A67] animate-fade-up">
-  <div className="mx-auto w-full max-w-[1920px] h-[300px] sm:h-[350px] md:h-[400px] flex items-center">
-    {/* 내부 1440 + 좌우 패딩 */}
-    <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-5 lg:px-8 h-full flex items-center">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8 w-full h-full items-center">
-        {/* 왼쪽: 이미지 */}
-        <div className="w-full h-full flex items-center justify-center animate-fade-right [animation-delay:120ms] order-2 md:order-1">
-          <img
-            src={storeHero}
-            alt="스토어 배너 이미지"
-            className="h-[180px] sm:h-[220px] md:h-[300px] lg:h-[400px] w-auto object-contain max-w-full"
-            loading="eager"
-          />
-        </div>
+      
 
-        {/* 오른쪽: 문구 */}
-        <div className="w-full h-full flex items-center animate-fade-left [animation-delay:200ms] order-1 md:order-2">
-          <div className="text-center md:text-left font-jua text-white w-full">
-            {/* 모바일 대응 텍스트 크기 */}
-            <p className="text-[22px] xs:text-[26px] sm:text-[32px] md:text-[36px] lg:text-[44px] xl:text-[52px] leading-tight px-2 sm:px-0">
-              <span className="text-white break-keep">
-                {storeName || storeUrl}
-              </span>
-              <span className="text-white">의</span>
-              <br className="hidden sm:block" />
-              <span className="sm:hidden"> </span>
-              <span className="text-white break-keep">
-                원데이 클래스를
-              </span>
-              <br className="hidden sm:block" />
-              <span className="sm:hidden"> </span>
-              <span className="text-white break-keep">
-                수강해보세요!
-              </span>
-            </p>
-            
-            {/* 모바일용 서브텍스트 (선택사항) */}
-            <div className="mt-3 sm:mt-4 md:hidden">
-              <p className="text-sm sm:text-base text-white/90 font-normal">
-                특별한 원데이 클래스 경험을 만나보세요
-              </p>
+      {/* 1920 x 400 배너 - 반응형 개선 + 커스텀 배경색 적용 */}
+      <section 
+        className="w-full animate-fade-up"
+        style={{ backgroundColor: bannerBgColor }}
+      >
+        <div className="mx-auto w-full max-w-[1920px] h-[300px] sm:h-[350px] md:h-[400px] flex items-center">
+          {/* 내부 1440 + 좌우 패딩 */}
+          <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-5 lg:px-8 h-full flex items-center">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8 w-full h-full items-center">
+              {/* 왼쪽: 이미지 */}
+              <div className="w-full h-full flex items-center justify-center animate-fade-right [animation-delay:120ms] order-2 md:order-1">
+                <img
+                  src={storeHero}
+                  alt="스토어 배너 이미지"
+                  className="h-[180px] sm:h-[220px] md:h-[300px] lg:h-[400px] w-auto object-contain max-w-full"
+                  loading="eager"
+                />
+              </div>
+
+              {/* 오른쪽: 문구 */}
+              <div className="w-full h-full flex items-center animate-fade-left [animation-delay:200ms] order-1 md:order-2">
+                <div className="text-center md:text-left font-jua text-white w-full">
+                  {/* 모바일 대응 텍스트 크기 */}
+                  <p className="text-[22px] xs:text-[26px] sm:text-[32px] md:text-[36px] lg:text-[44px] xl:text-[52px] leading-tight px-2 sm:px-0">
+                    <span className="text-white break-keep">
+                      {storeName || storeUrl}
+                    </span>
+                    <span className="text-white">의</span>
+                    <br className="hidden sm:block" />
+                    <span className="sm:hidden"> </span>
+                    <span className="text-white break-keep">
+                      원데이 클래스를
+                    </span>
+                    <br className="hidden sm:block" />
+                    <span className="sm:hidden"> </span>
+                    <span className="text-white break-keep">
+                      수강해보세요!
+                    </span>
+                  </p>
+                  
+                  {/* 모바일용 서브텍스트 (선택사항) */}
+                  <div className="mt-3 sm:mt-4 md:hidden">
+                    <p className="text-sm sm:text-base text-white/90 font-normal">
+                      특별한 원데이 클래스 경험을 만나보세요
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
-
+      </section>
 
       <main className="w-full">
         <div className="mx-auto max-w-[1920px] px-4 sm:px-8 lg:px-12 xl:px-20 2xl:px-[240px]">
@@ -371,7 +425,6 @@ const handleSortChange = (key: SortKey) => {
             </div>
           </section>
 
-
           {/* 리스트 (디자인/레이아웃 유지) */}
           <ListView items={displayedItems} />
 
@@ -388,7 +441,6 @@ const handleSortChange = (key: SortKey) => {
               fromSortRef.current = false;
 
               setPage(p1 - 1);
-
             }}
           />
         </div>

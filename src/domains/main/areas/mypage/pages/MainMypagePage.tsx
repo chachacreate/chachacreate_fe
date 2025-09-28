@@ -650,7 +650,8 @@ const CareerSection = memo(
         <h3 className="text-lg lg:text-xl font-bold text-gray-900 mb-6 lg:mb-8">나의 이력</h3>
 
         <div className="space-y-6">
-          <div>
+          {/* 이력 이미지의 경우 현재 지원 안 되는 기능이므로 주석 처리 */}
+          {/* <div>
             <label className="block text-sm font-medium text-gray-700 mb-2 lg:mb-3">
               프로필 이미지
             </label>
@@ -688,7 +689,7 @@ const CareerSection = memo(
                 이미지 삭제
               </button>
             )}
-          </div>
+          </div> */}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2 lg:mb-3">

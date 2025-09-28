@@ -257,7 +257,8 @@ const PasswordSection = memo(() => {
   const changePassword = useCallback(async () => {
     if (!pwdCurrent) return alert('현재 비밀번호를 입력하세요.');
     if (!pwdNew) return alert('새 비밀번호를 입력하세요.');
-    if (!isPasswordValid(pwdNew)) return alert('비밀번호는 8자 이상, 영문/숫자/특수문자 포함');
+    if (!isPasswordValid(pwdNew))
+      return alert('비밀번호는 8자 이상, 영문/숫자/특수문자를 포함해야 합니다.');
     if (pwdNew !== pwdNewOk) return alert('비밀번호 확인이 일치하지 않습니다.');
 
     const payload = {
@@ -268,13 +269,17 @@ const PasswordSection = memo(() => {
 
     try {
       const result = await patch<string>(`/mypage/changepwd`, payload);
-      alert((result as unknown as string) || '비밀번호 변경 성공');
-      setPwdCurrent('');
-      setPwdNew('');
-      setPwdNewOk('');
-    } catch (err: any) {
-      console.error('[changePassword] error:', err);
-      alert(err?.message || '비밀번호 변경 실패');
+      // console.log('result check:', result);
+      if (result.status === 200) {
+        alert('비밀번호 변경 성공!');
+        setPwdCurrent('');
+        setPwdNew('');
+        setPwdNewOk('');
+      } else {
+        alert('입력한 비밀번호를 다시 확인해 주세요.');
+      }
+    } catch (error: any) {
+      console.error('API 호출 실패: ', error);
     }
   }, [pwdCurrent, pwdNew, pwdNewOk]);
 

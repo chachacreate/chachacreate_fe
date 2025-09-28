@@ -416,9 +416,12 @@ const AccountSection = memo(
 
     const verifyBankAccount = useCallback(async (bankCode: string, accountNum: string) => {
       const clean = accountNum.replace(/[^0-9]/g, '');
-      const env = await legacyGet<LegacyEnvelope<BankVerifyResponse>>(
+      const data = await legacyGet<BankVerifyResponse>(
         `/common/bank?bank_code=${encodeURIComponent(bankCode)}&bank_num=${encodeURIComponent(clean)}`
       );
+      // console.log('data 확인: ', data);
+
+      const env = { status: 200, message: '인증 완료', data: data };
       return asApi(env);
     }, []);
 
@@ -429,10 +432,13 @@ const AccountSection = memo(
       }
       try {
         const res = await verifyBankAccount(bankCode, account);
+        // console.log('res check: ', res);
         const holder = res.data?.bankHolderInfo;
+        // console.log('holder check: ', holder);
         if (holder) {
           setAccountOwner(holder);
           const loginName = member?.memberName?.trim() ?? '';
+          // console.log('loginName check: ', loginName);
           if (loginName && holder.trim() === loginName) {
             setIsAccountVerified(true);
             setIsAccountEditing(false);

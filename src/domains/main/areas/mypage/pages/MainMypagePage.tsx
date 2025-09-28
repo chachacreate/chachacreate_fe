@@ -257,7 +257,8 @@ const PasswordSection = memo(() => {
   const changePassword = useCallback(async () => {
     if (!pwdCurrent) return alert('현재 비밀번호를 입력하세요.');
     if (!pwdNew) return alert('새 비밀번호를 입력하세요.');
-    if (!isPasswordValid(pwdNew)) return alert('비밀번호는 8자 이상, 영문/숫자/특수문자 포함');
+    if (!isPasswordValid(pwdNew))
+      return alert('비밀번호는 8자 이상, 영문/숫자/특수문자를 포함해야 합니다.');
     if (pwdNew !== pwdNewOk) return alert('비밀번호 확인이 일치하지 않습니다.');
 
     const payload = {
@@ -268,13 +269,17 @@ const PasswordSection = memo(() => {
 
     try {
       const result = await patch<string>(`/mypage/changepwd`, payload);
-      alert((result as unknown as string) || '비밀번호 변경 성공');
-      setPwdCurrent('');
-      setPwdNew('');
-      setPwdNewOk('');
-    } catch (err: any) {
-      console.error('[changePassword] error:', err);
-      alert(err?.message || '비밀번호 변경 실패');
+      // console.log('result check:', result);
+      if (result.status === 200) {
+        alert('비밀번호 변경 성공!');
+        setPwdCurrent('');
+        setPwdNew('');
+        setPwdNewOk('');
+      } else {
+        alert('입력한 비밀번호를 다시 확인해 주세요.');
+      }
+    } catch (error: any) {
+      console.error('API 호출 실패: ', error);
     }
   }, [pwdCurrent, pwdNew, pwdNewOk]);
 
@@ -416,9 +421,12 @@ const AccountSection = memo(
 
     const verifyBankAccount = useCallback(async (bankCode: string, accountNum: string) => {
       const clean = accountNum.replace(/[^0-9]/g, '');
-      const env = await legacyGet<LegacyEnvelope<BankVerifyResponse>>(
+      const data = await legacyGet<BankVerifyResponse>(
         `/common/bank?bank_code=${encodeURIComponent(bankCode)}&bank_num=${encodeURIComponent(clean)}`
       );
+      // console.log('data 확인: ', data);
+
+      const env = { status: 200, message: '인증 완료', data: data };
       return asApi(env);
     }, []);
 
@@ -429,10 +437,13 @@ const AccountSection = memo(
       }
       try {
         const res = await verifyBankAccount(bankCode, account);
+        // console.log('res check: ', res);
         const holder = res.data?.bankHolderInfo;
+        // console.log('holder check: ', holder);
         if (holder) {
           setAccountOwner(holder);
           const loginName = member?.memberName?.trim() ?? '';
+          // console.log('loginName check: ', loginName);
           if (loginName && holder.trim() === loginName) {
             setIsAccountVerified(true);
             setIsAccountEditing(false);
@@ -644,7 +655,8 @@ const CareerSection = memo(
         <h3 className="text-lg lg:text-xl font-bold text-gray-900 mb-6 lg:mb-8">나의 이력</h3>
 
         <div className="space-y-6">
-          <div>
+          {/* 이력 이미지의 경우 현재 지원 안 되는 기능이므로 주석 처리 */}
+          {/* <div>
             <label className="block text-sm font-medium text-gray-700 mb-2 lg:mb-3">
               프로필 이미지
             </label>
@@ -682,7 +694,7 @@ const CareerSection = memo(
                 이미지 삭제
               </button>
             )}
-          </div>
+          </div> */}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2 lg:mb-3">

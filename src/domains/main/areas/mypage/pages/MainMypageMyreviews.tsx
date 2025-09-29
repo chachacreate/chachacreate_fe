@@ -17,6 +17,7 @@ type ReviewListItemDTO = {
   reviewCreatedAt?: string; // "2025-09-09T10:33:31"
   productThumbnailUrl?: string | null;
   productName?: string | null;
+  storeUrl?: string | null;
   authorId: number;
   authorName: string;
   content: string;
@@ -37,6 +38,7 @@ type ReviewItem = {
   createdAtTs: number; // 정렬용 timestamp
   rating: number; // 0~5 (소수점)
   likes: number;
+  storeUrl: string;
 };
 
 // 상수
@@ -79,13 +81,14 @@ const adapt = (dto: ReviewListItemDTO): ReviewItem => {
   return {
     id: dto.reviewId,
     productId: dto.productId,
-    name: dto.productName ?? '(상품명 없음)',
-    image: dto.productThumbnailUrl ?? null,
+    name: dto.productName ?? '삭제된 상품입니다',
+    image: dto.productThumbnailUrl ?? '/images/mypage/deletedProductImage.png',
     content: dto.content ?? '',
     createdDate: toDate(createdIso),
     createdAtTs: toTs(createdIso),
     rating: parseRating(dto.productRating),
     likes: dto.likeCount ?? 0,
+    storeUrl: dto.storeUrl ?? 'main',
   };
 };
 
@@ -109,6 +112,7 @@ export default function MainMypageMyreviews() {
 
       // 응답 래퍼 형태가 axios형/직접형 등 혼재할 수 있어 안전하게 처리
       const res = await get<ApiResponse<ReviewListItemDTO[]>>(API_ENDPOINT);
+      console.log('res check: ', res);
 
       let envelope: ApiResponse<ReviewListItemDTO[]> | null = null;
 
@@ -122,7 +126,7 @@ export default function MainMypageMyreviews() {
           envelope = d as ApiResponse<ReviewListItemDTO[]>;
         }
       } else {
-        envelope = res as ApiResponse<ReviewListItemDTO[]>;
+        envelope = res as unknown as ApiResponse<ReviewListItemDTO[]>;
       }
 
       // 권한 체크
@@ -249,7 +253,7 @@ export default function MainMypageMyreviews() {
                   >
                     <div className="p-4 flex gap-3">
                       <a
-                        href={`/main/product/${rv.productId}`}
+                        href={`/${rv.storeUrl}/products/${rv.productId}`}
                         className="w-20 h-20 rounded-lg bg-gray-100 overflow-hidden shrink-0"
                       >
                         <img
@@ -262,7 +266,7 @@ export default function MainMypageMyreviews() {
 
                       <div className="min-w-0 flex-1">
                         <a
-                          href={`/main/product/${rv.productId}`}
+                          href={`/${rv.storeUrl}/products/${rv.productId}`}
                           className="text-base font-semibold text-gray-900 hover:underline"
                         >
                           {rv.name}
@@ -357,11 +361,11 @@ export default function MainMypageMyreviews() {
                     <table className="min-w-full text-sm">
                       <thead className="bg-gray-50">
                         <tr className="text-left text-gray-600">
-                          <th className="py-3 px-4">상품</th>
-                          <th className="py-3 px-4 w-[45%]">리뷰 내용</th>
-                          <th className="py-3 px-4">작성일</th>
-                          <th className="py-3 px-4">평점</th>
-                          <th className="py-3 px-4">좋아요</th>
+                          <th className="py-3 px-4 w-2/12 text-center">상품</th>
+                          <th className="py-3 px-4 w-3/12 text-center">리뷰 내용</th>
+                          <th className="py-3 px-4 w-1/12 text-center">작성일</th>
+                          <th className="py-3 px-4 w-1/12 text-center">평점</th>
+                          <th className="py-3 px-4 w-1/12 text-center">좋아요</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -372,10 +376,10 @@ export default function MainMypageMyreviews() {
                           return (
                             <tr key={rv.id} className="align-top">
                               {/* 상품(사진+이름) */}
-                              <td className="py-3 px-4">
+                              <td className="py-3 px-4 text-center">
                                 <div className="flex items-center gap-3 min-w-[280px]">
                                   <a
-                                    href={`/main/product/${rv.productId}`}
+                                    href={`/${rv.storeUrl}/products/${rv.productId}`}
                                     className="block w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0"
                                   >
                                     <img
@@ -387,7 +391,7 @@ export default function MainMypageMyreviews() {
                                   </a>
                                   <div className="min-w-0">
                                     <a
-                                      href={`/main/product/${rv.productId}`}
+                                      href={`/${rv.storeUrl}/products/${rv.productId}`}
                                       className="text-gray-900 font-medium hover:underline line-clamp-2"
                                     >
                                       {rv.name}
@@ -414,12 +418,12 @@ export default function MainMypageMyreviews() {
                               </td>
 
                               {/* 작성일 */}
-                              <td className="py-3 px-4 text-gray-700 whitespace-nowrap">
+                              <td className="py-3 px-4 text-gray-700 whitespace-nowrap text-center">
                                 {rv.createdDate}
                               </td>
 
                               {/* 평점 (항상 한 줄) */}
-                              <td className="py-3 px-4 whitespace-nowrap">
+                              <td className="py-3 px-4 whitespace-nowrap text-center">
                                 <div className="inline-flex items-center gap-1 text-gray-800 tabular-nums">
                                   <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                                   <span className="font-medium">{rv.rating.toFixed(1)}</span>
@@ -429,7 +433,7 @@ export default function MainMypageMyreviews() {
                               </td>
 
                               {/* 좋아요 */}
-                              <td className="py-3 px-4">
+                              <td className="py-3 px-4 text-center">
                                 <div className="inline-flex items-center gap-1 text-gray-800">
                                   <ThumbsUp className="w-4 h-4 text-blue-800" />
                                   <span className="font-medium">{rv.likes}</span>

@@ -1,7 +1,8 @@
 // src/domains/buyer/areas/info/pages/StoreInfo.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { legacyGet } from '@src/libs/request';
+import { get, legacyGet } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
 import {
   Mail,
   Phone,
@@ -20,6 +21,21 @@ import {
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 import Footer from '@src/shared/areas/layout/features/footer/Footer';
+
+// ✅ 커스텀 설정 타입 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 
 type SellerInfo = {
   sellerName?: string | null;
@@ -61,6 +77,9 @@ export default function StoreInfo() {
   const [err, setErr] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
 
+  //커스텀
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
   const fetchInfo = async () => {
     try {
       setLoading(true);
@@ -78,8 +97,24 @@ export default function StoreInfo() {
     }
   };
 
+    // ✅ 추가: 커스텀 설정 로드 함수
+  const loadCustomSettings = async () => {
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${segment}/store/custom`
+      );
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  };
+
   useEffect(() => {
     fetchInfo();
+    //커스텀
+    loadCustomSettings();
     // 페이지 진입 애니메이션 트리거
     const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(timer);
@@ -91,7 +126,7 @@ export default function StoreInfo() {
   return (
     <div className="flex min-h-screen flex-col bg-white">
       {/* ✅ 상단 */}
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} />
       <Storenavbar />
 
       {/* 배경 장식 요소들 */}
@@ -416,7 +451,7 @@ export default function StoreInfo() {
       </main>
 
       {/* ✅ 하단 */}
-      <Footer />
+      <Footer backgroundColor={headerFooterBgColor} />
     </div>
   );
 }

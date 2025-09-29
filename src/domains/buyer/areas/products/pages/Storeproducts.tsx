@@ -2,9 +2,27 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Star, ChevronDown, AlertCircle, RefreshCw } from 'lucide-react';
 
-import { legacyGet } from '@src/libs/request';
+import { get, legacyGet } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
+
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
+import Footer from '@src/shared/areas/layout/features/footer/Footer';
+
+// ✅ 커스텀 설정 타입 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 
 interface Product {
   id: number;
@@ -100,6 +118,27 @@ const StoreProducts = () => {
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+   //커스텀
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
+  // ✅ 수정: 커스텀 설정 로드 함수 - segment 대신 effectiveStoreUrl 사용
+  const loadCustomSettings = useCallback(async () => {
+    if (!effectiveStoreUrl) return;
+    
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${effectiveStoreUrl}/store/custom`
+      );
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  }, [effectiveStoreUrl]);
+
+  
+
   // URL 동기화
   useEffect(() => {
     if (effectiveStoreUrl && storeInfo.storeUrl !== effectiveStoreUrl) {
@@ -181,6 +220,7 @@ const StoreProducts = () => {
     didInitRef.current = true;
 
     fetchProducts(1, 'latest', '', []);
+    loadCustomSettings(); 
 
     (async () => {
       try {
@@ -414,7 +454,7 @@ const StoreProducts = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} />
       <Storenavbar />
 
       {/* 메인 컨테이너 */}
@@ -684,6 +724,7 @@ const StoreProducts = () => {
           )}
         </div>
       </div>
+      {/* <Footer backgroundColor={headerFooterBgColor} /> */}
     </div>
   );
 };

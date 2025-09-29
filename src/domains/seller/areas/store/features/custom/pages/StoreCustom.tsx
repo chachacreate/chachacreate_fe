@@ -362,6 +362,9 @@ export default function StoreCustom() {
                 onChange={(e) => handleColor('headerFooterBg', e.target.value)}
                 className="w-full h-10 border rounded"
               />
+              <p className="mt-1 text-xs text-gray-800">
+                * '배경 색상' 보다 짙은 색상을 추천드립니다.
+              </p>
             </div>
 
             <div>
@@ -387,16 +390,13 @@ export default function StoreCustom() {
             {/* 요구사항: 인기&대표 색상 입력 제거 */}
 
             <div>
-              <label className="block text-sm font-medium mb-1">히어로 배경 색상 *</label>
+              <label className="block text-sm font-medium mb-1"> 배경 색상 *</label>
               <input
                 type="color"
                 value={settings.heroBgColor}
                 onChange={(e) => handleColor('heroBgColor', e.target.value)}
                 className="w-full h-10 border rounded"
               />
-              <p className="mt-1 text-xs text-gray-400">
-                * 이 값은 서버의 <code>popular_color</code> 컬럼으로 저장됩니다.
-              </p>
             </div>
 
             <div className="md:col-span-2">
@@ -439,7 +439,7 @@ function PreviewArea({
 }) {
   return (
     <div className="w-full max-w-[1440px] mx-auto px-[240px]" style={themeVars}>
-      <Header/>
+     <Header backgroundColor={headerFooterBg} />
       {/* Hero Section */}
       <section className="w-full">
         <div className="w-full" style={{ backgroundColor: 'var(--store-hero-bg)' }}>

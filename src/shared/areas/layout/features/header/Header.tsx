@@ -12,6 +12,7 @@ type HeaderProps = {
   user?: UserLite;
   storeSlug?: string | null;
   hideTopBar?: boolean;
+  backgroundColor?: string;
 };
 
 type StoreInfo = {
@@ -34,7 +35,11 @@ const RESERVED_PREFIXES = new Set([
   '',
 ]);
 
-export default function Header({ user, storeSlug, hideTopBar = false }: HeaderProps) {
+export default function Header({ user, 
+  storeSlug, 
+  hideTopBar = false,
+  backgroundColor = '#2d4739' 
+}: HeaderProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -245,7 +250,7 @@ export default function Header({ user, storeSlug, hideTopBar = false }: HeaderPr
     <header className="w-full border-b border-gray-100 font-jua">
       {/* 데스크톱 상단 유틸바 (모바일에선 숨김) */}
       {!hideTopBar && (
-        <div className="hidden md:block w-full bg-[#2d4739] text-white">
+        <div className="hidden md:block w-full" style={{ backgroundColor }}>
           <div className="mx-auto w-full max-w-[1920px] px-4 lg:px-16 xl:px-60 h-[50px] flex items-center justify-end">
             <nav className="flex items-center gap-4 text-[15px]">
               {me ? (
@@ -291,7 +296,7 @@ export default function Header({ user, storeSlug, hideTopBar = false }: HeaderPr
       )}
 
       {/* 모바일 전용 상단 바: 로고 | Searchbar | 메시지아이콘 | 햄버거 */}
-      <div className="md:hidden w-full bg-[#2d4739] text-white">
+      <div className="md:hidden w-full"  style={{ backgroundColor }} >
         <div className="mx-auto w-full max-w-[1920px] px-4 min-[1920px]:px-60 h-[50px] flex items-center gap-3">
           {/* 로고 (왼쪽) */}
           <Link to={'/main'} className="flex items-center gap-2 flex-shrink-0">

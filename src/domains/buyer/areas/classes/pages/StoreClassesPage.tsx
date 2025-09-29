@@ -106,6 +106,9 @@ export default function StoreClassesPage() {
       );
       setCustomSettings(result.data);
       console.log('클래스 페이지 커스텀 설정 로드:', result.data);
+       if (result.data?.headerFooterColor) {
+      setHeaderBgColor(result.data.headerFooterColor);
+    }
     } catch (error) {
       console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
     }
@@ -174,6 +177,9 @@ export default function StoreClassesPage() {
 
   // 이번 page 변경이 "정렬로 인한 리셋"인지 표시
   const fromSortRef = useRef<boolean>(false);
+
+  //커스텀
+  const [headerBgColor, setHeaderBgColor] = useState('#2d4739');
 
   // 공통 스크롤 헬퍼
   const scrollToAnchor = (id: string, offset = 80) => {
@@ -313,7 +319,7 @@ const handleSortChange = (key: SortKey) => {
   if (loading) {
     return (
       <>
-        <Header />
+        <Header backgroundColor={headerBgColor} />
         <Storenavbar />
         <div className="p-6 text-center text-gray-500">불러오는 중...</div>
       </>
@@ -322,7 +328,7 @@ const handleSortChange = (key: SortKey) => {
   if (error) {
     return (
       <>
-        <Header />
+        <Header backgroundColor={headerBgColor} />
         <Storenavbar />
         <div className="p-6 text-center text-red-500">{error}</div>
       </>
@@ -331,7 +337,7 @@ const handleSortChange = (key: SortKey) => {
 
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerBgColor} />
       <Storenavbar />
 
       

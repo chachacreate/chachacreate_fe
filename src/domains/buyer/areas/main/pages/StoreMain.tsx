@@ -6,6 +6,7 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 import Footer from '@src/shared/areas/layout/features/footer/Footer';
 import { processContent } from '@src/shared/util/contentUtil'; // ✅ 올바른 경로로 수정
+import { STORE_ICONS  } from '@src/domains/buyer/areas/main/contants/storeIcons';
 
 
 // 타입 정의
@@ -78,6 +79,12 @@ const StoreMain: React.FC = () => {
       loadCustomSettings();
     }
   }, [storeUrl]);
+
+   // ✅ 아이콘 렌더링 함수 추가
+  const renderStoreIcon = (iconId?: number) => {
+    const icon = STORE_ICONS.find(i => i.id === iconId) || STORE_ICONS[0];
+    return <span className="mr-2">{icon.emoji}</span>;
+  };
 
   const loadStoreData = async () => {
     try {
@@ -310,10 +317,11 @@ const StoreMain: React.FC = () => {
         {bestProducts.length > 0 && (
           <section className="w-full px-4 sm:px-8 xl:px-60 mt-8 sm:mt-10">
             <h2
-              className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide mb-4"
+              className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide mb-4 flex items-center"
               style={{ color: customSettings?.fontColor || '#2D4739' }}
             >
-              ⭐ 인기 상품
+              {renderStoreIcon(customSettings?.icon?.id)}
+              인기 상품
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {bestProducts.map((product) => (
@@ -353,10 +361,11 @@ const StoreMain: React.FC = () => {
         {mainProducts.length > 0 && (
           <section className="w-full px-4 sm:px-8 xl:px-60 mt-8 sm:mt-10">
             <h2
-              className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide mb-4"
+              className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide mb-4 flex items-center"
               style={{ color: customSettings?.fontColor || '#2D4739' }}
             >
-              ⭐ 대표 상품
+              {renderStoreIcon(customSettings?.icon?.id)}
+              대표 상품
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {mainProducts.map((product) => (

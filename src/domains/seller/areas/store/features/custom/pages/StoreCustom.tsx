@@ -6,6 +6,7 @@ import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/s
 import { get, patch, legacyGet } from '@src/libs/request';
 import type { ApiResponse } from '@src/libs/apiResponse';
 import Footer from '@src/shared/areas/layout/features/footer/Footer';
+import { STORE_ICONS } from '@src/domains/buyer/areas/main/contants/storeIcons';
 
 // ==== 타입 (필요시 프로젝트 공용 타입으로 이동 가능) ====
 interface Product {
@@ -335,9 +336,9 @@ export default function StoreCustom() {
                 className="w-full p-2 border rounded"
               >
                 <option value="">선택하세요</option>
-                {iconOptions.map((opt, idx) => (
-                  <option key={opt.label} value={idx + 1}>
-                    {opt.label}
+                {STORE_ICONS.map((icon) => (
+                  <option key={icon.id} value={icon.id}>
+                    {icon.emoji} {icon.label}
                   </option>
                 ))}
               </select>
@@ -414,7 +415,7 @@ export default function StoreCustom() {
           <PreviewArea
             themeVars={themeVars}
             storeUrl={storeUrl}
-            iconType={previewIconType}
+            iconId={settings.iconId}
             storeInfo={storeInfo}
             headerFooterBg={settings.headerFooterBg}
           />
@@ -427,16 +428,23 @@ export default function StoreCustom() {
 function PreviewArea({
   themeVars,
   storeUrl,
-  iconType,
+  iconId,
   storeInfo,
   headerFooterBg,
 }: {
   themeVars: React.CSSProperties;
   storeUrl: string;
-  iconType: string;
+  iconId?: number;
   storeInfo: StoreInfoVM;
   headerFooterBg: string;
 }) {
+
+   // ✅ 아이콘 렌더링 함수 추가
+  const renderStoreIcon = (id?: number) => {
+    const icon = STORE_ICONS.find(i => i.id === id) || STORE_ICONS[0];
+    return <span className="mr-2">{icon.emoji}</span>;
+  };
+
   return (
     <div className="w-full max-w-[1440px] mx-auto px-[240px]" style={themeVars}>
      <Header backgroundColor={headerFooterBg} />
@@ -492,27 +500,28 @@ function PreviewArea({
       </section>
 
       {/* Notice */}
-      {storeInfo.noticeImportant && (
-        <section className="w-full">
-          <div className="rounded-xl border p-5 sm:p-6 bg-white">
-            <div className="text-sm font-semibold mb-2" style={{ color: 'var(--store-notice)' }}>
-              중요 공지사항
-            </div>
-            <p className="text-sm sm:text-base leading-relaxed">{storeInfo.noticeImportant}</p>
+      <section className="w-full mt-6">
+        <div className="rounded-xl border p-5 sm:p-6 bg-white">
+          <div className="text-sm font-semibold mb-2" style={{ color: 'var(--store-notice)' }}>
+            공지사항
           </div>
-        </section>
-      )}
+          <p className="text-sm sm:text-base leading-relaxed">
+            {storeInfo.noticeImportant || '공지사항을 입력해주세요'}
+          </p>
+        </div>
+      </section>
 
       {/* Popular / Featured */}
       <StoreSection
         title="인기 상품"
         subtitle="구매수가 많은 상품을 모았어요"
         moreLink={`/store/${storeUrl}/products?sort=popular`}
+        iconId={iconId}
       >
         <ProductGrid3
           products={storeInfo.popularTop3}
           emptyLabel="인기 상품을 준비 중이에요"
-          iconType={iconType}
+          iconId={iconId}
         />
       </StoreSection>
 
@@ -520,12 +529,13 @@ function PreviewArea({
         title="대표 상품"
         subtitle="판매자가 추천하는 스토어 대표작"
         moreLink={`/store/${storeUrl}/products?filter=featured`}
+        iconId={iconId}
       >
         <ProductGrid3
           products={storeInfo.featured3}
           emptyLabel="대표 상품을 곧 보여드릴게요"
           badge="대표"
-          iconType={iconType}
+          iconId={iconId}
         />
       </StoreSection>
 
@@ -541,8 +551,16 @@ function StoreSection(props: {
   subtitle?: string;
   moreLink?: string;
   children: React.ReactNode;
+  iconId?: number;
 }) {
-  const { title, subtitle, moreLink, children } = props;
+  const { title, subtitle, moreLink, children, iconId } = props;
+
+  // ✅ 아이콘 렌더링
+  const renderIcon = () => {
+    const icon = STORE_ICONS.find(i => i.id === iconId) || STORE_ICONS[0];
+    return <span className="mr-2">{icon.emoji}</span>;
+  };
+
   return (
     <section className="w-full mt-10">
       <div className="flex items-end justify-between gap-4">
@@ -569,12 +587,12 @@ function ProductGrid3({
   products,
   emptyLabel,
   badge,
-  iconType,
+  iconId,
 }: {
   products: Product[];
   emptyLabel: string;
   badge?: string;
-  iconType: string;
+  iconId?: number;
 }) {
   if (!products || products.length === 0) return <EmptyProducts label={emptyLabel} />;
 
@@ -585,7 +603,7 @@ function ProductGrid3({
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
       {items.map((p, idx) =>
         p ? (
-          <ProductCard key={p.id} product={p} badge={badge} iconType={iconType} />
+          <ProductCard key={p.id} product={p} badge={badge} iconId={iconId} />
         ) : (
           <PlaceholderCard key={`placeholder-${idx}`} />
         )
@@ -597,29 +615,22 @@ function ProductGrid3({
 function ProductCard({
   product,
   badge,
-  iconType,
+  iconId,
 }: {
   product: Product;
   badge?: string;
-  iconType: string;
+  iconId?: number;
 }) {
+   // ✅ STORE_ICONS에서 아이콘 찾기
   const getIcon = () => {
-    switch (iconType) {
-      case 'heart':
-        return (
-          <svg className="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
-          </svg>
-        );
-      case 'bookmark':
-        return (
-          <svg className="w-3.5 h-3.5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
-          </svg>
-        );
-      default:
-        return <Star className="w-3.5 h-3.5 text-yellow-500" />;
-    }
+    const icon = STORE_ICONS.find(i => i.id === iconId) || STORE_ICONS[0];
+    return icon.svg ? (
+      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+        {icon.svg}
+      </svg>
+    ) : (
+      <span className="text-sm">{icon.emoji}</span>
+    );
   };
 
   return (

@@ -7,8 +7,25 @@ import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/s
 import { Package, Receipt, ChevronRight } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { get, legacyGet } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
 
 // ------------------ Types ------------------
+
+// ✅ 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+
 type SettlementRow = {
   settlementDate: string;
   amount: number;
@@ -72,6 +89,24 @@ export default function SellerSettlementMain() {
   // 일별 매출 — 상품(레거시), 클래스(부트)
   const [productDaily, setProductDaily] = useState<DailySaleRow[]>([]);
   const [classDaily, setClassDaily] = useState<DailySaleRow[]>([]);
+
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('2d4739');
+
+  // ✅ 커스텀 설정 로드
+useEffect(() => {
+  if (!storeUrl) return;
+  
+  get<StoreCustomDTO>(`/api/seller/${storeUrl}/store/custom`)
+    .then((res: any) => {
+      const data = res?.data ?? res;
+      if (data?.headerFooterColor) {
+        setHeaderFooterBgColor(data.headerFooterColor);
+      }
+    })
+    .catch((err) => {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', err);
+    });
+}, [storeUrl]);
 
   // 정산 내역 호출
   useEffect(() => {
@@ -157,7 +192,7 @@ export default function SellerSettlementMain() {
 
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} />
 
       <SellerSidenavbar>
         <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
@@ -249,20 +284,22 @@ export default function SellerSettlementMain() {
           </div>
 
           {/* 빠른 이동 */}
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <QuickLink
-              to={`/seller/${storeUrl}/settlement/product`}
-              label="상품별 정산"
-              desc="상품ID로 검색하여 상세 매출/정산 내역을 확인합니다."
-              icon={<Package className="w-5 h-5" />}
-            />
-            <QuickLink
-              to={`/seller/${storeUrl}/settlement/class`}
-              label="클래스별 정산"
-              desc="클래스ID로 검색하여 상세 매출/정산 내역을 확인합니다."
-              icon={<Receipt className="w-5 h-5" />}
-            />
-          </div>
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <QuickLink
+            to={`/seller/${storeUrl}/settlement/product`}
+            label="상품별 정산"
+            desc="상품ID로 검색하여 상세 매출/정산 내역을 확인합니다."
+            icon={<Package className="w-5 h-5" />}
+            bgColor={headerFooterBgColor} // ✅ 추가
+          />
+          <QuickLink
+            to={`/seller/${storeUrl}/settlement/class`}
+            label="클래스별 정산"
+            desc="클래스ID로 검색하여 상세 매출/정산 내역을 확인합니다."
+            icon={<Receipt className="w-5 h-5" />}
+            bgColor={headerFooterBgColor} // ✅ 추가
+          />
+        </div>
 
           {/* 정산 테이블(최근일자순 정렬 + 날짜 포맷) */}
           <div className="mt-6 rounded-2xl border border-gray-200 bg-white overflow-x-auto">
@@ -323,57 +360,71 @@ function QuickLink({
   label,
   desc,
   icon,
+  bgColor = '#5b7d6a'
 }: {
   to: string;
   label: string;
   desc: string;
   icon: React.ReactNode;
+   bgColor?: string;
 }) {
   const navigate = useNavigate();
-  return (
-    <button
-      onClick={() => navigate(to)}
+
+return (
+  <button
+    onClick={() => navigate(to)}
+    className={[
+      'group relative w-full overflow-hidden rounded-2xl',
+      'border border-gray-300 bg-transparent text-left outline-none cursor-pointer',
+      'transition-all duration-300 ease-out',
+      'text-gray-900 hover:text-white',
+      'hover:shadow-lg',
+    ].join(' ')}
+  >
+    {/* ✅ 왼쪽→오른쪽 슬라이드 효과: 커스텀 색상 + 흰색 20% 블렌딩 */}
+    <span
+      aria-hidden
       className={[
-        'group relative w-full overflow-hidden rounded-2xl',
-        'border border-gray-300 bg-transparent text-left outline-none cursor-pointer',
-        'transition-all duration-300 ease-out',
-        'text-gray-900 hover:text-white',
-        'hover:shadow-lg',
+        'pointer-events-none absolute inset-0 z-0',
+        "before:content-[''] before:absolute before:inset-0",
+        'before:origin-left before:scale-x-0 before:transform',
+        'before:transition-transform before:duration-500 before:ease-out',
+        'group-hover:before:scale-x-100',
       ].join(' ')}
+      style={{
+        ['--hover-bg' as any]: `color-mix(in srgb, ${bgColor} 80%, white 20%)`,
+      }}
     >
-      <span
-        aria-hidden
-        className={[
-          'pointer-events-none absolute inset-0 z-0',
-          "before:content-[''] before:absolute before:inset-0",
-          'before:bg-[#5b7d6a] before:origin-left before:scale-x-0 before:transform',
-          'before:transition-transform before:duration-500 before:ease-out',
-          'group-hover:before:scale-x-100',
-        ].join(' ')}
-      />
-      <div className="relative z-10 p-4 sm:p-6 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div
-            className={[
-              'rounded-xl border p-2 bg-transparent border-gray-300 text-gray-900',
-              'transition-colors duration-300 group-hover:border-white group-hover:text-white',
-            ].join(' ')}
-          >
-            {icon}
+      <style>{`
+        span[aria-hidden]::before {
+          background-color: var(--hover-bg);
+        }
+      `}</style>
+    </span>
+
+    <div className="relative z-10 p-4 sm:p-6 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <div
+          className={[
+            'rounded-xl border p-2 bg-transparent border-gray-300 text-gray-900',
+            'transition-colors duration-300 group-hover:border-white group-hover:text-white',
+          ].join(' ')}
+        >
+          {icon}
+        </div>
+        <div>
+          <div className="font-semibold uppercase">
+            <span className="inline-block transition-all duration-300 group-hover:translate-x-2">
+              {label}
+            </span>
           </div>
-          <div>
-            <div className="font-semibold uppercase">
-              <span className="inline-block transition-all duration-300 group-hover:translate-x-2">
-                {label}
-              </span>
-            </div>
-            <div className="text-sm text-gray-600 mt-0.5 transition-colors duration-300 group-hover:text-white/90">
-              {desc}
-            </div>
+          <div className="text-sm text-gray-600 mt-0.5 transition-colors duration-300 group-hover:text-white/90">
+            {desc}
           </div>
         </div>
-        <ChevronRight className="w-5 h-5 text-gray-900 transition-all duration-300 group-hover:text-white group-hover:translate-x-1.5" />
       </div>
-    </button>
+      <ChevronRight className="w-5 h-5 text-gray-900 transition-all duration-300 group-hover:text-white group-hover:translate-x-1.5" />
+    </div>
+  </button>
   );
 }

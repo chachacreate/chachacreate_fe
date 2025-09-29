@@ -4,12 +4,26 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { CalendarDays, Image as ImageIcon } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { legacyGet } from '@src/libs/request';
+import { get, legacyGet } from '@src/libs/request';
 import type { ApiResponse } from '@src/libs/apiResponse';
 import { getCurrentUser } from '@src/shared/util/jwtUtils';
 
 // ---------- Types ----------
 type Params = { storeUrl: string };
+
+// ✅ 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 type ProductOption = {
   productId: number;
@@ -72,6 +86,33 @@ export default function SellerSettlementProduct() {
   // 월별 정산(레거시 + 부트 메타)
   const [legacyMonthly, setLegacyMonthly] = useState<LegacyMonthlySettlementItem[]>([]);
   const [monthlyError, setMonthlyError] = useState<string | null>(null);
+
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('2d4739');
+
+  // ✅ 커스텀 설정 로드
+useEffect(() => {
+  if (!storeUrl) return;
+  let alive = true;
+
+  (async () => {
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      if (!alive) return;
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  })();
+
+  return () => {
+    alive = false;
+  };
+}, [storeUrl]);
+
 
   // 상품 리스트 불러오기
   useEffect(() => {
@@ -197,7 +238,7 @@ export default function SellerSettlementProduct() {
 
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerFooterBgColor}/>
       <SellerSidenavbar>
         <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
           <div className="flex flex-col gap-1">

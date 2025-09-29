@@ -1,6 +1,6 @@
 // src/domains/main/areas/mypage/pages/MypageApiSmokeTest.tsx
 import React, { useEffect, useMemo, useState, useCallback, useRef, memo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 
 // 컴포넌트 imports
 import Header from '@src/shared/areas/layout/features/header/Header';
@@ -10,12 +10,26 @@ import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Stor
 
 // 요청 유틸
 import { get, patch, legacyGet, legacyPost } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
 import { isLoggedIn } from '@src/shared/util/jwtUtils';
 
 /* ======================== Types ======================== */
 type Params = { storeUrl?: string };
 type LegacyEnvelope<T> = { status: number; message?: string; data: T | null };
-type ApiResponse<T> = { status: number; message: string; data: T | null };
+
+// ✅ 커스텀 설정 타입 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 type Member = {
   memberId: number;
@@ -783,6 +797,7 @@ const SellerInfoSection = memo(
 /* ======================== Main Component ======================== */
 export default function MypageApiSmokeTest() {
   const { storeUrl } = useParams<Params>();
+   const location = useLocation(); 
   const legacyStore = useMemo(() => storeUrl ?? 'default', [storeUrl]);
 
   // ---- 상태 ----
@@ -790,6 +805,26 @@ export default function MypageApiSmokeTest() {
   const [initialAddress, setInitialAddress] = useState<Address | null>(null);
   const [initialSellerData, setInitialSellerData] = useState<SellerLegacy | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
+  const isMain = location.pathname.startsWith('/main');
+
+  // ✅ 커스텀 설정 로드 함수 추가
+  const loadCustomSettings = useCallback(async () => {
+    if (!storeUrl) return; // 스토어 URL이 없으면 메인 페이지이므로 기본값 사용
+    
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  }, [storeUrl]);
 
   // API 함수들
   const fetchAddressByMemberId = useCallback(async (memberId: number) => {
@@ -844,7 +879,8 @@ export default function MypageApiSmokeTest() {
 
   useEffect(() => {
     loadAll();
-  }, [loadAll]);
+    loadCustomSettings();
+  }, [loadAll, loadCustomSettings]);
 
   // 컨테이너 컴포넌트
   const Container = ({ children }: { children: React.ReactNode }) => (
@@ -858,7 +894,7 @@ export default function MypageApiSmokeTest() {
     </div>
   );
 
-  const isMain = location.pathname.startsWith('/main');
+  
 
   /* ======================== JSX Return ======================== */
   return (
@@ -866,7 +902,7 @@ export default function MypageApiSmokeTest() {
       className="min-h-screen font-jua"
       style={{ background: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)' }}
     >
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} />
       {isMain ? <Mainnavbar /> : <Storenavbar />}
 
       {/* 모바일 상단바 */}

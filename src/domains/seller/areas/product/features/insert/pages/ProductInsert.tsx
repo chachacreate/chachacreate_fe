@@ -10,9 +10,26 @@ import EditorAPI, {
   type EditorHandle,
 } from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
 import { predictImage } from '../services/aiService/aiService';
-import { legacyGet, legacyPost } from '@src/libs/request';
+import { get, legacyGet, legacyPost } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
 
 type Params = { storeUrl: string };
+
+// ✅ 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+
 type EnumItem = { id: number; name: string };
 type DCatsByU = Record<string, EnumItem[]>;
 
@@ -228,6 +245,7 @@ const ProductInsert: FC = () => {
   const { storeUrl = '' } = useParams<Params>();
   const [forms, setForms] = useState<ProductForm[]>([createEmptyProductForm(1)]);
   const [isLoadingAiPrice, setIsLoadingAiPrice] = useState<Record<string, boolean>>({});
+  
 
   // 카테고리
   const [typeCats, setTypeCats] = useState<EnumItem[]>([]);
@@ -251,6 +269,28 @@ const ProductInsert: FC = () => {
 
   //로딩애니메이션
   const [isLoadingAiDesc, setIsLoadingAiDesc] = useState<Record<string, boolean>>({});
+
+
+  // ✅ 커스텀 색상 상태 추가
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
+  // ✅ 커스텀 설정 로드
+useEffect(() => {
+  if (!storeUrl) return;
+  
+  (async () => {
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  })();
+}, [storeUrl]);
 
   useEffect(() => {
     (async () => {
@@ -581,7 +621,7 @@ const ProductInsert: FC = () => {
 
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} />
 
       <SellerSidenavbar>
         <div className="space-y-6 sm:space-y-8">
@@ -592,10 +632,11 @@ const ProductInsert: FC = () => {
               <p className="mt-1 text-sm text-gray-500">총 {forms.length}개 상품</p>
             </div>
             <button
-              type="button"
-              onClick={addNewForm}
-              className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90"
-            >
+            type="button"
+            onClick={addNewForm}
+            className="w-full sm:w-auto px-4 py-2 rounded-lg text-white font-medium hover:opacity-90"
+            style={{ backgroundColor: headerFooterBgColor }} 
+          >
               + 상품 추가
             </button>
           </div>
@@ -871,6 +912,7 @@ const ProductInsert: FC = () => {
             <button
               type="button"
               className="w-full sm:flex-1 px-6 py-3 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90 order-1 sm:order-none"
+              style={{ backgroundColor: headerFooterBgColor }}
               onClick={onSubmit}
             >
               {forms.length}개 상품 모두 저장

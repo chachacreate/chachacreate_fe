@@ -1,9 +1,33 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+
 import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
+
 import { Camera, Save, Check } from 'lucide-react';
-import { legacyGet, legacyPost } from '@src/libs/request';
+import { get ,legacyGet, legacyPost } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse'; // ✅ 추가
+
+// ✅ 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface StoreInfo {
+  logo: string;
+  name: string;
+  description: string;
+  originalLogo: string;
+}
 
 // ------------------ Types ------------------
 interface StoreInfo {
@@ -114,12 +138,31 @@ export default function SellerStoreInfo() {
   const [savedMessage, setSavedMessage] = useState('');
   const [isVerifyingAccount, setIsVerifyingAccount] = useState(false);
 
+  //커스텀
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
+  // ✅ 커스텀 설정 로드 함수 추가
+const loadCustomSettings = async () => {
+  try {
+    const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+      `/api/seller/${storeUrl}/store/custom`
+    );
+    if (result.data?.headerFooterColor) {
+      setHeaderFooterBgColor(result.data.headerFooterColor);
+    }
+  } catch (error) {
+    console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+  }
+};
+
+
   // Refs
   const logoFileRef = useRef<HTMLInputElement>(null);
 
   // Load seller info on component mount
   useEffect(() => {
     loadSellerInfo();
+    loadCustomSettings();
   }, [storeUrl]);
 
   // Load seller information from API
@@ -368,7 +411,7 @@ export default function SellerStoreInfo() {
   if (isDataLoading) {
     return (
       <>
-        <Header />
+        <Header backgroundColor={headerFooterBgColor} />
         <SellerSidenavbar>
           <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
             <div className="flex items-center justify-center h-64">
@@ -382,7 +425,7 @@ export default function SellerStoreInfo() {
 
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} />
 
       <SellerSidenavbar>
         <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
@@ -400,8 +443,25 @@ export default function SellerStoreInfo() {
                 'flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-colors',
                 isLoading
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-[#2d4739] text-white hover:bg-[#1f3027]',
+                  : 'text-white', // ✅ bg-[#2d4739]와 hover:bg-[#1f3027] 제거
               ].join(' ')}
+              style={
+                !isLoading
+                  ? {
+                      backgroundColor: headerFooterBgColor,
+                    }
+                  : undefined
+              } // ✅ 추가
+              onMouseEnter={(e) => {
+                if (!isLoading) {
+                  e.currentTarget.style.opacity = '0.9';
+                }
+              }} // ✅ 호버 효과
+              onMouseLeave={(e) => {
+                if (!isLoading) {
+                  e.currentTarget.style.opacity = '1';
+                }
+              }} // ✅ 호버 효과
             >
               {isLoading ? (
                 <>
@@ -684,6 +744,7 @@ export default function SellerStoreInfo() {
             </section>
           </div>
         </div>
+        <div className="pb-8" />
       </SellerSidenavbar>
     </>
   );

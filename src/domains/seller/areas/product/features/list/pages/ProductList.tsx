@@ -7,7 +7,23 @@ import axios from 'axios';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 
+import { get } from '@src/libs/request'; // ✅ 추가
+import type { ApiResponse } from '@src/libs/apiResponse'; // ✅ 추가
+
 type Params = { storeUrl: string };
+
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 type ProductRow = {
   id: string;
@@ -64,6 +80,27 @@ const ProductList: FC = () => {
   // 대표/삭제 카운트
   const repCount = useMemo(() => Object.values(repSelected).filter(Boolean).length, [repSelected]);
   const delCount = useMemo(() => Object.values(delSelected).filter(Boolean).length, [delSelected]);
+
+  //커스텀
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
+  // ✅ 커스텀 설정 로드
+useEffect(() => {
+  if (!storeUrl) return;
+  
+  (async () => {
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  })();
+}, [storeUrl]);
 
   // 대표 전체 선택 후보(운영중만)
   const allRepCheckable = useMemo(() => rows.filter((r) => !r.deletedAt).map((r) => r.id), [rows]);
@@ -282,7 +319,7 @@ const ProductList: FC = () => {
 
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} />
 
       <SellerSidenavbar>
         <div className="space-y-4 sm:space-y-6">
@@ -296,7 +333,8 @@ const ProductList: FC = () => {
               <button
                 type="button"
                 onClick={goInsert}
-                className="px-4 py-2 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90"
+                 className="px-4 py-2 rounded-lg text-white font-medium hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: headerFooterBgColor }}
               >
                 + 상품 등록
               </button>

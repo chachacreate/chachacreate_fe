@@ -295,7 +295,7 @@ export default function StoreCustom() {
 
   return (
     <>
-      <Header />
+      <Header backgroundColor={settings.headerFooterBg} />
       <SellerSidenavbar>
         <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
           {/* Header */}
@@ -310,7 +310,7 @@ export default function StoreCustom() {
           {/* Form */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {/* 글꼴(ID) */}
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium mb-1">글꼴 *</label>
               <select
                 value={settings.fontId ?? ''}
@@ -324,7 +324,7 @@ export default function StoreCustom() {
                   </option>
                 ))}
               </select>
-            </div>
+            </div> */}
 
             {/* 아이콘(ID) */}
             <div>
@@ -403,7 +403,7 @@ export default function StoreCustom() {
               <button
                 onClick={handleSave}
                 disabled={loading}
-                className="w-full md:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-60"
+                className="w-full md:w-auto px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-black transition disabled:opacity-60"
               >
                 저장하기
               </button>

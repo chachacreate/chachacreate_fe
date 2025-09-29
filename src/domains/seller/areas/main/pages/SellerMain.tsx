@@ -21,9 +21,24 @@ import ClassStatsCard, {
   type ClassStatsDatum,
 } from '@src/shared/components/analytics/ClassStatsCard';
 import { get, legacyGet } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
 
 /** ===== 타입 ===== */
 type Params = { storeUrl: string };
+
+// ✅ 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 // 매출 그래프
 interface SalesItem {
@@ -144,6 +159,26 @@ export default function SellerMain() {
   const [reviewBuckets, setReviewBuckets] = useState<ReviewStatsBucket[] | null>(null);
   const [reviewTotalApi, setReviewTotalApi] = useState<number | null>(null);
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
+
+  //커스텀
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
+  useEffect(() => {
+  if (!storeUrl) return;
+  
+  (async () => {
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  })();
+}, [storeUrl]);
 
   /** ================= API: 주문 상태 ================= */
   useEffect(() => {
@@ -536,7 +571,7 @@ export default function SellerMain() {
   /** ================= 렌더 ================= */
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} />
 
       <SellerSidenavbar>
         <div className="space-y-8">
@@ -831,6 +866,7 @@ export default function SellerMain() {
               </div>
             </div>
           </section>
+          <div className='pb-8' />
         </div>
       </SellerSidenavbar>
     </>

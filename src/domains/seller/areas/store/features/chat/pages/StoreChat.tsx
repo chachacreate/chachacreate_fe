@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
+
 import { Search, Send, MessageSquare, Loader2 } from 'lucide-react';
 import { get } from '@src/libs/request';
 import type { ApiResponse } from '@src/libs/apiResponse';
@@ -10,6 +11,21 @@ import { getCurrentUser, isLoggedIn, type UserInfo } from '@src/shared/util/jwtU
 
 /* ---------- Types ---------- */
 type Params = { storeUrl?: string };
+
+// ✅ 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 
 interface ChatRoom {
   chatroomId: string;
@@ -106,6 +122,24 @@ const SellerChat: React.FC = () => {
 
   const socketRef = useRef<WebSocket | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+
+  //커스텀
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
+  const loadCustomSettings = async (): Promise<void> => {
+  if (!storeUrl) return;
+  
+  try {
+    const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+      `/api/seller/${storeUrl}/store/custom`
+    );
+    if (result.data?.headerFooterColor) {
+      setHeaderFooterBgColor(result.data.headerFooterColor);
+    }
+  } catch (error) {
+    console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+  }
+};
 
   /* ---------- 사용자 인증 확인 ---------- */
   useEffect(() => {
@@ -358,6 +392,7 @@ const SellerChat: React.FC = () => {
   useEffect(() => {
     if (currentUser?.memberId && !authLoading) {
       loadChatRooms();
+      loadCustomSettings();
     }
   }, [currentUser?.memberId, authLoading]);
 
@@ -396,7 +431,7 @@ const SellerChat: React.FC = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#FFFFFF]">
-        <Header />
+        <Header backgroundColor={headerFooterBgColor} /> 
         <SellerSidenavbar>
           <div className="flex items-center justify-center h-96">
             <div className="flex items-center gap-2 text-gray-500">
@@ -412,7 +447,7 @@ const SellerChat: React.FC = () => {
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-[#FFFFFF]">
-        <Header />
+        <Header backgroundColor={headerFooterBgColor} /> 
         <SellerSidenavbar>
           <div className="flex items-center justify-center h-96">
             <div className="text-center text-gray-500">
@@ -428,7 +463,7 @@ const SellerChat: React.FC = () => {
   /* ---------- UI ---------- */
   return (
     <div className="min-h-screen bg-[#FFFFFF]">
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} /> 
 
       <SellerSidenavbar>
         <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">

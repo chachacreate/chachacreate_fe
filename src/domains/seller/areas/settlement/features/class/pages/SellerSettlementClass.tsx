@@ -5,11 +5,27 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { CalendarDays, BarChart3, Image as ImageIcon } from 'lucide-react';
 import { get } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
 
 // recharts: 일별 금액 바차트 표현
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 type Params = { storeUrl: string };
+
+// ✅ 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 
 /** 드롭다운 옵션: 스토어 내 클래스 목록 */
 type ClassOption = {
@@ -129,6 +145,33 @@ export default function SellerSettlementClass() {
   const [monthlyRows, setMonthlyRows] = useState<StoreMonthlySettlementItem[]>([]);
   const [monthlyLoading, setMonthlyLoading] = useState(false);
   const [monthlyError, setMonthlyError] = useState<string | null>(null);
+
+  //커스텀
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
+  // ✅ 커스텀 설정 로드 함수 추가
+useEffect(() => {
+  if (!storeUrl) return;
+  let alive = true;
+
+  (async () => {
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      if (!alive) return;
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  })();
+
+  return () => {
+    alive = false;
+  };
+}, [storeUrl]);
 
   /* 드롭다운: 스토어 내 클래스 목록 */
   useEffect(() => {
@@ -303,7 +346,7 @@ export default function SellerSettlementClass() {
   /* 렌더링 */
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} /> 
 
       <SellerSidenavbar>
         <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">

@@ -6,8 +6,23 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { Star, ThumbsUp, Search } from 'lucide-react';
 import { get, legacyGet } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
 
 type Params = { storeUrl: string };
+
+// ✅ 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 type Review = {
   id: string;
@@ -49,6 +64,26 @@ const ProductReviewList: FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
+  // ✅ 커스텀 설정 로드
+useEffect(() => {
+  if (!storeUrl) return;
+  
+  (async () => {
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  })();
+}, [storeUrl]);
 
   useEffect(() => {
     async function fetchReviews() {
@@ -161,36 +196,42 @@ const ProductReviewList: FC = () => {
 
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} />
 
       <SellerSidenavbar>
         <div className="space-y-6">
-          {/* 헤더/요약 */}
-          <section className="rounded-2xl overflow-hidden border border-emerald-100">
-            <div className="bg-gradient-to-r from-[#2D4739] to-emerald-700 px-6 py-7 text-white">
-              <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
-                <div>
-                  <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight">리뷰 관리</h1>
-                  <p className="text-emerald-50/90 mt-1">
-                    스토어: <span className="font-semibold">{storeUrl}</span>
-                  </p>
-                </div>
+        {/* ✅ 헤더/요약 - 배경색 없이 깔끔한 디자인 */}
+        <section className="rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-sm">
+          <div className="px-6 py-7 border-b border-gray-200">
+            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+              <div>
+                <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight text-gray-900">
+                  리뷰 관리
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  스토어: <span className="font-semibold text-gray-900">{storeUrl}</span>
+                </p>
+              </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="rounded-xl bg-white/10 backdrop-blur px-4 py-2">
-                    <span className="text-emerald-100 text-xs">리뷰 수</span>
-                    <div className="text-base font-bold leading-none">{total}개</div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2">
+                  <span className="text-gray-600 text-xs">리뷰 수</span>
+                  <div className="text-base font-bold leading-none mt-1 text-gray-900">
+                    {total}개
                   </div>
-                  <div className="rounded-xl bg-white/10 backdrop-blur px-4 py-2">
-                    <span className="text-emerald-100 text-xs">상품 수</span>
-                    <div className="text-base font-bold leading-none">{products.length}개</div>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2">
+                  <span className="text-gray-600 text-xs">상품 수</span>
+                  <div className="text-base font-bold leading-none mt-1 text-gray-900">
+                    {products.length}개
                   </div>
                 </div>
               </div>
             </div>
+          </div>
 
             {/* 컨트롤 바 */}
-            <div className="bg-white/90 backdrop-blur border-t border-emerald-100 px-4 sm:px-6 py-3">
+            <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3">
               <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
                 {/* 상품 선택 */}
                 <div className="flex items-center gap-3">

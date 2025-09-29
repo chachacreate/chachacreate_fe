@@ -65,6 +65,9 @@ const StoreMain: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
 
+  const [footerBgColor, setFooterBgColor] = useState('#2d4739');
+
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -126,6 +129,10 @@ const StoreMain: React.FC = () => {
         `/api/seller/${storeUrl}/store/custom`
       );
       setCustomSettings(result.data);
+
+      if(result.data?.headerFooterColor) {
+        setFooterBgColor(result.data.headerFooterColor);
+      }
     } catch (error) {
       console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
     }
@@ -439,7 +446,7 @@ const StoreMain: React.FC = () => {
           }
         `}</style>
       </div>
-      <Footer />
+      <Footer backgroundColor={footerBgColor} />
     </>
   );
 };

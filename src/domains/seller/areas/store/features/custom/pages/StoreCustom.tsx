@@ -5,6 +5,7 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { get, patch, legacyGet } from '@src/libs/request';
 import type { ApiResponse } from '@src/libs/apiResponse';
+import Footer from '@src/shared/areas/layout/features/footer/Footer';
 
 // ==== 타입 (필요시 프로젝트 공용 타입으로 이동 가능) ====
 interface Product {
@@ -344,7 +345,7 @@ export default function StoreCustom() {
 
             {/* 색상들 */}
             <div>
-              <label className="block text-sm font-medium mb-1">글꼴 색상 *</label>
+              <label className="block text-sm font-medium mb-1">전체 글꼴 색상 *</label>
               <input
                 type="color"
                 value={settings.fontColor}
@@ -364,7 +365,7 @@ export default function StoreCustom() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">스토어 설명 색상 *</label>
+              <label className="block text-sm font-medium mb-1">전체 상품 보기 버튼 & 스토어 설명 색상 *</label>
               <input
                 type="color"
                 value={settings.descriptionColor}
@@ -374,7 +375,7 @@ export default function StoreCustom() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">공지사항 색상 *</label>
+              <label className="block text-sm font-medium mb-1">공지사항 글꼴 색상 *</label>
               <input
                 type="color"
                 value={settings.noticeColor}
@@ -415,6 +416,7 @@ export default function StoreCustom() {
             storeUrl={storeUrl}
             iconType={previewIconType}
             storeInfo={storeInfo}
+            headerFooterBg={settings.headerFooterBg}
           />
         </div>
       </SellerSidenavbar>
@@ -427,14 +429,17 @@ function PreviewArea({
   storeUrl,
   iconType,
   storeInfo,
+  headerFooterBg,
 }: {
   themeVars: React.CSSProperties;
   storeUrl: string;
   iconType: string;
   storeInfo: StoreInfoVM;
+  headerFooterBg: string;
 }) {
   return (
     <div className="w-full max-w-[1440px] mx-auto px-[240px]" style={themeVars}>
+      <Header/>
       {/* Hero Section */}
       <section className="w-full">
         <div className="w-full" style={{ backgroundColor: 'var(--store-hero-bg)' }}>
@@ -500,7 +505,7 @@ function PreviewArea({
 
       {/* Popular / Featured */}
       <StoreSection
-        title="인기 상품 TOP 3"
+        title="인기 상품"
         subtitle="구매수가 많은 상품을 모았어요"
         moreLink={`/store/${storeUrl}/products?sort=popular`}
       >
@@ -525,11 +530,8 @@ function PreviewArea({
       </StoreSection>
 
       {/* Footer */}
-      <footer className="mt-12 w-full" style={{ backgroundColor: 'var(--store-header-bg)' }}>
-        <div className="w-full py-8 text-sm text-gray-500">
-          © {new Date().getFullYear()} {storeInfo.name || '스토어'}. All rights reserved.
-        </div>
-      </footer>
+      <Footer backgroundColor={headerFooterBg} />
+      
     </div>
   );
 }

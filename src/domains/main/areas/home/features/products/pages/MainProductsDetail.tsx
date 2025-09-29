@@ -2,7 +2,7 @@ import { useState, useEffect, type JSX } from 'react';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import { Star, ShoppingCart, CreditCard, Flag, Edit, Minus, Plus, ThumbsUp, X } from 'lucide-react';
-import { get, legacyGet, legacyPost } from '@src/libs/request';
+import { get, legacyGet, legacyPost, post } from '@src/libs/request';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 import { processContent, getContentCssClasses } from '@src/shared/util/contentUtil';
@@ -25,7 +25,7 @@ interface Product {
 
 interface Review {
   id: string;
-  userName: string;
+  memberName: string;
   createdAt: string;
   updatedAt?: string;
   rating: number;
@@ -70,7 +70,7 @@ const mapProduct = (api: any): Product => {
 
 const mapReview = (r: any): Review => ({
   id: r.id.toString(),
-  userName: r.memberName,
+  memberName: r.memberName,
   createdAt: r.reviewDate,
   updatedAt: r.updatedAt,
   rating: r.rating,
@@ -88,7 +88,7 @@ const MainProductsDetail = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
-  const [canWriteReview, setCanWriteReview] = useState(false);
+  const [canWriteReview, setCanWriteReview] = useState(true);
   const [newReview, setNewReview] = useState({ rating: 5, content: '' });
   const [editingReview, setEditingReview] = useState<string | null>(null);
   const [editReviewData, setEditReviewData] = useState({ rating: 5, content: '' });
@@ -101,7 +101,6 @@ const MainProductsDetail = () => {
 
   const navigate = useNavigate();
 
-  // 상품 상세 불러오기
   // 상품 상세 불러오기
   useEffect(() => {
     if (!storeUrl || !productId) return;
@@ -394,21 +393,34 @@ const MainProductsDetail = () => {
     navigate('/main/order');
   };
 
-  const handleSubmitReview = () => {
-    if (newReview.content.trim()) {
-      const review: Review = {
-        id: `review-${Date.now()}`,
-        userName: '현재 사용자',
-        createdAt: new Date().toISOString(),
+  const handleSubmitReview = async () => {
+    if (!newReview.content.trim()) return;
+
+    try {
+      const response = await post<Review>(`/products/${productId}/reviews`, {
         rating: newReview.rating,
         content: newReview.content,
-        likes: 0,
-        isOwner: true,
-        isLiked: false,
-        isEdited: false,
-      };
-      setReviews((prev) => [review, ...prev]);
-      setNewReview({ rating: 5, content: '' });
+      });
+
+      if (response.status === 201) {
+        const reviewWithUser: Review = {
+          ...response.data,
+          memberName: response.data.memberName,
+          isOwner: true,
+          isLiked: false,
+          isEdited: false,
+          likes: 0,
+          id: String(response.data.id), // id 타입 일치
+        };
+
+        setReviews((prev) => [response.data, ...prev]);
+        setNewReview({ rating: 5, content: '' });
+        alert('리뷰 등록 성공!');
+      } else {
+        console.error(response.message);
+      }
+    } catch (err) {
+      console.error('API 요청 실패: ', err);
     }
   };
 
@@ -905,7 +917,7 @@ const MainProductsDetail = () => {
                     <div>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <span className="font-semibold text-gray-900">{review.userName}</span>
+                          <span className="font-semibold text-gray-900">{review.memberName}</span>
                           <div className="flex items-center gap-1">
                             {renderStars(review.rating)}
                           </div>

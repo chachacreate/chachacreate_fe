@@ -66,6 +66,7 @@ const StoreMain: React.FC = () => {
   const [error, setError] = useState<string>('');
 
   const [footerBgColor, setFooterBgColor] = useState('#2d4739');
+  const [headerBgColor, setHeaderBgColor] = useState('#2d4739');
 
 
   const navigate = useNavigate();
@@ -132,6 +133,7 @@ const StoreMain: React.FC = () => {
 
       if(result.data?.headerFooterColor) {
         setFooterBgColor(result.data.headerFooterColor);
+        setHeaderBgColor(result.data.headerFooterColor);
       }
     } catch (error) {
       console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
@@ -202,7 +204,7 @@ const StoreMain: React.FC = () => {
 
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerBgColor} />
       <Storenavbar />
       <div className="bg-white font-jua text-gray-900">
         {/* 히어로 섹션 */}

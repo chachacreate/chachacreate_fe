@@ -102,6 +102,7 @@ const MainProductsDetail = () => {
   const navigate = useNavigate();
 
   // 상품 상세 불러오기
+  // 상품 상세 불러오기
   useEffect(() => {
     if (!storeUrl || !productId) return;
 
@@ -109,22 +110,44 @@ const MainProductsDetail = () => {
       try {
         const response = await legacyGet<any>(`/${storeUrl}/productdetail/${productId}`);
 
-        if (response.status === 200) {
-          const apiData = response?.data ?? response;
+        // ✅ 정상
+        if (response.status === 200 && response.data) {
+          const apiData = response.data ?? response;
           const mappedProduct = mapProduct(apiData);
           setProduct(mappedProduct);
-        } else {
-          console.error('상품 불러오기 실패:', response.message);
+          return;
         }
-      } catch (error) {
-        console.error('API 요청 실패:', error);
+
+        // ❌ 그 외 (예: 404)
+        if (response.status === 404) {
+          alert('삭제된 상품입니다.');
+          // 스토어 상세가 아니라 메인일 때는 /main, 스토어라면 스토어 상품 목록 등으로
+          navigate(`/main`);
+          return;
+        }
+
+        // 기타 실패
+        console.error('상품 불러오기 실패:', response.message);
+        alert('상품을 불러오지 못했습니다.');
+        navigate('/main');
+      } catch (error: any) {
+        // 네트워크/예외
+        // axios 에러라면 error.response?.status로도 404 체크 가능
+        if (error?.response?.status === 404) {
+          alert('삭제된 상품입니다.');
+          navigate('/main');
+        } else {
+          console.error('API 요청 실패:', error);
+          alert('상품을 불러오지 못했습니다.');
+          navigate('/main');
+        }
       } finally {
         setLoadingProduct(false);
       }
     };
 
     fetchProductDetail();
-  }, [storeUrl, productId]);
+  }, [storeUrl, productId, navigate]);
 
   // 리뷰 평균 평점 계산
   const calculateAverageRating = (reviews: Review[]): number => {

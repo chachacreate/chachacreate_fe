@@ -7,15 +7,16 @@ import MainSellProducts from '@src/domains/main/areas/home/features/sell/pages/M
 import MainSellManagement from '@src/domains/main/areas/home/features/sell/pages/MainSellManagement';
 import { wrapRoutesWithProtection } from '@src/shared/util/routeWrapper';
 import { ROLES } from '@src/shared/routingGuard/types/role';
+import Loading  from '@src/shared/areas/loading/loading';
 
-// Suspense 헬퍼
+// ✅ Suspense wrapper
 const withSuspense = (Comp: React.ComponentType<any>) =>
   createElement(
     Suspense,
-    { fallback: createElement('div', { className: 'p-6' }, '로딩…') },
+    { fallback: createElement(Loading) },
     createElement(Comp)
   );
-
+  
 const protectedSellRoutes = [
   { path: 'sellregister', element: withSuspense(MainSellSellregister) },
   { path: 'products', element: withSuspense(MainSellProducts) },

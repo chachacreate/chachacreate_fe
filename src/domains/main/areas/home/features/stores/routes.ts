@@ -2,19 +2,22 @@ import { lazy, Suspense, createElement } from 'react';
 import type { RouteObject } from 'react-router-dom';
 import { ROLES } from '@src/shared/routingGuard/types/role';
 import { wrapRoutesWithProtection } from '@src/shared/util/routeWrapper';
+import Loading  from '@src/shared/areas/loading/loading';
+
+// ✅ Suspense wrapper
+const withSuspense = (Comp: React.ComponentType<any>) =>
+  createElement(
+    Suspense,
+    { fallback: createElement(Loading) },
+    createElement(Comp)
+  );
 
 // ✅ Lazy import
 const MainStoresPage = lazy(() => import('./pages/MainStoresPage'));
 const MainStoreDescription = lazy(() => import('./pages/MainStoreDescription'));
 const MainStoreOepnnForm = lazy(() => import('./pages/MainStoreOpenform'));
 
-// ✅ Suspense wrapper
-const withSuspense = (Comp: React.ComponentType<any>) =>
-  createElement(
-    Suspense,
-    { fallback: createElement('div', { className: 'p-6' }, '로딩중…') },
-    createElement(Comp)
-  );
+
 
 // ✅ 기본 라우트 정의
 const baseRoutes: RouteObject[] = [

@@ -4,6 +4,7 @@ import type { RouteObject } from 'react-router-dom';
 import MainMypageOrderdetail from './pages/MainMypageOrderdetail';
 import { ROLES } from '@src/shared/routingGuard/types/role';
 import { wrapRoutesWithProtection } from '@src/shared/util/routeWrapper';
+import Loading  from '@src/shared/areas/loading/loading';
 
 // ✅ lazy import (실제 파일 경로는 프로젝트 구조에 맞게 수정)
 const MainMypagePage = lazy(() => import('./pages/MainMypagePage'));
@@ -13,11 +14,12 @@ const MainMypageClassesPage = lazy(() => import('./pages/MainMypageclasses'));
 const MainMypageMessagePage = lazy(() => import('./pages/MainMypageMessage'));
 const MainMypageMyreviewPage = lazy(() => import('./pages/MainMypageMyreviews'));
 
-// Suspense 래퍼
+
+// ✅ Suspense wrapper
 const withSuspense = (Comp: React.ComponentType<any>) =>
   createElement(
     Suspense,
-    { fallback: createElement('div', { className: 'p-6' }, '로딩 중…') },
+    { fallback: createElement(Loading) },
     createElement(Comp)
   );
 

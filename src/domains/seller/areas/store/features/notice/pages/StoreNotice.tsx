@@ -6,9 +6,24 @@ import axios from 'axios';
 
 import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
-import { legacyGet, legacyPost, legacyPut, legacyDel } from '@src/libs/request';
+import { get, legacyGet, legacyPost, legacyPut, legacyDel } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse'; // ✅ 추가
 
 type Params = { storeUrl?: string };
+
+// ✅ 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 /* view Model ===== */
 type Notice = {
@@ -72,8 +87,27 @@ const StoreNotice: FC = () => {
   const [formContent, setFormContent] = useState<string>('');
   const [formImportant, setFormImportant] = useState<boolean>(false);
 
+  //커스텀
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
+
+  // ✅ 커스텀 설정 로드 함수 추가
+  const loadCustomSettings = async (): Promise<void> => {
+    if (!storeUrl) return;
+    
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  };
   /* ================= API calls ================= */
 
   const fetchNotices = async (): Promise<void> => {
@@ -157,6 +191,7 @@ const StoreNotice: FC = () => {
   // 최초/URL 변경 시 공지 로드
   useEffect(() => {
     void fetchNotices();
+    void loadCustomSettings();
     // storeUrl만 dep로 두면 충분
   }, [storeUrl]);
 
@@ -264,7 +299,7 @@ const StoreNotice: FC = () => {
 
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} />
 
       <SellerSidenavbar>
         <div ref={scrollRef} />
@@ -281,6 +316,7 @@ const StoreNotice: FC = () => {
                 type="button"
                 onClick={openCreate}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-[#2D4739] text-white text-sm font-medium hover:bg-[#1f3128]"
+                style={{backgroundColor : headerFooterBgColor}}
               >
                 <span className="text-lg leading-none">＋</span>새 공지 등록
               </button>

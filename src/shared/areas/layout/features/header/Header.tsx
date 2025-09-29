@@ -352,10 +352,11 @@ export default function Header({ user,
 
         {/* 모바일 드롭다운 메뉴 */}
         {menuOpen && (
-          <div
-            id="mobile-menu"
-            className="md:hidden border-t border-white/20 bg-[#2d4739] text-white"
-          >
+           <div
+              id="mobile-menu"
+              className="md:hidden border-t border-white/20 text-white"
+              style={{ backgroundColor }} // ✅ props로 받은 색상 사용
+            >
             <div className="mx-auto w-full max-w-[1920px] px-4 min-[1920px]:px-60 py-3 text-[15px] space-y-2">
               {me ? (
                 <>

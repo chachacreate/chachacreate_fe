@@ -11,8 +11,22 @@ import EditorAPI, {
 } from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
 import api from '@src/libs/apiService';
 import { get, patch } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
 
 type Params = { storeUrl: string; classId: string };
+
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 type ScheduleRow = {
   id: string;
@@ -113,6 +127,27 @@ const ClassEdit: FC = () => {
   // 엔드포인트 (필요시 상단만 바꿔서 매핑)
   const ENDPOINT_DETAIL = `/seller/${storeUrl}/classes/${classId}`;
   const ENDPOINT_UPDATE = `/seller/${storeUrl}/classes/${classId}`;
+
+  //커스텀
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
+  //커스텀 useeffect
+  useEffect(() => {
+  if (!storeUrl) return;
+  
+  (async () => {
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  })();
+}, [storeUrl]);
 
   useEffect(() => {
     (async () => {
@@ -328,7 +363,7 @@ const ClassEdit: FC = () => {
 
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerFooterBgColor}/>
 
       <SellerSidenavbar>
         <div className="space-y-6 sm:space-y-8">
@@ -607,6 +642,7 @@ const ClassEdit: FC = () => {
             <button
               type="button"
               className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90"
+              style={{backgroundColor: headerFooterBgColor}}
               onClick={onSubmit}
               disabled={loading}
             >
@@ -621,6 +657,7 @@ const ClassEdit: FC = () => {
               취소
             </button>
           </div>
+          <div className='pb-8'/>
         </div>
       </SellerSidenavbar>
 
@@ -643,6 +680,7 @@ const ClassEdit: FC = () => {
               style={{ width: '100%', height: '420px' }}
             />
           </div>
+          
         </div>
       )}
     </>

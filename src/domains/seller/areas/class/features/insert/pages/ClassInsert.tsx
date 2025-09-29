@@ -1,8 +1,10 @@
 // src/domains/seller/areas/class/features/insert/pages/ClassInsert.tsx
 import type { FC, ChangeEvent, MouseEvent } from 'react';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { post } from '@src/libs/request';
+import { post, get } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
+
 import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import DaumPostcodeEmbed from 'react-daum-postcode';
@@ -10,6 +12,20 @@ import EditorAPI, {
   type EditorHandle,
 } from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
 import api from '@src/libs/apiService';
+
+// ✅ 타입 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 type ScheduleRow = {
   id: string;
@@ -129,6 +145,9 @@ const ClassInsert: FC = () => {
   // ✅ 판매자 이력 여부 (임시: true → 오버레이 숨김)
   const hasResume = true;
 
+  //커스텀
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
   // 여러 개의 클래스 폼
   const [classForms, setClassForms] = useState<ClassForm[]>([createEmptyForm(1)]);
   const [classCounter, setClassCounter] = useState(1);
@@ -145,6 +164,23 @@ const ClassInsert: FC = () => {
 
   // AI 설명 생성 로딩 상태 추가
   const [isLoadingAiDesc, setIsLoadingAiDesc] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+  if (!storeUrl) return;
+  
+  (async () => {
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  })();
+}, [storeUrl]);
 
   // 새 폼 추가
   const addNewForm = () => {
@@ -419,7 +455,7 @@ const ClassInsert: FC = () => {
 
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} />
 
       <SellerSidenavbar>
         <div className="space-y-6 sm:space-y-8 relative">
@@ -433,6 +469,7 @@ const ClassInsert: FC = () => {
               type="button"
               onClick={addNewForm}
               className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90"
+              style={{ backgroundColor: headerFooterBgColor }}
             >
               + 클래스 추가
             </button>
@@ -802,6 +839,7 @@ const ClassInsert: FC = () => {
               type="button"
               className="w-full sm:flex-1 px-6 py-3 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90 order-1 sm:order-none"
               onClick={onSubmit}
+              style={{ backgroundColor: headerFooterBgColor }}
             >
               {classForms.length}개 클래스 모두 등록
             </button>

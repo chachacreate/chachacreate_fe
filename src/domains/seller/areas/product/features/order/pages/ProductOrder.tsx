@@ -15,8 +15,26 @@ import {
   Check,
 } from 'lucide-react';
 import { get, legacyGet, legacyPatch } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
 
 /* ------------------ Types ------------------ */
+
+// ✅ 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+
+
 type OrderStatus =
   | '주문완료'
   | '발송완료'
@@ -152,6 +170,26 @@ export default function SellerOrderManagementMain() {
 
   const [openMenuOrderId, setOpenMenuOrderId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  //커스텀
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
+  useEffect(() => {
+  if (!storeUrl) return;
+  
+  (async () => {
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  })();
+}, [storeUrl]);
 
   // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
@@ -313,7 +351,7 @@ export default function SellerOrderManagementMain() {
 
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} />
 
       <SellerSidenavbar>
         <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
@@ -332,9 +370,17 @@ export default function SellerOrderManagementMain() {
                   className={[
                     'flex items-center justify-center h-10 rounded-xl border cursor-pointer text-sm transition-colors',
                     activeFilter === option.key
-                      ? 'bg-[#2d4739] text-white border-[#2d4739]'
+                      ? 'text-white' // ✅ bg-[#2d4739]과 border-[#2d4739] 제거
                       : 'bg-white hover:bg-gray-50 border-gray-200',
                   ].join(' ')}
+                  style={
+                    activeFilter === option.key
+                      ? {
+                          backgroundColor: headerFooterBgColor,
+                          borderColor: headerFooterBgColor,
+                        }
+                      : undefined
+                  } // ✅ 추가
                 >
                   <input
                     type="radio"
@@ -343,7 +389,7 @@ export default function SellerOrderManagementMain() {
                     checked={activeFilter === option.key}
                     onChange={() => {
                       setActiveFilter(option.key);
-                      setPage(1); // 필터 변경 시 항상 1페이지로 초기화
+                      setPage(1);
                     }}
                     className="sr-only"
                   />

@@ -15,9 +15,23 @@ import {
   Legend,
 } from 'recharts';
 import { get } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
 
 /** ============ 타입 ============ */
 type Params = { storeUrl: string };
+
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 /** /classes/reservation 응답 DTO */
 type ReservationItemDTO = {
@@ -118,6 +132,28 @@ const ClassReservation: FC = () => {
   });
   const [selectedClass, setSelectedClass] = useState<string>('ALL');
   const [tableClassFilter, setTableClassFilter] = useState<string>('ALL');
+  
+  //커스텀
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
+  //커스텀 useeffect
+    useEffect(() => {
+    if (!storeUrl) return;
+    
+    (async () => {
+      try {
+        const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+          `/api/seller/${storeUrl}/store/custom`
+        );
+        if (result.data?.headerFooterColor) {
+          setHeaderFooterBgColor(result.data.headerFooterColor);
+        }
+      } catch (error) {
+        console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+      }
+    })();
+  }, [storeUrl]);
+
 
   // 초기 데이터 패치
   useEffect(() => {
@@ -272,7 +308,7 @@ const ClassReservation: FC = () => {
         }
       `}</style>
 
-      <Header />
+      <Header backgroundColor={headerFooterBgColor}/>
 
       <SellerSidenavbar>
         <div className="space-y-8 pb-12">

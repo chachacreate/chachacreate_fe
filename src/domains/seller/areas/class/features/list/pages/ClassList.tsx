@@ -5,9 +5,23 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import SellerSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/seller/SellerSidenavbar';
 import { get } from '@src/libs/request'; // ✅ patch 제거 (동일 오리진 fetch 사용)
+import type { ApiResponse } from '@src/libs/apiResponse';
 
 /** ===== 라우터 파라미터 ===== */
 type Params = { storeUrl: string };
+
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 /** ===== API 응답 타입(목록 아이템) ===== */
 type SellerClassDTO = {
@@ -110,6 +124,27 @@ const ClassList: FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isToggling, setIsToggling] = useState(false);
+
+  //커스텀
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
+  /** ===== 커스텀 설정 로드 ===== */
+useEffect(() => {
+  if (!storeUrl) return;
+  
+  (async () => {
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  })();
+}, [storeUrl]);
 
   /** ===== 데이터 패치 ===== */
   const fetchClasses = async () => {
@@ -224,7 +259,7 @@ const ClassList: FC = () => {
   /** ===== 화면 ===== */
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} />
 
       <SellerSidenavbar>
         <div className="space-y-4 sm:space-y-6">

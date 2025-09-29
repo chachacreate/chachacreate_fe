@@ -12,12 +12,27 @@ import EditorAPI, {
 } from '@src/domains/seller/areas/class/features/insert/components/EditorAPI';
 
 import { predictImage } from '../../insert/services/aiService/aiService';
-import { legacyGet, legacyPost } from '@src/libs/request';
+import { get, legacyGet, legacyPost } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
 
 // ---------------- Types ----------------
 type Params = { storeUrl: string; productId: string };
 type EnumItem = { id: number; name: string };
 type DCatsByU = Record<string, EnumItem[]>;
+
+// ✅ 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 type ProductImage = {
   id: string; // 프론트용 로컬 UUID
@@ -118,6 +133,26 @@ const ProductEdit: FC = () => {
 
   // 현재 활성(삭제 표시 안 된) 이미지
   const activeImages = form.images.filter((img) => !img.markedForDelete);
+
+  const [headerFooterBgColor, setHeaderFooterBgColor] = useState('#2d4739');
+
+  // ✅ 커스텀 설정 로드
+useEffect(() => {
+  if (!storeUrl) return;
+  
+  (async () => {
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      if (result.data?.headerFooterColor) {
+        setHeaderFooterBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+    }
+  })();
+}, [storeUrl]);
 
   // ---------- 초기 로딩: 카테고리 + 상품 상세 ----------
   useEffect(() => {
@@ -495,7 +530,7 @@ const ProductEdit: FC = () => {
 
   return (
     <>
-      <Header />
+      <Header backgroundColor={headerFooterBgColor} />
 
       <SellerSidenavbar>
         {/* 상단 타이틀 (추가 페이지와 동일 스타일 유지, 단 버튼 삭제) */}
@@ -765,12 +800,13 @@ const ProductEdit: FC = () => {
         </div>
 
         {/* ✅ 하단 버튼: 페이지 맨 아래에 위치(둥둥 떠다니지 않음) */}
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-8">
           <button
-            type="button"
-            className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#2D4739] text-white font-medium hover:opacity-90"
-            onClick={onSubmit}
-          >
+          type="button"
+          className="w-full sm:w-auto px-6 py-3 rounded-lg text-white font-medium hover:opacity-90"
+          style={{ backgroundColor: headerFooterBgColor }} 
+          onClick={onSubmit}
+        >
             상품 수정 저장
           </button>
           <button
@@ -781,6 +817,7 @@ const ProductEdit: FC = () => {
             초기화
           </button>
         </div>
+        <div className='pb-8'/>
       </SellerSidenavbar>
     </>
   );

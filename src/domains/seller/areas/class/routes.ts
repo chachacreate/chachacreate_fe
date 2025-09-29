@@ -1,6 +1,7 @@
 // src/domains/seller/areas/class/routes.ts
 import { lazy, Suspense, createElement } from "react";
 import type { RouteObject } from "react-router-dom";
+import Loading  from '@src/shared/areas/loading/loading';
 
 // lazy imports
 const ClassInsertPage = lazy(() => import("./features/insert/pages/ClassInsert"));
@@ -8,13 +9,13 @@ const ClassListPage = lazy(() => import("./features/list/pages/ClassList"));
 const ClassReservationPage = lazy(() => import("./features/reservation/pages/ClassReservation"));
 const ClassEditPage = lazy(() => import("./features/edit/pages/ClassEdit"));
 
+// ✅ Suspense wrapper
 const withSuspense = (Comp: React.ComponentType<any>) =>
   createElement(
     Suspense,
-    { fallback: createElement("div", { className: "p-6" }, "로딩…") },
+    { fallback: createElement(Loading) },
     createElement(Comp)
   );
-
 export const classRoutes: RouteObject[] = [
   {
     path: "/seller/:storeUrl/class",

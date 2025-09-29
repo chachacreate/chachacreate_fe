@@ -2,6 +2,7 @@ import React, { lazy, type ComponentType, type LazyExoticComponent } from 'react
 import type { RouteObject } from 'react-router-dom';
 import { createElement, Suspense } from 'react';
 import { mypageRoutes } from '../main/areas/mypage/routes';
+import Loading from '@src/shared/areas/loading/loading';
 
 const StoreHomePage = lazy(() => import('@src/domains/buyer/areas/main/pages/StoreMain'));
 
@@ -21,10 +22,11 @@ const StoreNoticesPage = lazy(
   () => import('@src/domains/buyer/areas/notice/pages/StoreNotice')
 );
 
-const suspense = (Comp: LazyExoticComponent<ComponentType<any>>) =>
+// ✅ Suspense wrapper
+const withSuspense = (Comp: React.ComponentType<any>) =>
   createElement(
     Suspense,
-    { fallback: createElement('div', { className: 'p-6' }, '로딩…') },
+    { fallback: createElement(Loading) },
     createElement(Comp)
   );
 
@@ -37,27 +39,27 @@ export const buyerRoutes: RouteObject[] = [
   {
     path: '/:store',
     children: [
-      { index: true, element: suspense(StoreHomePage) },
+      { index: true, element: withSuspense(StoreHomePage) },
 
       // 실제 페이지 연결
       {
         path: 'products',
-
         children: [
-          { index: true, element: suspense(StoreProducts) }, // 상품 리스트
-          { path: ':productId', element: suspense(productDetailPage) }, // 상품 상세
+          { index: true, element: withSuspense(StoreProducts) }, // 상품 리스트
+          { path: ':productId', element: withSuspense(productDetailPage) }, // 상품 상세
         ],
       },
-       { path: 'info', 
-        element: suspense(StoreInfoPage) 
+      { 
+        path: 'info', 
+        element: withSuspense(StoreInfoPage) 
       },
       {
         path: 'classes',
-        element: suspense(StoreClassesPage),
+        element: withSuspense(StoreClassesPage),
       },
       {
         path: 'notices',
-        element: suspense(StoreNoticesPage),
+        element: withSuspense(StoreNoticesPage),
       },
       ...mypageRoutes,
     ],

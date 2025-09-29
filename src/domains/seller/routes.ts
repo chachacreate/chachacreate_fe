@@ -7,6 +7,7 @@ import { resumeRoutes } from './areas/resume/routes';
 import { ROLES } from '@src/shared/routingGuard/types/role';
 import { wrapRoutesWithProtection } from '@src/shared/util/routeWrapper';
 
+
 export const sellerRoutes = [
   {
     path: '/seller/:storeUrl',

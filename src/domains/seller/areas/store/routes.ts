@@ -2,6 +2,7 @@
 import React, { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import type { RouteObject } from 'react-router-dom';
 import { createElement, Suspense } from 'react';
+import Loading  from '@src/shared/areas/loading/loading';
 
 // /seller/:storeUrl/store/*
 const StoreNoticePage = lazy(
@@ -20,10 +21,12 @@ const StoreChatPage = lazy(() =>
   import("@src/domains/seller/areas/store/features/chat/pages/StoreChat")
 );
 
-const suspense = (Comp: LazyExoticComponent<ComponentType<any>>) =>
+
+// ✅ Suspense wrapper
+const withSuspense = (Comp: React.ComponentType<any>) =>
   createElement(
     Suspense,
-    { fallback: createElement('div', { className: 'p-6' }, '로딩…') },
+    { fallback: createElement(Loading) },
     createElement(Comp)
   );
 
@@ -32,13 +35,13 @@ export const storeRoutes: RouteObject[] = [
   {
     path: 'store',
     children: [
-      { path: 'notice', element: suspense(StoreNoticePage) },
-      { path: "custom", element: suspense(StoreCustomPage) },
+      { path: 'notice', element: withSuspense(StoreNoticePage) },
+      { path: "custom", element: withSuspense(StoreCustomPage) },
     ],
   },
   // /seller/:storeUrl/storeinfo
-  { path: "storeinfo", element: suspense(StoreInfoPage) },
+  { path: "storeinfo", element: withSuspense(StoreInfoPage) },
     // /seller/:storeUrl/message
-  { path: "message", element: suspense(StoreChatPage) },
+  { path: "message", element: withSuspense(StoreChatPage) },
 
 ];

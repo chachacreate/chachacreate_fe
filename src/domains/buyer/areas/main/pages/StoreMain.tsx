@@ -316,13 +316,17 @@ const StoreMain: React.FC = () => {
         {/* 인기 상품 */}
         {bestProducts.length > 0 && (
           <section className="w-full px-4 sm:px-8 xl:px-60 mt-8 sm:mt-10">
+            <div className="mb-6">
             <h2
               className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide mb-4 flex items-center"
               style={{ color: customSettings?.fontColor || '#2D4739' }}
             >
               {renderStoreIcon(customSettings?.icon?.id)}
               인기 상품
+              
             </h2>
+            <p className="mt-2 text-sm text-gray-500">구매수가 많은 상품을 모았어요</p>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {bestProducts.map((product) => (
                 <div
@@ -360,6 +364,7 @@ const StoreMain: React.FC = () => {
         {/* 대표 상품 */}
         {mainProducts.length > 0 && (
           <section className="w-full px-4 sm:px-8 xl:px-60 mt-8 sm:mt-10">
+            <div className='mb-8'>
             <h2
               className="text-lg sm:text-xl lg:text-2xl font-normal tracking-wide mb-4 flex items-center"
               style={{ color: customSettings?.fontColor || '#2D4739' }}
@@ -367,6 +372,8 @@ const StoreMain: React.FC = () => {
               {renderStoreIcon(customSettings?.icon?.id)}
               대표 상품
             </h2>
+            <p className="mt-2 text-sm text-gray-500">판매자가 추천하는 스토어 대표작</p>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {mainProducts.map((product) => (
                 <div

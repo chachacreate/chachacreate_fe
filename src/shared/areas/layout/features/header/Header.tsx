@@ -91,39 +91,77 @@ export default function Header({ user,
 
   // 스토어 정보 로드 (스토어 페이지일 때만)
   useEffect(() => {
-    if (!inferredStoreSlug || RESERVED_PREFIXES.has(inferredStoreSlug)) {
-      setStoreInfo(null);
-      return;
-    }
+  console.log('🔵 [useEffect] inferredStoreSlug:', inferredStoreSlug);
+  
+  if (!inferredStoreSlug || RESERVED_PREFIXES.has(inferredStoreSlug)) {
+    console.log('⚪ [useEffect] 스토어 정보 로드 안함 (조건 불만족)');
+    setStoreInfo(null);
+    return;
+  }
 
     const controller = new AbortController();
 
-    const loadStoreInfo = async () => {
-      try {
-        const url = `/info/store/${inferredStoreSlug}`.replace(/\/{2,}/g, '/');
+  const loadStoreInfo = async () => {
+  try {
+    // 1. 스토어 기본 정보 조회
+    const storeInfoUrl = `/info/store/${inferredStoreSlug}`;
+    console.log('🟢 [1/2 API 요청] 스토어 정보:', storeInfoUrl);
 
-        // API 응답이 { data: {...}, message: "...", status: 200 } 형태로 래핑되어 있음
-        const response = await legacyGet<{ data: StoreInfo; message: string; status: number }>(url);
+    const storeResponse = await legacyGet<{ 
+      data: {
+        storeId: number;
+        storeName: string;
+        logoImg: string;
+        sellerId: number;
+        storeUrl: string;
+      };
+    }>(storeInfoUrl);
 
-        // console.log('스토어 정보 로드 성공:', response);
-        if (controller.signal.aborted) return;
+    console.log('🟢 [1/2 API 응답]:', storeResponse.data);
 
-        // response.data에서 실제 스토어 데이터 추출
-        const storeData = response.data;
-        setStoreInfo({
-          storeName: storeData.storeName,
-          logoImg: storeData.logoImg,
-          storeOwnerId: storeData.storeOwnerId,
-          storeUrl: storeData.storeUrl,
-        });
+    if (controller.signal.aborted) return;
 
-        // console.log('스토어 정보 설정 완료:', storeData.storeName);
-      } catch (error: any) {
-        if (error?.name === 'AbortError') return;
-        console.error('스토어 정보 로드 실패:', error);
-        setStoreInfo(null);
-      }
-    };
+    // 2. 오너 ID 조회
+    const ownerUrl = `/owner/${inferredStoreSlug}`;
+    console.log('🟢 [2/2 API 요청] 오너 ID:', ownerUrl);
+
+    const ownerResponse = await legacyGet<{ 
+      data: number;
+    }>(ownerUrl);
+
+    console.log('🟢 [2/2 API 응답]:', ownerResponse.data);
+
+    if (controller.signal.aborted) return;
+
+    // 3. 데이터 설정
+    console.log('📦 [데이터 결합]', {
+      storeName: storeResponse.data.storeName,
+      logoImg: storeResponse.data.logoImg,
+      storeOwnerId: ownerResponse.data,
+      storeUrl: inferredStoreSlug,
+    });
+
+    setStoreInfo({
+      storeName: storeResponse.data.storeName,
+      logoImg: storeResponse.data.logoImg,
+      storeOwnerId: ownerResponse.data,
+      storeUrl: inferredStoreSlug,
+    });
+
+    console.log('✅ [성공] 스토어 정보 설정 완료');
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      console.log('⚪ [Abort Error] 정상 중단');
+      return;
+    }
+    
+    console.error('❌ [실패] 스토어 정보 로드 실패');
+    console.error('❌ 에러:', error);
+    
+    setStoreInfo(null);
+  }
+};
+
 
     loadStoreInfo();
     return () => controller.abort();
@@ -131,6 +169,12 @@ export default function Header({ user,
 
   // 스토어 오너 여부 확인
   const isStoreOwner = useMemo(() => {
+    console.log(' [isStoreOwner 계산]');
+  console.log(' currentUser:', currentUser);
+  console.log(' currentUser?.memberId:', currentUser?.memberId);
+  console.log(' storeInfo:', storeInfo);
+  console.log(' storeInfo?.storeOwnerId:', storeInfo?.storeOwnerId);
+  
     if (!currentUser?.memberId || !storeInfo?.storeOwnerId) return false;
     return String(currentUser.memberId) === String(storeInfo.storeOwnerId);
   }, [currentUser?.memberId, storeInfo?.storeOwnerId]);

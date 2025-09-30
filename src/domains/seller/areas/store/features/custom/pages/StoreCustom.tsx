@@ -520,7 +520,7 @@ function PreviewArea({
       >
         <ProductGrid3
           products={storeInfo.popularTop3}
-          emptyLabel="인기 상품을 준비 중이에요"
+          emptyLabel="인기 상품영역"
           iconId={iconId}
         />
       </StoreSection>
@@ -533,7 +533,7 @@ function PreviewArea({
       >
         <ProductGrid3
           products={storeInfo.featured3}
-          emptyLabel="대표 상품을 곧 보여드릴게요"
+          emptyLabel="대표 상품영역"
           badge="대표"
           iconId={iconId}
         />
@@ -565,7 +565,10 @@ function StoreSection(props: {
     <section className="w-full mt-10">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{title}</h2>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center">
+            {renderIcon()}
+            {title}
+          </h2>
           {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
         </div>
         {moreLink && (

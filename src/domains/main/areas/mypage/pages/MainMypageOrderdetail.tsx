@@ -4,7 +4,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ChevronLeft,
   CreditCard,
-  MapPin,
   Package,
   Truck,
   XCircle,
@@ -16,12 +15,22 @@ import {
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar';
+import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 
 import { legacyGet, post } from '@src/libs/request';
-import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 
 /* ======================== Types ======================== */
 type Params = { orderId?: string };
+
+type OrderStatus =
+  | 'ORDER_OK'    // 주문완료 (상품준비중)
+  | 'SHIPPED'     // 발송완료 (배송중)
+  | 'DELIVERED'   // 배송완료
+  | 'CANCEL_RQ'   // 취소요청
+  | 'CANCEL_OK'   // 취소완료
+  | 'REFUND_RQ'   // 환불요청
+  | 'REFUND_OK'   // 환불완료
+  | 'unknown';
 
 interface OrderItem {
   orderDetailId: string | number;
@@ -31,13 +40,13 @@ interface OrderItem {
   orderPrice: number;
   pimgUrl?: string;
   storeUrl?: string;
-  orderStatus?: string;
+  orderStatus?: string; // 서버 원본 문자열(국문)
 }
 
 interface OrderDetail {
   orderId: string | number;
-  orderDetailId: string | number;
-  orderStatus?: string;
+  orderDetailId?: string | number; // 단일행일 때 존재할 수도 있음
+  orderStatus?: string;            // (레거시) 서버가 주던 필드 – 사용 안 함
   orderName: string;
   orderPhone: string;
   postNum?: string;
@@ -48,24 +57,66 @@ interface OrderDetail {
   orderItems: OrderItem[];
 }
 
-/* ============ 상태 타입 & 유틸 ============ */
-type PreShippingStatus = '주문완료';
-type ShippingStatus = '발송완료';
-type FinalizedStatus = '배송완료' | '취소완료' | '환불완료';
+/* ======================== Status helpers ======================== */
+// 주문내역(리스트) 페이지와 동일한 규칙으로 매핑 (국문 → Enum)
+const mapStatus = (raw?: string): OrderStatus => {
+  if (!raw) return 'unknown';
+  const s = raw.toUpperCase();
 
-const PRE_SHIPPING: readonly PreShippingStatus[] = ['주문완료'] as const;
-const SHIPPING: ShippingStatus = '발송완료';
-const FINALIZED: readonly FinalizedStatus[] = ['배송완료', '취소완료', '환불완료'] as const;
+  if (s.includes('주문완료')) return 'ORDER_OK';
+  if (s.includes('발송완료')) return 'SHIPPED';
+  if (s.includes('배송완료')) return 'DELIVERED';
+  if (s.includes('취소요청')) return 'CANCEL_RQ';
+  if (s.includes('취소완료')) return 'CANCEL_OK';
+  if (s.includes('환불요청')) return 'REFUND_RQ';
+  if (s.includes('환불완료')) return 'REFUND_OK';
+  return 'unknown';
+};
 
-function isPreShipping(status?: string): status is PreShippingStatus {
-  return !!status && (PRE_SHIPPING as readonly string[]).includes(status);
+// 표시 라벨 (주문내역 페이지와 톤 통일)
+const statusLabel = (s: OrderStatus) =>
+  s === 'ORDER_OK'
+    ? '상품 준비중'
+    : s === 'SHIPPED'
+    ? '배송 중'
+    : s === 'DELIVERED'
+    ? '배송 완료'
+    : s === 'CANCEL_RQ'
+    ? '취소 요청'
+    : s === 'CANCEL_OK'
+    ? '취소 완료'
+    : s === 'REFUND_RQ'
+    ? '환불 요청'
+    : s === 'REFUND_OK'
+    ? '환불 완료'
+    : '확인중';
+
+// 대표 상태 우선순위 (리스트 페이지와 동일)
+const PRIORITY: OrderStatus[] = [
+  'CANCEL_RQ',
+  'REFUND_RQ',
+  'ORDER_OK',
+  'SHIPPED',
+  'DELIVERED',
+  'CANCEL_OK',
+  'REFUND_OK',
+  'unknown',
+];
+
+// 대표 상태 계산: 여러 상세가 있으면 PRIORITY 기준으로 결정
+function pickRepresentativeStatus(items: OrderItem[]): OrderStatus {
+  if (!items || items.length === 0) return 'unknown';
+  const set = new Set<OrderStatus>();
+  items.forEach((it) => set.add(mapStatus(it.orderStatus)));
+  for (const p of PRIORITY) {
+    if (set.has(p)) return p;
+  }
+  return 'unknown';
 }
-function isShipping(status?: string): status is ShippingStatus {
-  return status === SHIPPING;
-}
-function isFinalized(status?: string): status is FinalizedStatus {
-  return !!status && (FINALIZED as readonly string[]).includes(status);
-}
+
+// 취소/환불 가능여부 (주문내역 페이지의 의미와 맞춤)
+const canCancelBy = (rep: OrderStatus) => rep === 'ORDER_OK';
+const canRefundBy = (rep: OrderStatus) => rep === 'SHIPPED';
 
 /* ======================== Component ======================== */
 const MainMypageOrderdetail: React.FC = () => {
@@ -77,7 +128,7 @@ const MainMypageOrderdetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<OrderDetail | null>(null);
 
-  // 모달 상태 관리
+  // 모달 상태
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'cancel' | 'refund'>('cancel');
   const [reason, setReason] = useState('');
@@ -91,25 +142,24 @@ const MainMypageOrderdetail: React.FC = () => {
     return parts.join(' ');
   }, [detail]);
 
-  const canCancel = useMemo(() => {
-    if (!detail || !detail.orderItems?.length) return false;
+  // 상태 요약(원본 상태 문자열로 묶되, UI 표시는 대표 상태 라벨을 사용)
+  const statusSummary: Array<[string, number]> = useMemo(() => {
+    const map = new Map<string, number>();
+    (detail?.orderItems ?? []).forEach((it) => {
+      const k = it.orderStatus || '확인중';
+      map.set(k, (map.get(k) || 0) + 1);
+    });
+    return Array.from(map.entries());
+  }, [detail?.orderItems]);
 
-    // detail의 상태를 확인 (주문완료일 때만 취소 가능)
-    return isPreShipping(detail?.orderItems?.[0]?.orderStatus);
-  }, [detail?.orderStatus, detail?.orderItems?.[0]?.orderDetailId]);
+  // ✅ 대표 상태(주문내역 페이지와 완전히 동일한 규칙으로 산정)
+  const representative: OrderStatus = useMemo(
+   () => pickRepresentativeStatus(detail?.orderItems ?? []),
+   [detail?.orderItems]
+  );
 
-  const canRefund = useMemo(() => {
-    if (!detail || !detail.orderItems?.length) return false;
-
-    const s = detail.orderStatus;
-    if (!s) return false;
-
-    // 발송완료 상태일 때만 환불 가능
-    if (isShipping(s)) return true;
-
-    // 배송완료/취소완료/환불완료 이후는 불가능
-    return false;
-  }, [detail?.orderStatus, detail?.orderItems?.[0]?.orderDetailId]);
+  const canCancel = useMemo(() => canCancelBy(representative), [representative]);
+  const canRefund = useMemo(() => canRefundBy(representative), [representative]);
 
   const fetchDetail = useCallback(async () => {
     if (!orderId) return;
@@ -118,14 +168,13 @@ const MainMypageOrderdetail: React.FC = () => {
     try {
       const response = await legacyGet<any>(`/main/mypage/orderdetail/${orderId}`);
       if (response?.status === 200 && response?.data) {
-        // console.log('주문 상세 정보:', response.data);
         setDetail(response.data as OrderDetail);
       } else {
-        setError(response.message);
-        console.error('주문 상세 정보 조회 실패', error);
+        setError(response?.message || '주문 상세 정보 조회 실패');
       }
-    } catch (error: any) {
-      console.error('API 호출 실패', error);
+    } catch (e: any) {
+      console.error('API 호출 실패', e);
+      setError('주문 상세 정보를 불러오지 못했습니다.');
     } finally {
       setLoading(false);
     }
@@ -147,19 +196,17 @@ const MainMypageOrderdetail: React.FC = () => {
   const CANCEL_URL = (detailId: string | number) => `/mypage/orders/${detailId}/cancel`;
   const REFUND_URL = (detailId: string | number) => `/mypage/orders/${detailId}/refund`;
 
-  // 모달 열기 함수들
+  // 모달 열기
   const openCancelModal = () => {
     setModalType('cancel');
     setReason('');
     setModalOpen(true);
   };
-
   const openRefundModal = () => {
     setModalType('refund');
     setReason('');
     setModalOpen(true);
   };
-
   const closeModal = () => {
     setModalOpen(false);
     setReason('');
@@ -171,10 +218,8 @@ const MainMypageOrderdetail: React.FC = () => {
       alert('사유를 입력해주세요.');
       return;
     }
-
     const isCancel = modalType === 'cancel';
     const message = isCancel ? '해당 주문을 취소하시겠습니까?' : '환불을 요청하시겠습니까?';
-
     if (!confirm(message)) return;
 
     const body = {
@@ -184,8 +229,11 @@ const MainMypageOrderdetail: React.FC = () => {
 
     setSaving(true);
     try {
-      // 수정된 부분
-      const orderDetailId = detail.orderDetailId ?? detail.orderItems?.[0]?.orderDetailId;
+      // 여러 상세 중 어떤 것을 대상으로 보낼지: 우선 첫 번째 상세 사용(기존 정책 유지)
+      const orderDetailId =
+        detail.orderDetailId ??
+        detail.orderItems?.[0]?.orderDetailId;
+
       if (!orderDetailId) {
         alert('주문 상세 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
         setSaving(false);
@@ -198,10 +246,7 @@ const MainMypageOrderdetail: React.FC = () => {
       if (res?.status === 200) {
         alert(isCancel ? '주문 취소가 요청되었습니다.' : '환불이 요청되었습니다.');
         closeModal();
-        setDetail((prev) =>
-          prev ? { ...prev, orderStatus: isCancel ? '취소 요청 완료' : '환불 요청 완료' } : prev
-        );
-        await fetchDetail();
+        await fetchDetail(); // 갱신
       } else {
         alert(
           res?.message ?? (isCancel ? '주문 취소에 실패했습니다.' : '환불 요청에 실패했습니다.')
@@ -220,7 +265,7 @@ const MainMypageOrderdetail: React.FC = () => {
     navigate(`${base}/products/${productId}`);
   };
 
-  // 모달 컴포넌트
+  // 모달
   const Modal = (
     <>
       {modalOpen && (
@@ -243,7 +288,10 @@ const MainMypageOrderdetail: React.FC = () => {
                 <p className="text-sm text-gray-600 mb-2">
                   현재 주문 상태:{' '}
                   <span className="font-medium text-gray-900">
-                    {detail?.orderItems?.[0]?.orderStatus}
+                    {/* 여러 상세가 있으면 상태 ×건수로 모두 표시 */}
+                    {statusSummary.length === 0
+                      ? '-'
+                      : statusSummary.map(([k, n]) => `${k} ×${n}`).join(' / ')}
                   </span>
                 </p>
                 <p className="text-sm text-gray-600">
@@ -280,8 +328,8 @@ const MainMypageOrderdetail: React.FC = () => {
                   !reason.trim() || saving
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : modalType === 'cancel'
-                      ? 'bg-red-600 hover:bg-red-700 text-white'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
               >
                 {saving ? (
@@ -302,7 +350,7 @@ const MainMypageOrderdetail: React.FC = () => {
     </>
   );
 
-  // 공통 본문(데스크톱/모바일에서 재사용)
+  // 본문
   const Content = (
     <main className="space-y-6">
       {/* 로딩 / 에러 */}
@@ -320,14 +368,22 @@ const MainMypageOrderdetail: React.FC = () => {
         <>
           <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 shadow-sm">
             <p className="font-semibold text-lg">주문번호: {detail.orderId}</p>
-            <p className="text-gray-600">현재 상태: {detail?.orderItems?.[0]?.orderStatus}</p>
+            {/* ✅ 리스트 페이지와 동일 규칙으로 계산된 대표 상태를 텍스트로 표시 */}
+            <p className="mt-1 text-gray-600 text-sm">
+              현재 상태: {statusLabel(representative)}
+              {statusSummary.length > 1 && (
+                <span className="ml-1 opacity-70">
+                  ({statusSummary.map(([k, n]) => `${k} ×${n}`).join(' / ')})
+                </span>
+              )}
+            </p>
           </div>
 
           {/* 주문 상품 */}
           <div className="bg-gray-50 border border-gray-200 rounded-xl shadow-sm p-5">
             <h3 className="font-semibold mb-3">주문 상품</h3>
             {detail.orderItems.map((item) => (
-              <div key={item.productId} className="flex items-center gap-4 border-t py-2">
+              <div key={item.orderDetailId} className="flex items-center gap-4 border-t py-2">
                 <button
                   type="button"
                   onClick={() => goProduct(item.storeUrl, item.productId)}
@@ -353,6 +409,10 @@ const MainMypageOrderdetail: React.FC = () => {
                   </button>
                   <p className="text-sm text-gray-500">
                     수량 {item.orderCnt}개 / {(item.orderPrice * item.orderCnt).toLocaleString()} 원
+                  </p>
+                  {/* 각 라인의 현재 상태(서버 원본 표시) */}
+                  <p className="text-gray-600">
+                    현재 상태: {item.orderStatus ?? '-'}
                   </p>
                 </div>
               </div>
@@ -394,9 +454,9 @@ const MainMypageOrderdetail: React.FC = () => {
 
             <button
               onClick={openRefundModal}
-              disabled={!canRefund || saving || isFinalized(detail.orderStatus)}
+              disabled={!canRefund || saving}
               className={`px-4 py-2 rounded-xl border ${
-                canRefund && !saving && !isFinalized(detail.orderStatus)
+                canRefund && !saving
                   ? 'bg-white hover:bg-gray-50 text-gray-800 border-gray-300'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
               }`}
@@ -412,7 +472,9 @@ const MainMypageOrderdetail: React.FC = () => {
       )}
     </main>
   );
+
   const isMain = location.pathname.startsWith('/main');
+
   return (
     <div
       className="min-h-screen font-jua"

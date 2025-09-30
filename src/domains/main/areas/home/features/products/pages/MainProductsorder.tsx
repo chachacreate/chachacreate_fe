@@ -7,7 +7,7 @@ import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import MypageSidenavbar from '@src/shared/areas/navigation/features/sidenavbar/mypage/MypageSidenavbar';
 
-import { get, legacyPost } from '@src/libs/request';
+import { get, legacyDel, legacyPost } from '@src/libs/request';
 import { getCurrentUser, type UserInfo } from '@src/shared/util/jwtUtils';
 import { truncateText } from '@src/shared/util/truncateUtil';
 
@@ -275,13 +275,18 @@ const MainProductsorder: React.FC = () => {
         if (isFromCart) {
           try {
             const cartIds = items.map((p) => p.cartId).filter((id): id is number => !!id);
+
+            // Promise.all로 동시에 삭제
             await Promise.all(
               cartIds.map((cid) =>
-                fetch(`/main/mypage/cart/delete/${cid}`, { method: 'DELETE' }).catch(() => null)
+                legacyDel(`/main/mypage/cart/delete/${cid}`).catch((e) => {
+                  console.warn(`장바구니 삭제 실패: cartId=${cid}`, e);
+                  return null; // 실패해도 전체 흐름 방해하지 않음
+                })
               )
             );
           } catch (e) {
-            console.warn('장바구니 삭제 실패:', e);
+            console.warn('장바구니 삭제 전체 실패:', e);
           }
         }
 

@@ -1,8 +1,10 @@
-import { useState, useEffect, type JSX } from 'react';
+import { useState, useEffect, useMemo, type JSX } from 'react';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import { Star, ShoppingCart, CreditCard, Flag, Edit, Minus, Plus, ThumbsUp, X } from 'lucide-react';
 import { get, legacyGet, legacyPost, post } from '@src/libs/request';
+import type { ApiResponse } from '@src/libs/apiResponse';
+
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 import { processContent, getContentCssClasses } from '@src/shared/util/contentUtil';
@@ -34,6 +36,20 @@ interface Review {
   isOwner: boolean;
   isLiked: boolean;
   isEdited: boolean;
+}
+
+// ✅ 추가
+interface StoreCustomDTO {
+  storeId: number;
+  font?: { id: number; name: string; style: string; url: string } | null;
+  icon?: { id: number; name: string; content: string; url: string } | null;
+  fontColor: string;
+  headerFooterColor: string;
+  noticeColor: string;
+  descriptionColor: string;
+  popularColor: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Product 매핑: 안전하게 mainThumbnailUrl 확인
@@ -93,36 +109,78 @@ const MainProductsDetail = () => {
   const [editingReview, setEditingReview] = useState<string | null>(null);
   const [editReviewData, setEditReviewData] = useState({ rating: 5, content: '' });
 
-  const { productId } = useParams<{ productId: string }>();
-  const storeUrl = 'hihiyaho';
+  const { productId, storeUrl: paramStoreUrl } = useParams<{ 
+    productId: string; 
+    storeUrl?: string; 
+  }>();
+
+  const location = useLocation();
+  
+  // ✅ URL에서 storeUrl 동적 추출
+const storeUrl = useMemo(() => {
+  // params에서 직접 storeUrl이 왔으면 사용
+  if (paramStoreUrl) return paramStoreUrl;
+  
+  // pathname에서 추출 (/main/products/79 또는 /oddackku/products/78)
+  const pathSegments = location.pathname.split('/').filter(Boolean);
+  
+  // 첫 번째 세그먼트가 'main'이면 'main', 아니면 storeUrl
+  return pathSegments[0] === 'main' ? 'main' : pathSegments[0];
+}, [paramStoreUrl, location.pathname]);
+
 
   const [loadingProduct, setLoadingProduct] = useState(true);
   const [loadingReviews, setLoadingReviews] = useState(true);
+
+  const [headerBgColor, setHeaderBgColor] = useState('#2d4739');
 
   const navigate = useNavigate();
 
   // 상세 페이지 접근 시 조회수 증가 호출 (실패해도 상세 조회는 진행) 
   useEffect(() => {
-    if (!productId) return;
+  if (!productId) return;
 
-    // 같은 탭에서 같은 상품으로 즉시 재마운트되는 경우 1회만 카운트 
-    const key = `viewed:${productId}`;
-    const lastTs = Number(sessionStorage.getItem(key) || 0);
-    const now = Date.now();
-    // 5초 이내에 같은 상품이면 중복 증가 방지
-    if (now - lastTs < 5000) return;
-    sessionStorage.setItem(key, String(now));
+  // 같은 탭에서 같은 상품으로 즉시 재마운트되는 경우 1회만 카운트 
+  const key = `viewed:${productId}`;
+  const lastTs = Number(sessionStorage.getItem(key) || 0);
+  const now = Date.now();
+  // 5초 이내에 같은 상품이면 중복 증가 방지
+  if (now - lastTs < 5000) return;
+  sessionStorage.setItem(key, String(now));
 
-    legacyGet(`/click/${productId}`)
-      .then((res) => {
-        if (res?.status !== 200) {
-          console.warn('view_cnt increase non-200:', res);
-        }
-      })
-      .catch((err) => {
-        console.warn('view_cnt increase failed:', err);
-      });
-  }, [productId]);
+  legacyGet<{ status: number }>(`/click/${productId}`) // ✅ 타입 명시
+    .then((res) => {
+      if (res?.status !== 200) {
+        console.warn('view_cnt increase non-200:', res);
+      }
+    })
+    .catch((err) => {
+      console.warn('view_cnt increase failed:', err);
+    });
+}, [productId]);
+
+// ✅ 커스텀 설정 로드
+useEffect(() => {
+  // main인 경우는 커스텀 설정 로드하지 않음
+  if (!storeUrl || storeUrl === 'main') {
+    setHeaderBgColor('#2d4739'); // 기본값 유지
+    return;
+  }
+  
+  (async () => {
+    try {
+      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+        `/api/seller/${storeUrl}/store/custom`
+      );
+      if (result.data?.headerFooterColor) {
+        setHeaderBgColor(result.data.headerFooterColor);
+      }
+    } catch (error) {
+      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+      setHeaderBgColor('#2d4739'); // 실패 시 기본값
+    }
+  })();
+}, [storeUrl]);
 
   // 상품 상세 불러오기
   useEffect(() => {
@@ -559,7 +617,7 @@ const MainProductsDetail = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header />
+       <Header backgroundColor={headerBgColor} />
       {isMain ? <Mainnavbar /> : <Storenavbar />}
 
       <div className="max-w-screen-2xl mx-auto px-4 ">

@@ -1,6 +1,6 @@
 // src/domains/main/areas/mypage/pages/MainMypageCart.tsx
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Minus, Plus, Trash2, ShoppingCart, Store } from 'lucide-react';
 
 import Header from '@src/shared/areas/layout/features/header/Header';
@@ -91,7 +91,9 @@ function QtyStepper({
 }
 
 export default function MainMypageCart() {
-  const { storeUrl } = useParams<Params>();
+  const location = useLocation();
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const storeUrl = pathParts.at(-3);
 
   const [items, setItems] = useState<CartItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
@@ -386,7 +388,7 @@ export default function MainMypageCart() {
       </td>
       <td className="py-3 px-3 align-middle">
         <a
-          href={`/main/products/${item.productId}`}
+          href={`/${item.storeUrl}/products/${item.productId}`}
           className="block w-16 h-16 rounded-lg overflow-hidden bg-gray-100"
         >
           <img
@@ -399,7 +401,7 @@ export default function MainMypageCart() {
       </td>
       <td className="py-3 px-3 align-middle">
         <a
-          href={`/main/products/${item.productId}`}
+          href={`/${item.storeUrl}/products/${item.productId}`}
           className="text-gray-900 font-medium hover:underline line-clamp-2"
         >
           {item.productName}
@@ -535,7 +537,7 @@ export default function MainMypageCart() {
 
       <div className="mt-3 flex gap-3">
         <a
-          href={`/main/products/${item.productId}`}
+          href={`/${item.storeUrl}/products/${item.productId}`}
           className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0"
         >
           <img
@@ -547,7 +549,7 @@ export default function MainMypageCart() {
         </a>
         <div className="min-w-0 flex-1">
           <a
-            href={`/main/products/${item.productId}`}
+            href={`/${item.storeUrl}/products/${item.productId}`}
             className="text-base font-semibold text-gray-900 hover:underline line-clamp-2"
           >
             {item.productName}

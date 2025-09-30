@@ -101,6 +101,29 @@ const MainProductsDetail = () => {
 
   const navigate = useNavigate();
 
+  // 상세 페이지 접근 시 조회수 증가 호출 (실패해도 상세 조회는 진행) 
+  useEffect(() => {
+    if (!productId) return;
+
+    // 같은 탭에서 같은 상품으로 즉시 재마운트되는 경우 1회만 카운트 
+    const key = `viewed:${productId}`;
+    const lastTs = Number(sessionStorage.getItem(key) || 0);
+    const now = Date.now();
+    // 5초 이내에 같은 상품이면 중복 증가 방지
+    if (now - lastTs < 5000) return;
+    sessionStorage.setItem(key, String(now));
+
+    legacyGet(`/click/${productId}`)
+      .then((res) => {
+        if (res?.status !== 200) {
+          console.warn('view_cnt increase non-200:', res);
+        }
+      })
+      .catch((err) => {
+        console.warn('view_cnt increase failed:', err);
+      });
+  }, [productId]);
+
   // 상품 상세 불러오기
   useEffect(() => {
     if (!storeUrl || !productId) return;

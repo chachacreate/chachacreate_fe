@@ -483,16 +483,16 @@ export default function MainMypageCart() {
           <div className="p-6 text-gray-500">담긴 상품이 없습니다.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-sm text-center">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  <th className="py-3 px-3 w-[44px]">선택</th>
-                  <th className="py-3 px-3">스토어</th>
-                  <th className="py-3 px-3">상품이미지</th>
-                  <th className="py-3 px-3">상품명/설명</th>
-                  <th className="py-3 px-3">가격</th>
-                  <th className="py-3 px-3">개수</th>
-                  <th className="py-3 px-3">관리</th>
+                  <th className="py-3 px-3 w-1/12">선택</th>
+                  <th className="py-3 px-3 w-2/12">스토어</th>
+                  <th className="py-3 px-3 w-1/12 text-left">상품이미지</th>
+                  <th className="py-3 px-3 w-3/12">상품명/설명</th>
+                  <th className="py-3 px-3 w-1/12">가격</th>
+                  <th className="py-3 px-3 w-1/12">개수</th>
+                  <th className="py-3 px-3 w-1/12">관리</th>
                 </tr>
               </thead>
               <tbody>

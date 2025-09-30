@@ -2,12 +2,13 @@ import { useState, useEffect, useMemo, type JSX } from 'react';
 import Header from '@src/shared/areas/layout/features/header/Header';
 import Mainnavbar from '@src/shared/areas/navigation/features/navbar/main/Mainnavbar';
 import { Star, ShoppingCart, CreditCard, Flag, Edit, Minus, Plus, ThumbsUp, X } from 'lucide-react';
-import { get, legacyGet, legacyPost, post } from '@src/libs/request';
+import { del, get, legacyGet, legacyPost, post, put } from '@src/libs/request';
 import type { ApiResponse } from '@src/libs/apiResponse';
 
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import Storenavbar from '@src/shared/areas/navigation/features/navbar/store/Storenavbar';
 import { processContent, getContentCssClasses } from '@src/shared/util/contentUtil';
+import { getCurrentUser } from '@src/shared/util/jwtUtils';
 
 interface Product {
   id: string;
@@ -27,6 +28,7 @@ interface Product {
 
 interface Review {
   id: string;
+  memberId: number;
   memberName: string;
   createdAt: string;
   updatedAt?: string;
@@ -86,6 +88,7 @@ const mapProduct = (api: any): Product => {
 
 const mapReview = (r: any): Review => ({
   id: r.id.toString(),
+  memberId: r.memberId,
   memberName: r.memberName,
   createdAt: r.reviewDate,
   updatedAt: r.updatedAt,
@@ -109,25 +112,35 @@ const MainProductsDetail = () => {
   const [editingReview, setEditingReview] = useState<string | null>(null);
   const [editReviewData, setEditReviewData] = useState({ rating: 5, content: '' });
 
-  const { productId, storeUrl: paramStoreUrl } = useParams<{ 
-    productId: string; 
-    storeUrl?: string; 
+  const { productId, storeUrl: paramStoreUrl } = useParams<{
+    productId: string;
+    storeUrl?: string;
   }>();
 
   const location = useLocation();
-  
-  // ✅ URL에서 storeUrl 동적 추출
-const storeUrl = useMemo(() => {
-  // params에서 직접 storeUrl이 왔으면 사용
-  if (paramStoreUrl) return paramStoreUrl;
-  
-  // pathname에서 추출 (/main/products/79 또는 /oddackku/products/78)
-  const pathSegments = location.pathname.split('/').filter(Boolean);
-  
-  // 첫 번째 세그먼트가 'main'이면 'main', 아니면 storeUrl
-  return pathSegments[0] === 'main' ? 'main' : pathSegments[0];
-}, [paramStoreUrl, location.pathname]);
 
+  const currentUser = getCurrentUser();
+
+  // const reviewsWithOwnerFlag = useMemo(
+  //   () =>
+  //     reviews.map((review) => ({
+  //       ...review,
+  //       isOwner: currentUser ? currentUser.memberId === review.memberId : false,
+  //     })),
+  //   [reviews, currentUser]
+  // );
+
+  // ✅ URL에서 storeUrl 동적 추출
+  const storeUrl = useMemo(() => {
+    // params에서 직접 storeUrl이 왔으면 사용
+    if (paramStoreUrl) return paramStoreUrl;
+
+    // pathname에서 추출 (/main/products/79 또는 /oddackku/products/78)
+    const pathSegments = location.pathname.split('/').filter(Boolean);
+
+    // 첫 번째 세그먼트가 'main'이면 'main', 아니면 storeUrl
+    return pathSegments[0] === 'main' ? 'main' : pathSegments[0];
+  }, [paramStoreUrl, location.pathname]);
 
   const [loadingProduct, setLoadingProduct] = useState(true);
   const [loadingReviews, setLoadingReviews] = useState(true);
@@ -136,51 +149,51 @@ const storeUrl = useMemo(() => {
 
   const navigate = useNavigate();
 
-  // 상세 페이지 접근 시 조회수 증가 호출 (실패해도 상세 조회는 진행) 
+  // 상세 페이지 접근 시 조회수 증가 호출 (실패해도 상세 조회는 진행)
   useEffect(() => {
-  if (!productId) return;
+    if (!productId) return;
 
-  // 같은 탭에서 같은 상품으로 즉시 재마운트되는 경우 1회만 카운트 
-  const key = `viewed:${productId}`;
-  const lastTs = Number(sessionStorage.getItem(key) || 0);
-  const now = Date.now();
-  // 5초 이내에 같은 상품이면 중복 증가 방지
-  if (now - lastTs < 5000) return;
-  sessionStorage.setItem(key, String(now));
+    // 같은 탭에서 같은 상품으로 즉시 재마운트되는 경우 1회만 카운트
+    const key = `viewed:${productId}`;
+    const lastTs = Number(sessionStorage.getItem(key) || 0);
+    const now = Date.now();
+    // 5초 이내에 같은 상품이면 중복 증가 방지
+    if (now - lastTs < 5000) return;
+    sessionStorage.setItem(key, String(now));
 
-  legacyGet<{ status: number }>(`/click/${productId}`) // ✅ 타입 명시
-    .then((res) => {
-      if (res?.status !== 200) {
-        console.warn('view_cnt increase non-200:', res);
-      }
-    })
-    .catch((err) => {
-      console.warn('view_cnt increase failed:', err);
-    });
-}, [productId]);
+    legacyGet<{ status: number }>(`/click/${productId}`) // ✅ 타입 명시
+      .then((res) => {
+        if (res?.status !== 200) {
+          console.warn('view_cnt increase non-200:', res);
+        }
+      })
+      .catch((err) => {
+        console.warn('view_cnt increase failed:', err);
+      });
+  }, [productId]);
 
-// ✅ 커스텀 설정 로드
-useEffect(() => {
-  // main인 경우는 커스텀 설정 로드하지 않음
-  if (!storeUrl || storeUrl === 'main') {
-    setHeaderBgColor('#2d4739'); // 기본값 유지
-    return;
-  }
-  
-  (async () => {
-    try {
-      const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
-        `/api/seller/${storeUrl}/store/custom`
-      );
-      if (result.data?.headerFooterColor) {
-        setHeaderBgColor(result.data.headerFooterColor);
-      }
-    } catch (error) {
-      console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
-      setHeaderBgColor('#2d4739'); // 실패 시 기본값
+  // ✅ 커스텀 설정 로드
+  useEffect(() => {
+    // main인 경우는 커스텀 설정 로드하지 않음
+    if (!storeUrl || storeUrl === 'main') {
+      setHeaderBgColor('#2d4739'); // 기본값 유지
+      return;
     }
-  })();
-}, [storeUrl]);
+
+    (async () => {
+      try {
+        const result: ApiResponse<StoreCustomDTO> = await get<StoreCustomDTO>(
+          `/api/seller/${storeUrl}/store/custom`
+        );
+        if (result.data?.headerFooterColor) {
+          setHeaderBgColor(result.data.headerFooterColor);
+        }
+      } catch (error) {
+        console.warn('커스텀 설정이 없거나 로드 실패, 기본값 사용:', error);
+        setHeaderBgColor('#2d4739'); // 실패 시 기본값
+      }
+    })();
+  }, [storeUrl]);
 
   // 상품 상세 불러오기
   useEffect(() => {
@@ -513,29 +526,57 @@ useEffect(() => {
     }
   };
 
-  const handleUpdateReview = () => {
-    if (editingReview && editReviewData.content.trim()) {
-      setReviews((prev) =>
-        prev.map((review) =>
-          review.id === editingReview
-            ? {
-                ...review,
-                rating: editReviewData.rating,
-                content: editReviewData.content,
-                updatedAt: new Date().toISOString(),
-                isEdited: true,
-              }
-            : review
-        )
+  // 리뷰 수정
+  const handleUpdateReview = async () => {
+    if (!editingReview || !editReviewData.content.trim()) return;
+
+    try {
+      const response = await put<Review>(
+        `/products/${productId}/reviews/${editingReview}`,
+        editReviewData
       );
-      setEditingReview(null);
-      setEditReviewData({ rating: 5, content: '' });
+
+      if (response.status === 200) {
+        setReviews((prev) =>
+          prev.map((review) =>
+            review.id === editingReview
+              ? {
+                  ...review,
+                  rating: response.data.rating,
+                  content: response.data.content,
+                  updatedAt: response.data.updatedAt,
+                  isEdited: true,
+                }
+              : review
+          )
+        );
+        setEditingReview(null);
+        setEditReviewData({ rating: 5, content: '' });
+        alert('리뷰 수정 성공!');
+      } else {
+        console.error(response.message);
+      }
+    } catch (err) {
+      console.error('API 요청 실패: ', err);
     }
   };
 
-  const handleDeleteReview = (reviewId: string) => {
-    if (confirm('리뷰를 삭제하시겠습니까?')) {
-      setReviews((prev) => prev.filter((review) => review.id !== reviewId));
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!confirm('리뷰를 삭제하시겠습니까?')) return;
+
+    try {
+      const response = await del(`/products/${productId}/reviews/${reviewId}`);
+
+      if (response.status === 200) {
+        const updatedReviews = await get<any>(`/products/${productId}/reviews`);
+        setReviews(updatedReviews.data);
+
+        alert('리뷰 삭제 성공!');
+      } else {
+        console.error(response.message);
+      }
+    } catch (err) {
+      console.error('API 요청 실패: ', err);
     }
   };
 
@@ -617,7 +658,7 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-white">
-       <Header backgroundColor={headerBgColor} />
+      <Header backgroundColor={headerBgColor} />
       {isMain ? <Mainnavbar /> : <Storenavbar />}
 
       <div className="max-w-screen-2xl mx-auto px-4 ">
@@ -1009,7 +1050,7 @@ useEffect(() => {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          {review.isOwner && (
+                          {review.memberId === currentUser?.memberId && (
                             <>
                               <button
                                 onClick={() => handleEditReview(review.id)}

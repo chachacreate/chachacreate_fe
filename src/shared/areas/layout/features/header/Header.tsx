@@ -188,35 +188,50 @@ export default function Header({ user,
 
   // 스토어 채팅방 생성 및 리다이렉트
   const createStoreChatAndRedirect = async (storeUrl: string, storeName: string) => {
-    const buyerId = currentUser?.memberId;
+  const buyerId = currentUser?.memberId;
 
-    if (!buyerId) {
-      alert('로그인이 필요합니다.');
-      goToLogin();
-      return;
+  if (!buyerId) {
+    alert('로그인이 필요합니다.');
+    goToLogin();
+    return;
+  }
+
+  try {
+    console.log('📤 [요청 정보]', {
+      url: `/api/chat/personal/${storeUrl}?buyerId=${buyerId}`,
+      buyerId: buyerId,
+      storeUrl: storeUrl,
+      storeName: storeName,
+      currentUserName: currentUser.name
+    });
+
+    const response = await post<any>(
+      `/api/chat/personal/${storeUrl}?buyerId=${buyerId}`,
+      {}
+    );
+
+    console.log('✅ [응답 전체]', response);
+    
+    // ✅ 백엔드 응답에서 chatroomId 추출
+    const chatroomId = response?.data?.chatroomId || `personal_${currentUser.name}_${storeName}`;
+    
+    console.log('🔑 [채팅방 ID]', chatroomId);
+    
+    // ✅ 쿼리 파라미터로 채팅방 ID 전달
+    navigate(`/${storeUrl}/mypage/message?room=${encodeURIComponent(chatroomId)}`);
+    
+  } catch (error: any) {
+    console.error('❌ [에러]', error);
+
+    if (error?.response?.status === 409 || error?.response?.status === 200) {
+      const chatroomId = `personal_${currentUser.name}_${storeName}`;
+      console.log('🔄 [기존 채팅방 사용]', chatroomId);
+      navigate(`/${storeUrl}/mypage/message?room=${encodeURIComponent(chatroomId)}`);
+    } else {
+      alert('채팅방 생성에 실패했습니다. 다시 시도해주세요.');
     }
-
-    try {
-      // console.log('채팅방 생성 중...');
-
-      const chatData = await post<any>(`/api/chat/personal/${storeUrl}`, {
-        buyerId: buyerId,
-      });
-
-      // console.log('채팅방 생성/연결 완료:', chatData);
-      navigate(`/${storeUrl}/mypage/message`);
-    } catch (error: any) {
-      console.error('채팅방 생성 실패:', error);
-
-      // 409 상태 코드(이미 존재)인 경우에도 메시지 페이지로 이동
-      if (error?.response?.status === 409 || error?.response?.status === 200) {
-        // console.log('기존 채팅방 사용');
-        navigate(`/${storeUrl}/mypage/message`);
-      } else {
-        alert('채팅방 생성에 실패했습니다. 다시 시도해주세요.');
-      }
-    }
-  };
+  }
+};
 
   // 메시지 버튼 설정
   const messageConfig = useMemo(() => {
